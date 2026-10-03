@@ -214,13 +214,31 @@ are owned as built components and do not. Only complete sets can be listed;
 incomplete ones are shown so you can see which component to buy next, ordered
 by how few are missing.
 
-Each row also shows a **Price**: the warframe.market moving average, the same
-figure the live scraper itself prices against. It comes from the statistics
-already in the item cache, so opening a tab costs no API calls, and it is only
-as complete as what warframe.market publishes statistics for — about 86% of
-sets, 52% of parts and 26% of mods. Items below its volume threshold have no
-reliable price and show a dash rather than a made-up number. A maxed mod is
-priced separately from an unranked one where the data distinguishes them.
+Each row also shows a **Price**, and the tabs hide anything below
+`live_scraper.items.wts.min_profit` — the same threshold the scraper uses to
+decide an item is worth bothering with. A row whose price is *unknown* is
+never hidden: it shows `?` and stays visible, because the bundled price data
+misses a lot and sampling what it misses found roughly 45% worth 10p or more.
+
+The price comes from three places, cheapest first:
+
+1. **The bundled statistics** in the item cache — free, but only covers about
+   86% of sets, 52% of parts and 26% of mods.
+2. **warframe.market, asked directly** for rows on screen that the cache has
+   nothing for. Only the visible rows, so the cost follows what you look at
+   rather than the size of your inventory. Answers are remembered in
+   `market_prices.json` beside the app data, including "nothing traded".
+3. **The live scraper**, which already fetches in-game sell orders for every
+   item it prices. Its lowest in-game ask is recorded as it goes and wins when
+   it is the newer of the two readings, since it is the number you would have
+   to match to sell and the figure the scraper itself lists at.
+
+A remembered price is always served, however old. Staleness triggers a
+background renewal rather than a blank cell: an out-of-date price is still a
+price, and treating it as unknown would make rows flicker back to `?` and slip
+past the threshold. warframe.market reports mods per rank and relics per
+refinement, so a rank-10 reading is never shown against an unranked copy —
+such a row stays honestly unknown instead.
 
 Listing a part whose set is already in stock shows a warning but is not
 blocked. A blueprint shared between two sets — the three akimbo primes — counts

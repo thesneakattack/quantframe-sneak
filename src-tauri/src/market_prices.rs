@@ -67,11 +67,47 @@ impl PriceKey {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CachedPrice {
-    /// None records that warframe.market was asked and had nothing.
+    /// The 48 hour volume-weighted average. None records that
+    /// warframe.market was asked and had nothing.
+    #[serde(default)]
     pub price: Option<f64>,
+    #[serde(default)]
     pub fetched_at: i64,
+
+    /// The lowest in-game sell order, as seen by the live scraper while it
+    /// was pricing this item. Costs nothing: the scraper has already made the
+    /// request. Defaulted so files written before this existed still load.
+    #[serde(default)]
+    pub live_price: Option<f64>,
+    #[serde(default)]
+    pub live_at: i64,
+}
+
+/// The better of the two observations: whichever was seen more recently.
+///
+/// The live ask is what you would have to match to sell right now, and it is
+/// what the scraper itself lists at, so when it is the newer of the two it is
+/// the more useful answer. The 48 hour average carries the rest.
+pub fn best_price(entry: &CachedPrice) -> Option<f64> {
+    match (entry.price, entry.live_price) {
+        (Some(history), Some(live)) => Some(if entry.live_at >= entry.fetched_at {
+            live
+        } else {
+            history
+        }),
+        (Some(history), None) => Some(history),
+        (None, live) => live,
+    }
+}
+
+/// A live lowest-price reading, or None when there is nothing to read.
+///
+/// An item nobody is selling reports a lowest price of zero. That is an empty
+/// order book, not a free item.
+pub fn live_observation(lowest_price: i64) -> Option<f64> {
+    (lowest_price > 0).then_some(lowest_price as f64)
 }
 
 fn now_secs() -> i64 {
@@ -163,7 +199,7 @@ pub fn plan_resolution(
     for key in keys {
         match known.get(&key.id()) {
             Some(entry) => {
-                plan.serve.insert(key.id(), entry.price);
+                plan.serve.insert(key.id(), best_price(entry));
                 if !is_fresh(entry.fetched_at, now, entry.price.is_some()) {
                     stale.push((entry.fetched_at, key));
                 }
@@ -233,18 +269,33 @@ impl MarketPriceStore {
             .lock()
             .unwrap()
             .get(&key.id())
-            .and_then(|entry| entry.price)
+            .and_then(best_price)
+    }
+
+    /// Record what the live scraper saw while pricing this item.
+    ///
+    /// The scraper has already paid for the request, so this is free market
+    /// data for the inventory tabs - and the freshest available.
+    pub fn record_live(&self, key: &PriceKey, lowest_price: i64) {
+        let Some(live) = live_observation(lowest_price) else {
+            return;
+        };
+        let mut entries = self.entries.lock().unwrap();
+        let entry = entries.entry(key.id()).or_default();
+        entry.live_price = Some(live);
+        entry.live_at = now_secs();
+    }
+
+    /// Persist what the scraper has recorded since the last write.
+    pub fn flush(&self) {
+        self.save();
     }
 
     fn remember(&self, key: &PriceKey, price: Option<f64>) {
         let mut entries = self.entries.lock().unwrap();
-        entries.insert(
-            key.id(),
-            CachedPrice {
-                price,
-                fetched_at: now_secs(),
-            },
-        );
+        let entry = entries.entry(key.id()).or_default();
+        entry.price = price;
+        entry.fetched_at = now_secs();
     }
 
     fn save(&self) {
@@ -361,8 +412,8 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
 #[cfg(test)]
 mod tests {
     use super::{
-        is_fresh, plan_resolution, select_price, CachedPrice, PriceKey, FOUND_TTL_SECS,
-        MAX_PER_CALL, MAX_REFRESH_PER_CALL, MISSING_TTL_SECS,
+        best_price, is_fresh, live_observation, plan_resolution, select_price, CachedPrice,
+        PriceKey, FOUND_TTL_SECS, MAX_PER_CALL, MAX_REFRESH_PER_CALL, MISSING_TTL_SECS,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -445,8 +496,66 @@ mod tests {
         assert_eq!(select_price(&stats, &key(None, None)), None);
     }
 
+    /// The live ask is the number you would have to match to sell right now,
+    /// and it is what the scraper itself lists at, so when it is the newer
+    /// observation it is the better answer.
+    #[test]
+    fn prefers_the_live_ask_when_it_is_the_newer_observation() {
+        let entry = CachedPrice {
+            price: Some(40.0),
+            fetched_at: 100,
+            live_price: Some(31.0),
+            live_at: 200,
+        };
+        assert_eq!(best_price(&entry), Some(31.0));
+    }
+
+    #[test]
+    fn prefers_the_historical_average_when_the_live_ask_is_older() {
+        let entry = CachedPrice {
+            price: Some(40.0),
+            fetched_at: 300,
+            live_price: Some(31.0),
+            live_at: 200,
+        };
+        assert_eq!(best_price(&entry), Some(40.0));
+    }
+
+    /// Either source alone is still an answer.
+    #[test]
+    fn uses_whichever_source_is_present() {
+        let only_live = CachedPrice {
+            price: None,
+            fetched_at: 0,
+            live_price: Some(31.0),
+            live_at: 200,
+        };
+        assert_eq!(best_price(&only_live), Some(31.0));
+
+        let only_history = CachedPrice {
+            price: Some(40.0),
+            fetched_at: 300,
+            live_price: None,
+            live_at: 0,
+        };
+        assert_eq!(best_price(&only_history), Some(40.0));
+    }
+
+    /// An item nobody is selling reports a lowest price of zero. That is an
+    /// empty order book, not a free item, and must never reach the column.
+    #[test]
+    fn an_empty_order_book_is_not_a_price_of_zero() {
+        assert_eq!(live_observation(0), None);
+        assert_eq!(live_observation(-1), None);
+        assert_eq!(live_observation(31), Some(31.0));
+    }
+
     fn known(price: Option<f64>, fetched_at: i64) -> CachedPrice {
-        CachedPrice { price, fetched_at }
+        CachedPrice {
+            price,
+            fetched_at,
+            ..Default::default()
+        }
     }
 
     /// Never asked about: the row shows "?" until we go and look, so this is

@@ -220,6 +220,9 @@ impl LiveScraperState {
         );
         *self.started_at.lock().unwrap() = None;
         self.is_running.store(false, Ordering::SeqCst);
+        // Everything the run observed about market prices is in memory; put
+        // it on disk so the WF Inventory tabs keep it across restarts.
+        crate::market_prices::MarketPriceStore::get().flush();
     }
 
     pub fn is_running(&self) -> bool {
