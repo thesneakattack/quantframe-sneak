@@ -7,3 +7,18 @@
 .veiledRivens {
   height: calc(100vh - 300px);
 }
+
+/*
+ * The Parts, Mods and Sets tables scroll internally, the way the Stock tables
+ * do. Without an explicit height mantine-datatable grows to fit every row, so
+ * the page has no scrollbar and the pagination footer sits below the window.
+ * The offset covers the app header, the search field and the footer.
+ */
+.inventoryTable {
+  --offset: 175px;
+  height: calc(100vh - var(--offset)) !important;
+
+  &.alert {
+    --offset: 205px;
+  }
+}

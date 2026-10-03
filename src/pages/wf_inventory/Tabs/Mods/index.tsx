@@ -69,7 +69,7 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
         }
       />
       <DataTable
-        className={`${classes.container} ${useHasAlert() ? classes.alert : ""}`}
+        className={`${classes.inventoryTable} ${useHasAlert() ? classes.alert : ""}`}
         mt="md"
         striped
         fetching={modsQuery.isLoading}

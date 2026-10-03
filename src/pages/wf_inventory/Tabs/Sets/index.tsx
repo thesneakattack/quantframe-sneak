@@ -65,7 +65,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
         }
       />
       <DataTable
-        className={`${classes.container} ${useHasAlert() ? classes.alert : ""}`}
+        className={`${classes.inventoryTable} ${useHasAlert() ? classes.alert : ""}`}
         mt="md"
         striped
         fetching={setsQuery.isLoading}

@@ -66,7 +66,7 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
         }
       />
       <DataTable
-        className={`${classes.container} ${useHasAlert() ? classes.alert : ""}`}
+        className={`${classes.inventoryTable} ${useHasAlert() ? classes.alert : ""}`}
         mt="md"
         striped
         fetching={partsQuery.isLoading}
