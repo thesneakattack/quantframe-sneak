@@ -25,6 +25,7 @@ original work. This list is maintained as changes are made.
 | Update check | `checkForUpdates` in `src/contexts/app.context.tsx` now tolerates updater failure and reports "no update" instead of surfacing an error | The stub endpoint returns 404 until real releases exist. |
 | Links | Release and Discord-avatar URLs repointed at this repository | Upstream URLs would serve official artifacts. |
 | Licensing metadata | `src-tauri/Cargo.toml`: `license` set to `GPL-3.0-only` (upstream left it empty), `authors` and `repository` updated | The upstream manifest did not declare the license its `LICENSE` file grants. |
+| API endpoint | The Quantframe API base URL is resolved at runtime — `QF_API_URL`, then `advanced_settings.qf_api_url`, then the compiled default — instead of being fixed at compile time by `cfg!(dev)` | Upstream required editing `qf_api/src/client.rs` and rebuilding to change endpoint, which blocked both running a dev build against the real API and pointing at a self-hosted server. Defaults are unchanged, so behaviour without configuration matches upstream. |
 | Build environment | Added `.ddev/` — a containerised Rust + Node toolchain for reproducible builds and checks | New; does not alter program behaviour. |
 
 ## Unchanged

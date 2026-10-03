@@ -53,6 +53,45 @@ impl InsertAt for String {
 const REQUESTS_PER_SECOND: NonZeroU32 = NonZero::new(3).unwrap();
 const DEVELOPMENT_URL: &str = "http://localhost:6969";
 const PRODUCTION_URL: &str = "https://api.quantframe.app";
+
+/// Environment override for the API base URL.
+///
+/// Upstream compiled the base URL in, so switching endpoints meant editing this
+/// file and rebuilding - its README literally instructs you to copy
+/// PRODUCTION_URL over DEVELOPMENT_URL. That blocks two things this fork cares
+/// about: using the real API from a dev build, and pointing at a self-hosted
+/// server.
+///
+/// Resolution order, highest first:
+///   1. QF_API_URL environment variable
+///   2. advanced_settings.qf_api_url, passed via `with_base_url`
+///   3. the compiled default below, chosen by `is_development`
+pub const API_URL_ENV: &str = "QF_API_URL";
+
+fn normalize_base_url(value: &str) -> Option<String> {
+    let value = value.trim().trim_end_matches('/');
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+fn env_base_url() -> Option<String> {
+    std::env::var(API_URL_ENV)
+        .ok()
+        .as_deref()
+        .and_then(normalize_base_url)
+}
+
+fn compiled_base_url(is_development: bool) -> String {
+    if is_development {
+        DEVELOPMENT_URL
+    } else {
+        PRODUCTION_URL
+    }
+    .to_string()
+}
 pub static SENSITIVE_FIELDS: &[&str] = &[
     "email",
     "password",
@@ -74,6 +113,8 @@ pub struct Client {
     platform: String,
     pub device: String,
     is_development: bool,
+    /// Resolved once at construction; see API_URL_ENV for precedence.
+    base_url: String,
     app: String,
     version: String,
     wfm_platform: String,
@@ -106,6 +147,7 @@ impl Client {
                     platform: self.platform.clone(),
                     device: self.device.clone(),
                     is_development: self.is_development,
+                    base_url: self.base_url.clone(),
                     app: self.app.clone(),
                     version: self.version.clone(),
                     wfm_platform: self.wfm_platform.clone(),
@@ -169,6 +211,7 @@ impl Client {
             platform: platform.to_string(),
             device: device.to_string(),
             is_development,
+            base_url: env_base_url().unwrap_or_else(|| compiled_base_url(is_development)),
             app: app.to_string(),
             version: version.to_string(),
             wfm_platform: wfm_platform.to_string(),
@@ -204,6 +247,26 @@ impl Client {
         self
     }
 
+    /// Override the API base URL from configuration (advanced_settings.qf_api_url).
+    ///
+    /// An empty value leaves the compiled default in place. QF_API_URL takes
+    /// precedence over this, so an operator can redirect a build without editing
+    /// anyone's settings file.
+    pub fn with_base_url(mut self, base_url: &str) -> Self {
+        if env_base_url().is_some() {
+            return self;
+        }
+        if let Some(value) = normalize_base_url(base_url) {
+            self.base_url = value;
+        }
+        self
+    }
+
+    /// The API base URL actually in use, after precedence is applied.
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     pub async fn call_api<T: serde::de::DeserializeOwned>(
         &self,
         method: Method,
@@ -212,12 +275,7 @@ impl Client {
         headers: Option<HashMap<String, String>>,
         response_format: ResponseFormat,
     ) -> Result<(ApiResponse<T>, HeaderMap, RequestError), ApiError> {
-        let url = if self.is_development {
-            format!("{}{}", DEVELOPMENT_URL, path)
-        } else {
-            format!("{}{}", PRODUCTION_URL, path)
-        };
-        // let url = format!("{}{}", "http://localhost:6969", path);
+        let url = format!("{}{}", self.base_url, path);
         let mut default_headers = reqwest::header::HeaderMap::new();
 
         // Create the error object for logging

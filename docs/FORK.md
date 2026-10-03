@@ -106,23 +106,38 @@ cannot silently clobber state once this build has its own.
 > manage the same warframe.market orders and will fight — each independently
 > creating, repricing and deleting the other's listings.
 
-### `tauri dev` talks to localhost, not production
+### Choosing which API the app talks to
 
-A dev build sets `is_development = true`, so `qf_api` targets `DEVELOPMENT_URL`
-(`http://localhost:6969`) rather than `https://api.quantframe.app`. With no server
-there, the app boots and renders but immediately shows
-`Error in QFClient:AlertGetAlerts component`. That is expected, not a regression.
+Upstream compiled the endpoint in: `qf_api` picked `DEVELOPMENT_URL`
+(`http://localhost:6969`) or `PRODUCTION_URL` (`https://api.quantframe.app`) purely
+from `cfg!(dev)`, and its README told you to edit `client.rs` and rebuild to change
+it. A dev build therefore could not reach the real API, and a self-hosted server
+could not be pointed at without recompiling.
 
-Two ways forward:
+This fork resolves the base URL at runtime. Highest precedence first:
 
-- To use the real backend while developing, copy `PRODUCTION_URL` over
-  `DEVELOPMENT_URL` in `src-tauri/qf_api/src/client.rs`. Upstream's README
-  recommends exactly this. Do not commit it.
-- To work on a self-hosted API, `localhost:6969` is already the address the client
-  expects — see the [self-hosting research](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md).
-  The `#[ignore]`d `qf_api` tests target the same port.
+| Source | Example |
+| --- | --- |
+| `QF_API_URL` environment variable | `QF_API_URL=https://api.quantframe.app ddev tauri dev` |
+| `advanced_settings.qf_api_url` in `settings.json` | `"qf_api_url": "http://localhost:6969"` |
+| Compiled default | dev build → localhost:6969, release build → production |
 
-Release builds are unaffected and use the production URL.
+Nothing changes if you set neither: the compiled defaults are the fallback, so
+behaviour matches upstream out of the box.
+
+This makes two things possible that were not before:
+
+- **Run a dev build against the real API.** Useful because some UI is gated on
+  `import.meta.env.DEV` — the WF Inventory panel, for instance, only appears in a
+  dev build. Previously that meant choosing between the panel and a working
+  backend.
+- **Point at a self-hosted API** without touching source. See the
+  [self-hosting research](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md);
+  the `#[ignore]`d `qf_api` tests already target `localhost:6969`.
+
+If no server answers, the app still boots and renders but shows
+`Error in QFClient:AlertGetAlerts component`. That is the endpoint being
+unreachable, not a crash.
 
 ### Producing a Windows build
 
