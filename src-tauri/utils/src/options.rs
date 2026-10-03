@@ -115,6 +115,8 @@ pub fn get_duration_since_start() -> std::time::Duration {
 ///
 /// # Example
 /// ```
+/// use utils::set_base_path;
+///
 /// set_base_path("C:\\Users\\Kenya\\Desktop\\Andet");
 /// // All logs will now be saved to the specified directory with date subdirectories
 /// // e.g., C:\Users\Kenya\Desktop\Andet\2025-07-26\app.log
@@ -135,6 +137,8 @@ pub fn get_base_path() -> String {
 ///
 /// # Example
 /// ```
+/// use utils::set_filter_component;
+///
 /// set_filter_component("Database");
 /// // Now only logs from the "Database" component will be shown
 /// ```
@@ -152,6 +156,8 @@ pub fn set_filter_component(component: impl Into<String>) {
 ///
 /// # Example
 /// ```
+/// use utils::set_filter_components;
+///
 /// set_filter_components(vec!["Database", "Auth"]);
 /// // Now only logs from "Database" and "Auth" components will be shown
 /// ```
@@ -170,6 +176,8 @@ pub fn set_filter_components(components: Vec<impl Into<String>>) {
 ///
 /// # Example
 /// ```
+/// use utils::{add_filter_component, set_filter_component};
+///
 /// set_filter_component("Database");
 /// add_filter_component("Auth");
 /// // Now both "Database" and "Auth" will be shown
@@ -219,6 +227,8 @@ pub fn clear_filter_component() {
 ///
 /// # Example
 /// ```
+/// use utils::{set_min_log_level, LogLevel};
+///
 /// set_min_log_level(LogLevel::Warning);
 /// // Now only Warning, Error, and Critical logs will be shown
 /// ```
@@ -243,7 +253,9 @@ pub fn get_min_log_level() -> Option<&'static crate::core::LogLevel> {
 /// PathBuf to the date-based save folder, ready to use
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// use utils::get_folder;
+///
 /// let folder_path = get_folder();
 /// let file_path = folder_path.join("app.log");
 /// ```

@@ -41,7 +41,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("FileLogger", "Failed to write to file");
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("FileLogger", "Failed to write to file", "Logger::write");
     /// ```
     pub fn new(
         component: impl Into<String>,
@@ -65,7 +67,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("Network", "Connection failed")
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("Network", "Connection failed", "Client::connect")
     ///     .with_cause("Connection timeout after 30 seconds");
     /// ```
     pub fn with_cause(mut self, cause: impl Into<String>) -> Self {
@@ -80,7 +84,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("Cache", "Cache miss")
+    /// use utils::{Error, LogLevel};
+    ///
+    /// let error = Error::new("Cache", "Cache miss", "Cache::get")
     ///     .set_log_level(LogLevel::Warning);
     /// ```
     pub fn set_log_level(mut self, level: LogLevel) -> Self {
@@ -95,7 +101,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("FileLogger", "Failed to write to file")
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("FileLogger", "Failed to write to file", "Logger::write")
     ///     .set_component("FileLogger");
     /// ```
     pub fn set_component(mut self, component: impl Into<String>) -> Self {
@@ -110,7 +118,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("FileLogger", "Failed to write to file")
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("FileLogger", "Failed to write to file", "Logger::write")
     ///     .set_message("Unable to write to log file");
     /// ```
     pub fn set_message(mut self, message: impl Into<String>) -> Self {
@@ -126,7 +136,9 @@ impl Error {
     /// # Example
     /// ```
     /// use serde_json::json;
-    /// let error = Error::new("Database", "Query failed")
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("Database", "Query failed", "Db::query")
     ///     .with_context(json!({
     ///         "query": "SELECT * FROM users",
     ///         "execution_time_ms": 5000
@@ -144,7 +156,9 @@ impl Error {
     /// # Example
     /// ```
     /// use serde_json::json;
-    /// let error = Error::new("Database", "Query failed")
+    /// use utils::{Error, Properties};
+    ///
+    /// let error = Error::new("Database", "Query failed", "Db::query")
     ///     .with_properties(Properties::from(json!({
     ///         "query": "SELECT * FROM users",
     ///         "execution_time_ms": 5000
@@ -162,7 +176,9 @@ impl Error {
     ///
     /// # Example
     /// ```
-    /// let error = Error::new("FileLogger", "Failed to write to file")
+    /// use utils::Error;
+    ///
+    /// let error = Error::new("FileLogger", "Failed to write to file", "Logger::write")
     ///     .with_location("src/logger.rs:42");
     /// ```
     pub fn with_location(mut self, location: impl Into<String>) -> Self {
@@ -180,11 +196,13 @@ impl Error {
     /// # Example
     /// ```
     /// use serde_json::json;
-    /// let mut error = Error::new("API", "Sensitive data leaked")
-    ///    .with_context(json!({
+    /// use utils::Error;
+    ///
+    /// let mut error = Error::new("API", "Sensitive data leaked", "Api::handle")
+    ///     .with_context(json!({
     ///         "user_id": 42,
     ///         "email": "user@example.com"
-    ///     });
+    ///     }));
     /// error.mask_sensitive_data(&["email"]);
     /// ```
     pub fn mask_sensitive_data(&mut self, properties: &[&str]) {
@@ -202,12 +220,15 @@ impl Error {
     /// Result containing the masked JSON content as a string
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// use utils::Error;
+    ///
     /// let masked_content = Error::mask_sensitive_data_in_file(
     ///     "config.json",
     ///     &["password", "api_key", "secret"],
     ///     false
-    /// )?;
+    /// )
+    /// .unwrap();
     /// ```
     pub fn mask_sensitive_data_in_file(
         file_path: impl Into<PathBuf>,

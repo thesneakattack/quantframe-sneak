@@ -53,7 +53,9 @@ impl RequestError {
      * * `properties` - A slice of strings representing the properties to mask.
      * # Example
      * ```
-     * let mut error = RequestError::new(ApiVersion::V1, "GET".to_string(), "https://example.com".to_string(), None);
+     * use qf_api::errors::RequestError;
+     *
+     * let mut error = RequestError::new("GET".to_string(), "https://example.com".to_string(), None);
      * error.mask_sensitive_data(&["password", "token"]);
      * ```
      */

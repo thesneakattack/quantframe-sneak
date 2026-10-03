@@ -53,21 +53,23 @@ impl<'a> ZipOptions<'a> {
     /// Result indicating success or failure
     ///
     /// # Examples
-    /// ```
+    /// ```no_run
+    /// use utils::ZipOptions;
+    ///
     /// // Basic ZIP
-    /// ZipOptions::new().create_zip("./logs", "./backup.zip")?;
+    /// ZipOptions::new().create_zip("./logs", "./backup.zip").unwrap();
     ///
     /// // ZIP with exclusions
     /// ZipOptions::new()
     ///     .exclude_patterns(&["*.log", "temp/", "node_modules/"])
-    ///     .create_zip("./project", "./backup.zip")?;
+    ///     .create_zip("./project", "./backup.zip").unwrap();
     ///
     /// // ZIP with masking and exclusions
     /// ZipOptions::new()
     ///     .mask_properties(&["password", "api_key"])
     ///     .exclude_patterns(&["*.log", "temp/"])
     ///     .include_hidden(false)
-    ///     .create_zip("./config", "./secure_backup.zip")?;
+    ///     .create_zip("./config", "./secure_backup.zip").unwrap();
     /// ```
     pub fn create_zip(
         &self,

@@ -246,7 +246,9 @@ make_level_fn!(critical, Critical);
 /// * `file` - The filename to log to (will be created in the logs/ directory)
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// use utils::log_json;
+///
 /// use serde_json::json;
 /// log_json(json!({
 ///     "level": "INFO",
@@ -269,7 +271,9 @@ pub fn log_json(context: serde_json::Value, file: impl Into<String>) -> Result<(
 /// * `pretty` - Whether to format the JSON with indentation and newlines
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// use utils::log_json_formatted;
+///
 /// use serde_json::json;
 /// log_json_formatted(json!({
 ///     "level": "INFO",
@@ -411,9 +415,11 @@ pub fn export_cached_logs(export_root: impl AsRef<Path>) -> Result<(), Error> {
 /// * `days` - Number of days to keep (logs older than this will be deleted)
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// use utils::clear_logs;
+///
 /// // Delete all logs older than 7 days
-/// clear_logs(7)?;
+/// clear_logs(7).unwrap();
 /// ```
 pub fn clear_logs(days: i64) -> Result<(), Error> {
     let component = "Utility:ClearLogs";
@@ -481,8 +487,10 @@ pub fn clear_logs(days: i64) -> Result<(), Error> {
 /// * `file` - The filename to delete (will be looked for in the logs/
 /// directory)
 /// # Example
-/// ```
-/// delete_log("error.log")?;
+/// ```no_run
+/// use utils::delete_log;
+///
+/// delete_log("error.log").unwrap();
 /// ```
 pub fn delete_log(file: impl AsRef<Path>) -> Result<(), Error> {
     let component = "Utility:DeleteLog";

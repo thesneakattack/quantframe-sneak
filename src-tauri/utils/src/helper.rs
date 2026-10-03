@@ -141,6 +141,8 @@ pub fn write_json_file<T: serde::Serialize>(
 ///
 /// # Example
 /// ```rust
+/// use utils::find_by;
+///
 /// #[derive(Debug)]
 /// struct User {
 ///     id: u32,
@@ -177,30 +179,29 @@ pub fn find_by<T>(vec: &[T], predicate: impl Fn(&T) -> bool) -> Option<&T> {
 /// `Vec<&T>` - A new vector containing references to items that match the predicate
 /// # Example
 /// ```rust
-/// #[derive(Debug)]
+/// use utils::filters_by;
+///
+/// #[derive(Debug, Clone)]
 /// struct User {
-///    id: u32,
-///   name: String,
-///   age: u32,
-///  role: String,
+///     id: u32,
+///     name: String,
+///     age: u32,
+///     role: String,
 /// }
+///
 /// let users = vec![
 ///     User { id: 1, name: "Alice".to_string(), age: 25, role: "admin".to_string() },
 ///     User { id: 2, name: "Bob".to_string(), age: 20, role: "user".to_string() },
 ///     User { id: 3, name: "Carol".to_string(), age: 20, role: "admin".to_string() },
 /// ];
-/// // // Find all users aged 20
-/// let young_users: Vec<&User> = filters_by(&users, |u| u
-/// .age == 20);
-/// for user in young_users {
-///     println!("Found young user: {}", user.name);
-/// }       
-/// /// // Find all admin users
-/// let admin_users: Vec<&User> = filters_by(&users, |u| u
-/// .role == "admin");
-/// for user in admin_users {
-///     println!("Found admin user: {}", user.name);
-/// }
+///
+/// // All users aged 20
+/// let young_users: Vec<User> = filters_by(&users, |u| u.age == 20);
+/// assert_eq!(young_users.len(), 2);
+///
+/// // All admin users
+/// let admin_users: Vec<User> = filters_by(&users, |u| u.role == "admin");
+/// assert_eq!(admin_users.len(), 2);
 /// ```
 pub fn filters_by<T>(vec: &[T], predicate: impl Fn(&T) -> bool) -> Vec<T>
 where
@@ -221,8 +222,10 @@ where
 ///
 /// # Example
 /// ```rust
+/// use utils::truncate_with_indicator;
+///
 /// let long_text = "x".repeat(5000);
-/// let (result, was_truncated) = truncate_with_indicator(&long_text, 2048, 50);
+/// let (result, was_truncated) = truncate_with_indicator(&long_text, 2048, Some(50));
 ///
 /// if was_truncated {
 ///     println!("Text was truncated: {}", result);
@@ -262,6 +265,8 @@ pub fn truncate_with_indicator(
 ///
 /// # Example
 /// ```rust
+/// use utils::smart_text_processing;
+///
 /// let large_context = "x".repeat(5000);
 /// let (console_text, file_text) = smart_text_processing(
 ///     &large_context,
@@ -328,6 +333,8 @@ pub fn smart_text_processing(
 /// # Example
 ///
 /// ```
+/// use utils::average_filtered_lowest_prices;
+///
 /// let prices = vec![100, 102, 105, 110, 150, 200];
 /// let avg = average_filtered_lowest_prices(prices, 5, 0.10);
 /// assert_eq!(avg, 104); // (100 + 102 + 105 + 110) / 4
