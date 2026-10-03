@@ -26,6 +26,12 @@ webimage_extra_packages:
   - liblcms2-dev
   - libkrb5-dev
   - patchelf
+  # For launching and screenshotting the GUI under WSLg (see docker-compose.wslg.yaml)
+  - x11-utils
+  - x11-apps
+  - imagemagick
+  - libgl1-mesa-dri
+  - mesa-utils
 
 web_environment:
   # Toolchain lives in the image (root-owned, world-writable) -- see web-build/Dockerfile.rust.

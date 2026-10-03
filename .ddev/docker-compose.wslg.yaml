@@ -1,0 +1,25 @@
+# WSLg display passthrough, so the Tauri window can actually be opened from the
+# container. The container was originally build-and-check only; this adds the
+# display plumbing without changing anything else.
+#
+# PORTABILITY: this file is WSL2-specific. /mnt/wslg and /tmp/.X11-unix exist only
+# on a WSL2 host with WSLg. On macOS or plain Linux, delete this file - `ddev start`
+# will otherwise try to bind-mount paths that are not there.
+services:
+  web:
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /mnt/wslg:/mnt/wslg
+    environment:
+      - DISPLAY=:0
+      - WAYLAND_DISPLAY=wayland-0
+      - XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir
+      - PULSE_SERVER=/mnt/wslg/PulseServer
+      # Force X11. WSLg offers both backends; pinning one keeps behaviour and
+      # screenshotting predictable.
+      - GDK_BACKEND=x11
+      # WebKitGTK defaults assume a GPU. Without these it renders a blank or black
+      # window under WSLg's software path.
+      - WEBKIT_DISABLE_COMPOSITING_MODE=1
+      - WEBKIT_DISABLE_DMABUF_RENDERER=1
+      - LIBGL_ALWAYS_SOFTWARE=1
