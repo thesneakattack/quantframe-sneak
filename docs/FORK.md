@@ -61,6 +61,24 @@ no `src-tauri/target/` on the host to clean up.
 The cost: the Rust build cache is tied to the DDEV volume. `ddev delete` or a
 Docker volume prune discards it and the next build is a cold one.
 
+### Disk usage
+
+A full debug build of this workspace is large -- roughly **14 GB** of cargo target
+output, plus ~450 MB of registry and ~240 MB of pnpm store. On Docker Desktop that
+lives inside the VM's virtual disk, not on your WSL filesystem, so it does not show
+up in `du` on the host but it does consume real space.
+
+To see what is being used, and to reclaim it:
+
+```bash
+ddev exec 'du -sh /mnt/ddev-global-cache/*'
+ddev exec 'cargo clean --manifest-path /var/www/html/src-tauri/Cargo.toml'   # target only
+ddev exec 'rm -rf "$CARGO_TARGET_DIR"'                                       # same, bluntly
+```
+
+The cache volume is shared across all your DDEV projects, so do not prune it
+wholesale unless you mean to cold-build everything.
+
 ## Activating the updater
 
 The updater is deliberately a stub: registered as a plugin, granted its
@@ -86,3 +104,26 @@ fails and the app treats that as "no update available". To turn it on:
 The endpoint in `tauri.conf.json` already points at this repository's
 `releases/latest/download/latest.json`, which `tauri-action` produces once
 updater artifacts are enabled. No code changes are needed.
+
+## Inherited problems
+
+These are all pre-existing in the upstream tree, not caused by the fork. They are
+recorded here so nobody re-diagnoses them, and so it is clear why `ddev check`
+treats some things as advisory rather than fatal.
+
+| Problem | Detail |
+| --- | --- |
+| `pnpm lint` does not run | `package.json` defines a `lint` script, but the repo contains no eslint config and does not declare `eslint` as a dependency (8.57.0 only resolves transitively via `@typescript-eslint/*`). Exits 2 on a clean checkout. |
+| The tree is not rustfmt-clean | `cargo fmt --all -- --check` reports diffs across many files. Running `cargo fmt` would produce an enormous, review-hostile commit, so it has been left alone. |
+| The tree is not clippy-clean | `cargo check` alone emits 58 warnings, mostly dead code and unused variables. |
+| Two `qf_api` tests cannot pass | `tests::client::print_token` asserts a real user token is present in the environment; `tests::client::test_cache_extract` expects upstream's development backend on `http://localhost:6969`. Both are environment tests mislabelled as unit tests and fail on any clean checkout. |
+| 26 doctests fail to compile | Doc examples in `src-tauri/utils` (`helper.rs`, `options.rs`, `zip_folder.rs`) reference functions and types without importing them, so `cargo test --doc` fails. The gate uses `--all-targets`, which excludes doctests. |
+| No test coverage to speak of | Every other crate reports `0 tests`. `src-tauri/service/tests/mock.rs` exists but defines no test cases. |
+
+`ddev check` runs the hard gates (frontend build, `cargo check --workspace`,
+`cargo test --workspace --exclude qf_api --all-targets`) as blocking, and the rest as advisory.
+`ddev check --strict` makes everything blocking — useful once a cleanup actually
+happens.
+
+Note that CI (`.github/workflows/pr-build-check.yml`) does not run tests at all; it
+only builds. So `ddev check` is already a stricter gate than CI.

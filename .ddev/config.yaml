@@ -39,6 +39,9 @@ web_environment:
   - CARGO_HOME=/mnt/ddev-global-cache/cargo
   - CARGO_TARGET_DIR=/mnt/ddev-global-cache/cargo-target/quantframe-sneak
   - PNPM_HOME=/mnt/ddev-global-cache/pnpm
+  # pnpm's content-addressable store defaults to the container's home directory,
+  # which is not persisted. Point it at the cache volume so reinstalls are fast.
+  - npm_config_store_dir=/mnt/ddev-global-cache/pnpm/store
   # Vite dev server, reachable from the host via web_extra_exposed_ports below.
   - VITE_HOST=0.0.0.0
 
@@ -50,4 +53,4 @@ web_extra_exposed_ports:
 
 hooks:
   post-start:
-    - exec: mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$PNPM_HOME"
+    - exec: mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$npm_config_store_dir"
