@@ -47,6 +47,9 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
     <>
       <SearchField
         value={queryData.query || ""}
+        // Each query rebuilds the projection over the whole inventory, so wait
+        // for a pause rather than doing it per character.
+        debounce={300}
         onChange={(value) => setQueryData((prev) => ({ ...prev, page: 1, query: value }))}
         filter={
           <Switch
