@@ -1,0 +1,27 @@
+use std::sync::Mutex;
+
+use qf_api::types::*;
+use utils::{get_location, Error};
+
+use crate::{app::AppState, utils::ErrorFromExt};
+
+#[tauri::command]
+pub async fn get_user_activity(
+    query: UserActiveHistoryQueryDto,
+    app: tauri::State<'_, Mutex<AppState>>,
+) -> Result<UserActivityDto, Error> {
+    let app_state = app.lock().unwrap().clone();
+    match app_state.qf_client.market().get_user_activity(query).await {
+        Ok(data) => return Ok(data),
+        Err(e) => {
+            let error = Error::from_qf(
+                "UserActivityLookup",
+                "Failed to lookup user activity: {}",
+                e,
+                get_location!(),
+            )
+            .log("user_activity_lookup.log");
+            return Err(error);
+        }
+    };
+}

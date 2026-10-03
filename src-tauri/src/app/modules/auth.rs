@@ -1,0 +1,197 @@
+use qf_api::errors::ApiError as QFApiError;
+use qf_api::types::UserPrivate as QFUserPrivate;
+use qf_api::Client as QFClient;
+use utils::{get_location, info, log_json, Error, LogLevel, LoggerOptions};
+use wf_market::types::websocket::WsClient;
+use wf_market::types::UserPrivate as WFUserPrivate;
+use wf_market::Client as WFClient;
+
+use crate::app::modules::ws::setup_socket;
+use crate::app::{AppState, User};
+use crate::utils::ErrorFromExt;
+use crate::{emit_startup, SENSITIVE_FIELDS};
+
+pub fn update_user(mut cu_user: User, user: &WFUserPrivate, qf_user: &QFUserPrivate) -> User {
+    cu_user.anonymous = false;
+    cu_user.verification = user.verification;
+    cu_user.wfm_banned = user.banned.unwrap_or(false);
+    cu_user.wfm_banned_reason = user.ban_message.clone();
+    cu_user.wfm_banned_until = user.ban_until.clone();
+    cu_user.qf_banned = qf_user.banned;
+    cu_user.qf_banned_reason = qf_user.banned_reason.clone();
+    cu_user.qf_banned_until = qf_user.banned_until.clone();
+    cu_user.patreon_tier = qf_user.patreon_tier.clone();
+    cu_user.permissions = qf_user.permissions.clone();
+    cu_user.wfm_id = user.id.to_string();
+    cu_user.wfm_username = user.ingame_name.clone();
+    cu_user.check_code = user.check_code.clone();
+    cu_user.locale = user.locale.clone();
+    cu_user.platform = user.platform.clone();
+    cu_user.unread_messages = user.unread_messages as i64;
+    cu_user.wfm_username = user.ingame_name.clone();
+    cu_user.wfm_id = user.id.to_string();
+    cu_user.wfm_avatar = user.avatar.clone();
+    cu_user.unread_messages = user.unread_messages as i64;
+    cu_user
+}
+
+impl AppState {
+    pub async fn login(
+        &self,
+        email: &str,
+        password: &str,
+    ) -> Result<
+        (
+            QFClient,
+            WFUserPrivate,
+            QFUserPrivate,
+            User,
+            WsClient,
+            WsClient,
+        ),
+        Error,
+    > {
+        // WFM: sign in and update the already-created client in place. Its
+        // shared base makes the new token visible to every clone.
+        let device_id = self.wfm_client.get_device_id();
+        let (_, token) = self
+            .wfm_client
+            .authentication()
+            .signin(email, password, &device_id)
+            .await
+            .map_err(|e| {
+                Error::from_wfm(
+                    "AppState:Login",
+                    "Failed to login to WFM client",
+                    e,
+                    get_location!(),
+                )
+            })?;
+        self.wfm_client.set_token(token.clone());
+        self.wfm_client.refresh().await.map_err(|e| {
+            Error::from_wfm(
+                "AppState:Login",
+                "Failed to authenticate WFM client",
+                e,
+                get_location!(),
+            )
+        })?;
+
+        let mut wfm_user = self
+            .wfm_client
+            .get_user()
+            .map_err(|e| Error::from_wfm("Login", "Failed to get WFM user", e, get_location!()))?;
+        wfm_user.unread_messages = self.wfm_client.chat().cache_chats().total_unread_count() as i16;
+
+        let mut user = self.user.clone();
+        user.wfm_token = token;
+
+        // QF: set the WFM details on a client used for authentication.
+        let mut qf_client = self.qf_client.clone();
+        qf_client.set_wfm_id(&wfm_user.id);
+        qf_client.set_wfm_username(&wfm_user.ingame_name);
+        qf_client.set_wfm_platform(&wfm_user.platform);
+
+        let qf_user = self.authenticate_qf_user(&qf_client, &wfm_user).await?;
+        user.qf_token = qf_user.token.clone().unwrap();
+        qf_client.set_token(&user.qf_token);
+        let updated_user = update_user(user, &wfm_user, &qf_user);
+        let (ws, ws_chat) = setup_socket(self.wfm_client.clone()).await?;
+        updated_user.save()?;
+        Ok((qf_client, wfm_user, qf_user, updated_user, ws, ws_chat))
+    }
+
+    pub async fn validate(&mut self) -> Result<(WFUserPrivate, QFUserPrivate), Error> {
+        if self.user.wfm_token == "" || self.user.qf_token == "" {
+            return Err(Error::new(
+                "AppState:Validate",
+                "User tokens are empty, please login first.",
+                get_location!(),
+            ));
+        }
+        // Update the already-created client in place.
+        self.wfm_client.set_token(self.user.wfm_token.clone());
+        self.wfm_client.refresh().await.map_err(|e| {
+            Error::from_wfm(
+                "AppState:Validate",
+                "Failed to login with WFM token",
+                e,
+                get_location!(),
+            )
+        })?;
+        let mut wfm_user = self.wfm_client.get_user().unwrap();
+        wfm_user.unread_messages = self.wfm_client.chat().cache_chats().total_unread_count() as i16;
+        self.qf_client.set_wfm_id(&wfm_user.id);
+        self.qf_client.set_wfm_username(&wfm_user.ingame_name);
+        self.qf_client.set_wfm_platform(&wfm_user.platform);
+        let qf_user = match self.qf_client.authentication().me().await {
+            Ok(u) => u,
+            Err(QFApiError::Unauthorized(err)) if err.error.message.contains("Unauthorized") => {
+                self.authenticate_qf_user(&self.qf_client, &wfm_user)
+                    .await?
+            }
+            Err(e) => {
+                let level = match e {
+                    QFApiError::RequestError(_) => LogLevel::Warning,
+                    _ => LogLevel::Critical,
+                };
+                return Err(Error::from_qf(
+                    "AppState:Validate",
+                    "Failed to get QF user",
+                    e,
+                    get_location!(),
+                )
+                .set_log_level(level));
+            }
+        };
+        if !qf_user.token.is_none() {
+            self.qf_client.set_token(qf_user.token.as_ref().unwrap());
+        }
+        let (ws, ws_chat) = setup_socket(self.wfm_client.clone()).await?;
+        self.wfm_socket = Some(ws);
+        self.wfm_chat_socket = Some(ws_chat);
+        if !qf_user.banned {
+            self.analytics.start()
+        } else {
+            self.analytics.stop()
+        }
+        self.analytics.set_client(self.qf_client.clone());
+        Ok((wfm_user, qf_user))
+    }
+
+    async fn authenticate_qf_user(
+        &self,
+        qf_client: &QFClient,
+        wfm_user: &WFUserPrivate,
+    ) -> Result<QFUserPrivate, Error> {
+        match qf_client
+            .authentication()
+            .signin(&wfm_user.id, &wfm_user.check_code)
+            .await
+        {
+            Ok(user) => Ok(user),
+            Err(QFApiError::InvalidCredentials(err))
+                if err.error.message.contains("invalid_username") =>
+            {
+                qf_client
+                    .authentication()
+                    .register(&wfm_user.id, &wfm_user.check_code)
+                    .await
+                    .map_err(|e| {
+                        Error::from_qf(
+                            "AppState:AuthenticateQFUser",
+                            "Failed to register QF user",
+                            e,
+                            get_location!(),
+                        )
+                    })
+            }
+            Err(e) => Err(Error::from_qf(
+                "AppState:AuthenticateQFUser",
+                "Failed to authenticate QF user",
+                e,
+                get_location!(),
+            )),
+        }
+    }
+}
