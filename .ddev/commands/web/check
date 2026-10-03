@@ -1,62 +1,46 @@
 #!/usr/bin/env bash
-## Description: Verification pass -- hard gates match CI, style checks are advisory
-## Usage: check [--strict]
-## Example: "ddev check" / "ddev check --strict"
+## Description: Full verification pass -- every gate is blocking
+## Usage: check [--integration]
+## Example: "ddev check" / "ddev check --integration"
 set -uo pipefail
 cd /var/www/html
 
-STRICT=0
-[ "${1:-}" = "--strict" ] && STRICT=1
+# --integration additionally runs the #[ignore]d qf_api tests, which need a
+# Quantframe API server on http://localhost:6969. See docs/FORK.md.
+INTEGRATION=0
+[ "${1:-}" = "--integration" ] && INTEGRATION=1
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
-advisory() { printf '\033[0;33m    advisory only (upstream is not clean here) -- not failing the run\033[0m\n'; }
 fail=0
+run() { "$@" || fail=1; }
 
-# ---------------------------------------------------------------------------
-# Hard gates: these are what .github/workflows/pr-build-check.yml enforces.
-# ---------------------------------------------------------------------------
-step "tsc + vite build (frontend)"
-pnpm build || fail=1
-
-step "cargo check (backend, whole workspace)"
-(cd src-tauri && cargo check --workspace --all-targets) || fail=1
-
-# qf_api's two tests are environment tests, not unit tests: one asserts a real user
-# token is present, the other expects upstream's dev backend on localhost:6969. They
-# fail on any clean checkout, upstream included, so they are excluded from the gate
-# and run advisory below.
-# --all-targets also excludes doctests, which is deliberate: 26 of the doc examples
-# in the utils crate omit their imports and do not compile. Run advisory below.
-step "cargo test (workspace, excluding qf_api and doctests)"
-(cd src-tauri && cargo test --workspace --exclude qf_api --all-targets) || fail=1
-
-# ---------------------------------------------------------------------------
-# Advisory: the upstream tree is neither rustfmt-clean nor clippy-clean, and
-# ships a "lint" script with no eslint config. Failing on inherited style would
-# make this command useless, so these report but do not block. Use --strict once
-# the tree has actually been cleaned up.
-# ---------------------------------------------------------------------------
 step "eslint"
-if ls .eslintrc* eslint.config.* >/dev/null 2>&1; then
-  pnpm lint || { [ $STRICT = 1 ] && fail=1; advisory; }
-else
-  echo "    skipped: no eslint config in this repo (upstream never shipped one)"
-fi
+# Exits non-zero on errors only. Warnings are expected and counted, not fatal:
+# ~600 no-explicit-any and ~455 rules-of-hooks are tracked debt, see docs/FORK.md.
+run pnpm lint
 
-step "cargo test --doc (upstream doc examples do not compile)"
-(cd src-tauri && cargo test --workspace --doc) || { [ $STRICT = 1 ] && fail=1; advisory; }
-
-step "cargo test -p qf_api (needs a local dev backend + credentials)"
-(cd src-tauri && cargo test -p qf_api) || { [ $STRICT = 1 ] && fail=1; advisory; }
+step "tsc + vite build (frontend)"
+run pnpm build
 
 step "cargo fmt --check"
-(cd src-tauri && cargo fmt --all -- --check) || { [ $STRICT = 1 ] && fail=1; advisory; }
+run sh -c 'cd src-tauri && cargo fmt --all -- --check'
 
-step "cargo clippy"
-(cd src-tauri && cargo clippy --all-targets) || { [ $STRICT = 1 ] && fail=1; advisory; }
+step "cargo clippy (warnings are errors)"
+run sh -c 'cd src-tauri && cargo clippy --workspace --all-targets -- -D warnings'
+
+step "cargo test (workspace)"
+run sh -c 'cd src-tauri && cargo test --workspace --all-targets'
+
+step "cargo test --doc"
+run sh -c 'cd src-tauri && cargo test --workspace --doc'
+
+if [ $INTEGRATION = 1 ]; then
+  step "cargo test -- --ignored (needs an API server on :6969)"
+  run sh -c 'cd src-tauri && cargo test --workspace -- --ignored'
+fi
 
 if [ $fail = 0 ]; then
-  printf '\n\033[1;32m==> all hard gates passed\033[0m\n'
+  printf '\n\033[1;32m==> all checks passed\033[0m\n'
 else
   printf '\n\033[1;31m==> FAILED\033[0m\n'
 fi
