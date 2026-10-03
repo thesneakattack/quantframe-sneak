@@ -383,6 +383,7 @@ pub fn run() {
             // WFInventory commands
             commands::wf_inventory::wf_inventory_get_rivens,
             commands::wf_inventory::wf_inventory_get_parts,
+            commands::wf_inventory::wf_inventory_get_mods,
             commands::wf_inventory::wf_inventory_get_syndicates,
             commands::wf_inventory::wf_inventory_update,
         ])
