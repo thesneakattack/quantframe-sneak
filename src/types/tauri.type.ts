@@ -947,14 +947,14 @@ export namespace TauriTypes {
   //--------------------------------------------------------------------------------
   //  Warframe Inventory
   //--------------------------------------------------------------------------------
-  export interface WFInvItemBase<T = any> {
+  export interface WFInvItemBase<P = any> {
     id: string;
     name: string;
     unique_name: string;
     wfm_url: string;
     quantity: number;
     sub_type?: SubType;
-    properties?: Record<string, T>;
+    properties?: P;
   }
   export interface WFItemControllerGetListParams<T = any> {
     page: number;
@@ -984,6 +984,36 @@ export namespace TauriTypes {
       min_standing: number;
       total: number;
     }>[];
+  };
+  export type WFInvItemRowProperties = {
+    is_in_stock: boolean;
+    tags: string[];
+    in_sets?: string[];
+    in_stock_sets?: string[];
+    max_rank?: number | null;
+  };
+  export type WFInvItemRow = WFInvItemBase<WFInvItemRowProperties>;
+  export type WFInvPartsControllerGetListData = PaginatedDto & {
+    results?: WFInvItemRow[];
+  };
+  export type WFInvModsControllerGetListData = PaginatedDto & {
+    results?: WFInvItemRow[];
+  };
+  export interface WFInvSetMember {
+    unique_name: string;
+    name: string;
+    have: number;
+    required: number;
+    is_main_blueprint: boolean;
+  }
+  export type WFInvSet = WFInvItemRow & {
+    members: WFInvSetMember[];
+    complete_copies: number;
+    owned_members: number;
+    total_members: number;
+  };
+  export type WFInvSetsControllerGetListData = PaginatedDto & {
+    results?: WFInvSet[];
   };
 
   //--------------------------------------------------------------------------------

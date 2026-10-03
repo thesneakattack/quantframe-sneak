@@ -13,6 +13,21 @@ export class WfInventoryModule {
       query: this.client.convertToTauriQuery(query),
     });
   }
+  async getPartsPagination(query: TauriTypes.WFItemControllerGetListParams): Promise<TauriTypes.WFInvPartsControllerGetListData> {
+    return await this.client.sendInvoke<TauriTypes.WFInvPartsControllerGetListData>("wf_inventory_get_parts", {
+      query: this.client.convertToTauriQuery(query),
+    });
+  }
+  async getModsPagination(query: TauriTypes.WFItemControllerGetListParams): Promise<TauriTypes.WFInvModsControllerGetListData> {
+    return await this.client.sendInvoke<TauriTypes.WFInvModsControllerGetListData>("wf_inventory_get_mods", {
+      query: this.client.convertToTauriQuery(query),
+    });
+  }
+  async getSetsPagination(query: TauriTypes.WFItemControllerGetListParams): Promise<TauriTypes.WFInvSetsControllerGetListData> {
+    return await this.client.sendInvoke<TauriTypes.WFInvSetsControllerGetListData>("wf_inventory_get_sets", {
+      query: this.client.convertToTauriQuery(query),
+    });
+  }
   update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

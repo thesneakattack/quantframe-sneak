@@ -74,6 +74,7 @@ export interface ItemMeta {
 export type ItemWithMeta =
   | (WFMarketTypes.Order & ItemMeta)
   | (TauriTypes.StockItem & ItemMeta)
+  | (TauriTypes.WFInvItemBase & ItemMeta)
   | (TauriTypes.SyndicateItem & ItemMeta)
   | (TauriTypes.StockRiven & ItemMeta)
   | (TauriTypes.WishListItem & ItemMeta)

@@ -2821,6 +2821,23 @@
             "veiled": "Veiled",
             "unveiled": "Unveiled"
           }
+        },
+        "parts": {
+          "title": "Parts",
+          "stock_set_conflict": "Already in stock as part of: {{sets}}",
+          "stock_status": {
+            "found": "Already in stock",
+            "not_found": "Not in stock"
+          },
+          "datatable": {
+            "columns": {
+              "owned": "Owned",
+              "set": "Set"
+            }
+          },
+          "filters": {
+            "in_set_only": "Set components only"
+          }
         }
       }
     }
