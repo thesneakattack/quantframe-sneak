@@ -45,9 +45,12 @@ clippy commit is the second. Both are isolated and contain nothing else.
 ## Development environment
 
 Everything builds inside DDEV, so neither Rust nor pnpm needs to be installed on
-the host. The container is **build-and-check only** — it compiles the Rust backend
-and the frontend, but does not open the desktop window. Run the actual app on
-Windows, which is where Warframe's `EE.log` and AlecaFrame data live anyway.
+the host. The container compiles the Rust backend and the frontend, and — on a
+WSL2 host — can also open the desktop window through WSLg.
+
+Note that **Windows is the real target**: that is where Warframe writes `EE.log`
+and where AlecaFrame stores its data. A Linux run is a smoke test for the UI and
+boot path, not a functional test of the trading features.
 
 ```bash
 ddev start          # build/start the container (first run is slow: Rust + webkit2gtk)
@@ -64,6 +67,41 @@ ddev tauri build --debug --no-bundle    # full backend compile, no bundling
 ddev pnpm dev                 # Vite dev server -> https://quantframe-sneak.ddev.site:1421
 ddev ssh                      # shell inside the container
 ```
+
+### Running the GUI under WSLg (Linux smoke test)
+
+`.ddev/docker-compose.wslg.yaml` mounts the WSLg X11 socket into the web container
+and pins `GDK_BACKEND=x11`, plus the WebKitGTK flags that stop it rendering a blank
+window without a GPU. With that in place:
+
+```bash
+ddev tauri dev                # opens a real window on your WSLg desktop
+ddev exec import -window root /var/www/html/screenshot.png   # capture it
+```
+
+**That file is WSL2-only.** `/mnt/wslg` and `/tmp/.X11-unix` do not exist on macOS
+or plain Linux, so delete `.ddev/docker-compose.wslg.yaml` there or `ddev start`
+will fail trying to bind-mount them.
+
+### Producing a Windows build
+
+Cross-compiling Tauri from Linux to Windows is not a supported path, so Windows
+builds go through CI on a real `windows-latest` runner:
+
+```bash
+gh workflow run windows-build.yml
+gh run watch                                  # wait for it
+gh run download <run-id> -D ./dist-windows    # NSIS installer, MSI, bare exe
+```
+
+`.github/workflows/windows-build.yml` exists specifically for this. The inherited
+`build.yml` also builds Windows, but it fans out across four platforms and opens a
+draft release, which is more than you want just to try a build.
+
+The result needs the **WebView2 runtime** on the target machine. Windows 11 and
+up-to-date Windows 10 ship it; older installs may need the Evergreen bootstrapper.
+
+Nothing is code-signed, so SmartScreen will warn on first run.
 
 ### Why builds don't pollute your working tree
 
