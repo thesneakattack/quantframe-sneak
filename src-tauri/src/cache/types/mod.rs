@@ -104,3 +104,6 @@ pub use cache_gear::*;
 
 pub mod cache_syndicate;
 pub use cache_syndicate::*;
+
+pub mod cache_item_set;
+pub use cache_item_set::*;
