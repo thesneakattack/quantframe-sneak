@@ -100,6 +100,10 @@ impl ItemSetModule {
         Ok(())
     }
 
+    pub fn get_all_sets(&self) -> Result<Vec<CacheItemSet>, Error> {
+        Ok(self.sets.lock().unwrap().clone())
+    }
+
     /// Every set this unique name is a member of. Normally zero or one, but
     /// the akimbo prime sets share the single-pistol blueprint, so three
     /// members belong to two sets each (issue #3).

@@ -23,3 +23,6 @@ pub use affiliation::*;
 
 pub mod inv_sources;
 pub use inv_sources::*;
+
+pub mod item_set;
+pub use item_set::*;

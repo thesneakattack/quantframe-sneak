@@ -6,3 +6,6 @@ pub use riven::*;
 
 pub mod syndicate;
 pub use syndicate::*;
+
+pub mod item_set;
+pub use item_set::*;

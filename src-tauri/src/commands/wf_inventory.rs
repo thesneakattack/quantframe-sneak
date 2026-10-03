@@ -128,6 +128,30 @@ pub async fn wf_inventory_get_mods(
     Ok(json!(mods))
 }
 
+#[tauri::command]
+pub async fn wf_inventory_get_sets(
+    query: WFItemPaginationDto,
+    wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
+) -> Result<Value, Error> {
+    let wf_inventory = wf_inventory.lock()?.clone();
+    let conn = DATABASE.get().unwrap();
+    let stock = StockItemQuery::get_all(conn, StockItemPaginationQueryDto::new(1, -1)).await?;
+    let listed: HashSet<String> = stock
+        .results
+        .iter()
+        .map(|item| stock_key(&item.wfm_url, None))
+        .collect();
+
+    let mut sets = wf_inventory.sets().get_sets(query)?;
+    for set in sets.results.iter_mut() {
+        let in_stock = listed.contains(&stock_key(&set.base.wfm_url, None));
+        set.base
+            .properties
+            .set_property_value("is_in_stock", in_stock);
+    }
+    Ok(json!(sets))
+}
+
 #[cfg(test)]
 mod tests {
     use super::stock_key;
