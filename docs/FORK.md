@@ -214,6 +214,14 @@ are owned as built components and do not. Only complete sets can be listed;
 incomplete ones are shown so you can see which component to buy next, ordered
 by how few are missing.
 
+Each row also shows a **Price**: the warframe.market moving average, the same
+figure the live scraper itself prices against. It comes from the statistics
+already in the item cache, so opening a tab costs no API calls, and it is only
+as complete as what warframe.market publishes statistics for — about 86% of
+sets, 52% of parts and 26% of mods. Items below its volume threshold have no
+reliable price and show a dash rather than a made-up number. A maxed mod is
+priced separately from an unranked one where the data distinguishes them.
+
 Listing a part whose set is already in stock shows a warning but is not
 blocked. A blueprint shared between two sets — the three akimbo primes — counts
 toward both (issue #3).
