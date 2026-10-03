@@ -28,6 +28,7 @@ use crate::wf_inventory::WFInventoryState;
 mod app;
 mod cache;
 mod commands;
+mod config;
 mod handlers;
 mod http_server;
 mod macros;

@@ -226,15 +226,24 @@ fn env_or_setting(env: &str, setting: &str) -> Option<[u8; 16]> {
 
 /// Key and IV from local configuration, or None to fall back to the API.
 ///
+/// Reads the project-root `config.json` (see `crate::config`), with the
+/// environment taking precedence. Deliberately not the app's `settings.json`:
+/// that lives in the OS app-data directory and is seeded from upstream
+/// Quantframe's own settings, so a re-seed would wipe these.
+///
 /// Returns None unless BOTH are configured and valid - a half-configured pair is
 /// almost certainly a typo, and silently falling back would make that look like
 /// the 403 it was meant to avoid.
-fn local_decrypt_keys(
-    settings: &crate::app::types::settings::Settings,
-) -> Option<([u8; 16], [u8; 16])> {
-    let advanced = &settings.advanced_settings;
-    let key = env_or_setting(DECRYPT_KEY_ENV, &advanced.wf_decrypt_key);
-    let iv = env_or_setting(DECRYPT_IV_ENV, &advanced.wf_decrypt_iv);
+fn local_decrypt_keys() -> Option<([u8; 16], [u8; 16])> {
+    let config = crate::config::get();
+    let key = env_or_setting(
+        DECRYPT_KEY_ENV,
+        config.wf_decrypt_key.as_deref().unwrap_or_default(),
+    );
+    let iv = env_or_setting(
+        DECRYPT_IV_ENV,
+        config.wf_decrypt_iv.as_deref().unwrap_or_default(),
+    );
     match (key, iv) {
         (Some(key), Some(iv)) => Some((key, iv)),
         (None, None) => None,
@@ -255,7 +264,7 @@ async fn decrypt_lastdata(data: &[u8]) -> Result<String, Error> {
 
     // Prefer locally configured keys. The API endpoint is entitlement-gated and
     // answers 403 for accounts without it, so for those this is the only route.
-    let (key, iv) = match local_decrypt_keys(&af_api.settings) {
+    let (key, iv) = match local_decrypt_keys() {
         Some(pair) => {
             info(
                 "DecryptLastData:LocalKeys",
@@ -272,9 +281,9 @@ async fn decrypt_lastdata(data: &[u8]) -> Result<String, Error> {
                         "DecryptLastData:GetKeys",
                         format!(
                             "Failed to get decrypt keys: {err:?}. A 403 here means the \
-                             account lacks the entitlement - set advanced_settings.\
-                             wf_decrypt_key and wf_decrypt_iv to decrypt locally instead \
-                             (see docs/FORK.md)."
+                             account lacks the entitlement - set wf_decrypt_key and \
+                             wf_decrypt_iv in the project-root config.json to decrypt \
+                             locally instead (see docs/FORK.md)."
                         ),
                         get_location!(),
                     ))

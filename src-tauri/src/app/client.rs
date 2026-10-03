@@ -49,7 +49,12 @@ impl AppState {
             is_pre_release,
         )
         .with_user_agent(&user_agent)
-        .with_base_url(&settings.advanced_settings.qf_api_url);
+        .with_base_url(
+            crate::config::get()
+                .qf_api_url
+                .as_deref()
+                .unwrap_or_default(),
+        );
         let analytics = Analytics::new(qf_client.clone());
         let wfm_client = Self::new_base_wfm_client()
             .with_user_agent(&user_agent)

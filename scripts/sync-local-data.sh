@@ -14,8 +14,8 @@
 # be committed.
 #
 # Decryption needs the AlecaFrame AES key and IV, which are not stored in this
-# repository (see docs/FORK.md). Supply them, or set them in the app's
-# settings.json and let the app decrypt instead:
+# repository (see docs/FORK.md). Supply them, or put them in the project-root
+# config.json and let the app decrypt instead:
 #
 #   WF_DECRYPT_KEY=<32 hex> WF_DECRYPT_IV=<32 hex> scripts/sync-local-data.sh
 #
@@ -64,7 +64,7 @@ if [ -n "${WF_DECRYPT_KEY:-}" ] && [ -n "${WF_DECRYPT_IV:-}" ] && [ -f "$DEST/la
 else
   echo
   echo "  inventory.json  skipped - WF_DECRYPT_KEY/WF_DECRYPT_IV not set."
-  echo "                  Not required if the app decrypts via settings.json."
+  echo "                  Not required if the app decrypts via config.json."
 fi
 
 echo

@@ -114,12 +114,30 @@ from `cfg!(dev)`, and its README told you to edit `client.rs` and rebuild to cha
 it. A dev build therefore could not reach the real API, and a self-hosted server
 could not be pointed at without recompiling.
 
+### Where the fork's own settings live
+
+The fork's three settings — the API base URL and the AlecaFrame decryption key
+and IV — live in a **`config.json` in the project root**, which is gitignored.
+Copy `config.example.json` to `config.json` and fill in what you need; absent
+keys fall back to their defaults.
+
+They deliberately do **not** live in the app's `settings.json`. That file sits
+in the OS app-data directory, and `scripts/seed-from-upstream.sh` copies it
+*from* upstream Quantframe's own settings — so anything stored there is liable
+to be wiped by a re-seed, and it blurs the line between this app's state and
+the upstream app's. Keeping deployment config in the repo keeps the two apps
+independent.
+
+`config.json` is found by walking up from the working directory, so it works
+whether you run from the project root or from `src-tauri/`. A packaged build
+with no project root can be pointed at one with `QF_CONFIG=/path/to/config.json`.
+
 This fork resolves the base URL at runtime. Highest precedence first:
 
 | Source | Example |
 | --- | --- |
 | `QF_API_URL` environment variable | `QF_API_URL=https://api.quantframe.app ddev tauri dev` |
-| `advanced_settings.qf_api_url` in `settings.json` | `"qf_api_url": "http://localhost:6969"` |
+| `qf_api_url` in the project-root `config.json` | `"qf_api_url": "http://localhost:6969"` |
 | Compiled default | dev build → localhost:6969, release build → production |
 
 Nothing changes if you set neither: the compiled defaults are the fallback, so
@@ -224,14 +242,20 @@ Two ways to use them.
 and the AlecaFrame source stops calling the API entirely:
 
 ```jsonc
-// settings.json
-"advanced_settings": {
+// config.json, in the project root (gitignored)
+{
   "wf_decrypt_key": "...32 hex chars...",
   "wf_decrypt_iv":  "...32 hex chars..."
 }
 ```
 
-or, taking precedence over those, `QF_WF_DECRYPT_KEY` and `QF_WF_DECRYPT_IV`.
+or, taking precedence over those, the `WF_DECRYPT_KEY` and `WF_DECRYPT_IV`
+environment variables. `scripts/set-config.py` writes the file for you from
+those same variables, so the values never reach your shell history as literals:
+
+```bash
+WF_DECRYPT_KEY=... WF_DECRYPT_IV=... python3 scripts/set-config.py
+```
 
 Both must be set and valid; one alone is ignored with a warning, because a
 half-configured pair is almost always a typo and silently falling back to the API

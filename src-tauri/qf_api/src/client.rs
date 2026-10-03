@@ -64,7 +64,7 @@ const PRODUCTION_URL: &str = "https://api.quantframe.app";
 ///
 /// Resolution order, highest first:
 ///   1. QF_API_URL environment variable
-///   2. advanced_settings.qf_api_url, passed via `with_base_url`
+///   2. qf_api_url from the project-root config.json, passed via `with_base_url`
 ///   3. the compiled default below, chosen by `is_development`
 pub const API_URL_ENV: &str = "QF_API_URL";
 
@@ -247,7 +247,7 @@ impl Client {
         self
     }
 
-    /// Override the API base URL from configuration (advanced_settings.qf_api_url).
+    /// Override the API base URL from configuration (config.json: qf_api_url).
     ///
     /// An empty value leaves the compiled default in place. QF_API_URL takes
     /// precedence over this, so an operator can redirect a build without editing

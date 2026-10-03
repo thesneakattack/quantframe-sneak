@@ -13,7 +13,7 @@
 #   WF_DECRYPT_KEY=<32 hex chars> WF_DECRYPT_IV=<32 hex chars> \
 #     scripts/decrypt-alecaframe.sh
 #
-# or put them in .env.local beside this repo, which is gitignored.
+# or put them in config.json in the project root, which is gitignored.
 #
 # Usage:
 #   scripts/decrypt-alecaframe.sh [source lastData.dat] [destination .json]
