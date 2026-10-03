@@ -55,27 +55,25 @@ impl ItemSetModule {
             };
 
             // Recipe ingredients carry no display name of their own, only a
-            // uniqueName, so resolve it the way the Parts tab does.
-            let display_name = |key: &str, fallback: &str| -> String {
-                if let Ok(item) = client.tradable_item().get_by(key) {
-                    return item.name;
-                }
-                if !fallback.is_empty() {
-                    return fallback.to_string();
-                }
-                key.rsplit('/').next().unwrap_or(key).to_string()
+            // uniqueName. The tradable-items cache names most of them; the
+            // rest are not tradable in their own right but are recipes, which
+            // do carry a name.
+            let display_name = |key: &str| -> String {
+                let tradable = client.tradable_item().get_by(key).ok().map(|i| i.name);
+                let recipe = client.recipe().get_by(key).ok().map(|r| r.base.name);
+                member_display_name(key, tradable.as_deref(), recipe.as_deref())
             };
 
             let blueprint_key = main_blueprint_key(recipe);
             let mut members = vec![CacheItemSetMember {
-                name: display_name(&blueprint_key, &recipe.base.name),
+                name: display_name(&blueprint_key),
                 unique_name: blueprint_key,
                 required: 1,
                 is_main_blueprint: true,
             }];
             for (key, required) in aggregate_ingredients(recipe) {
                 members.push(CacheItemSetMember {
-                    name: display_name(&key, ""),
+                    name: display_name(&key),
                     unique_name: key,
                     required,
                     is_main_blueprint: false,

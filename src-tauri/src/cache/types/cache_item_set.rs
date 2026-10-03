@@ -67,6 +67,26 @@ pub fn aggregate_ingredients(recipe: &CacheRecipe) -> Vec<(String, i64)> {
         .collect()
 }
 
+/// What to call a set member on screen.
+///
+/// Prefers the tradable-items name, then the member's own recipe. Many set
+/// members are not tradable in their own right - Voidrig's parts, Reconifex's
+/// barrel - so they are absent from `TradableItems.json` entirely, but each is
+/// a recipe carrying a perfectly good name. Recipe *ingredients* have no name
+/// field, which is why the ingredient itself cannot supply one; the recipe the
+/// ingredient points at can.
+///
+/// The path tail is the last resort, so an unnamed row is at least
+/// identifiable rather than blank.
+pub fn member_display_name(key: &str, tradable: Option<&str>, recipe: Option<&str>) -> String {
+    for candidate in [tradable, recipe].into_iter().flatten() {
+        if !candidate.is_empty() {
+            return candidate.to_string();
+        }
+    }
+    key.rsplit('/').next().unwrap_or(key).to_string()
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct CacheItemSetMember {
     pub unique_name: String,
@@ -216,6 +236,61 @@ mod tests {
         assert_eq!(
             aggregate_ingredients(&r),
             vec![("/Part/Handle".to_string(), 2)]
+        );
+    }
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::member_display_name;
+
+    #[test]
+    fn prefers_the_tradable_items_name() {
+        assert_eq!(
+            member_display_name(
+                "/Lotus/X/AshPrimeHelmetBlueprint",
+                Some("Ash Prime Neuroptics Blueprint"),
+                Some("Ash Prime Neuroptics")
+            ),
+            "Ash Prime Neuroptics Blueprint"
+        );
+    }
+
+    /// Set members that are not tradable in their own right - Voidrig's
+    /// parts, Reconifex's barrel - are absent from TradableItems but are
+    /// recipes with perfectly good names. Falling straight to the path tail
+    /// printed "TnBeltFedRifleBarrelBlueprint" at the user.
+    #[test]
+    fn falls_back_to_the_recipe_name() {
+        assert_eq!(
+            member_display_name(
+                "/Lotus/X/TnBeltFedRifleBarrelBlueprint",
+                None,
+                Some("Reconifex Barrel Blueprint")
+            ),
+            "Reconifex Barrel Blueprint"
+        );
+    }
+
+    /// Only when neither cache knows it: still better than an empty cell,
+    /// but it should be rare enough to notice.
+    #[test]
+    fn falls_back_to_the_path_tail_when_nothing_knows_the_name() {
+        assert_eq!(
+            member_display_name("/Lotus/X/SomethingUnknown", None, None),
+            "SomethingUnknown"
+        );
+    }
+
+    #[test]
+    fn treats_an_empty_name_as_no_name() {
+        assert_eq!(
+            member_display_name("/Lotus/X/Thing", Some(""), Some("Real Name")),
+            "Real Name"
+        );
+        assert_eq!(
+            member_display_name("/Lotus/X/Thing", Some(""), Some("")),
+            "Thing"
         );
     }
 }
