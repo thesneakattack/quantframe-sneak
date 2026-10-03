@@ -1,5 +1,11 @@
 use crate::{Client, errors::ApiError};
 
+/// Requires real Quantframe credentials pasted into `user`/`pass` below, so it
+/// cannot pass unattended. Kept rather than deleted: it becomes a usable
+/// authentication check once this project runs its own API server.
+/// See docs/superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md
+/// Run with: cargo test -p qf_api -- --ignored
+#[ignore = "needs real credentials; see docs/superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md"]
 #[tokio::test]
 async fn print_token() {
     let user = "";
@@ -37,6 +43,12 @@ async fn print_token() {
     client.set_token("new_token");
 }
 
+/// Expects a Quantframe API server on http://localhost:6969 (the client's
+/// DEVELOPMENT_URL). Kept rather than deleted: it is already a conformance test
+/// for the cache endpoints of a self-hosted server.
+/// See docs/superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md
+/// Run with: cargo test -p qf_api -- --ignored
+#[ignore = "needs a local API server on :6969; see docs/superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md"]
 #[tokio::test]
 async fn test_cache_extract() {
     let client = Client::new(
