@@ -1,10 +1,11 @@
 [package]
 name = "Quantframe"
 version = "1.6.29"
-description = "Quantframe"
-authors = ["Kenya-DK"]
-license = ""
-repository = "https://github.com/Kenya-DK/quantframe-react"
+description = "Quantframe Sneak - a modified build of Quantframe"
+# Derived from Quantframe by Kenya-DK (GPL-3.0). See ../NOTICE.md.
+authors = ["thesneakattack"]
+license = "GPL-3.0-only"
+repository = "https://github.com/thesneakattack/quantframe-sneak"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

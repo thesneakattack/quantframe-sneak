@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve Quantframe
+about: Create a report to help us improve Quantframe Sneak
 title: "[BUG]: "
 labels: bug
 assignees: ""

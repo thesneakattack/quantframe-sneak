@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+## Description: Full verification pass -- the same gates CI runs, in one command
+## Usage: check
+## Example: "ddev check"
+set -euo pipefail
+cd /var/www/html
+
+step() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
+
+step "eslint"
+pnpm lint
+
+step "tsc + vite build (frontend)"
+pnpm build
+
+step "cargo fmt --check"
+(cd src-tauri && cargo fmt --all -- --check)
+
+step "cargo clippy"
+(cd src-tauri && cargo clippy --all-targets -- -D warnings)
+
+step "cargo test"
+(cd src-tauri && cargo test)
+
+printf '\n\033[1;32m==> all checks passed\033[0m\n'

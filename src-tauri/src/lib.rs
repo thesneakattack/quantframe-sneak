@@ -178,6 +178,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        // Updater is wired up but inert: this fork ships an empty `plugins.updater.pubkey`
+        // and points at its own (not-yet-existing) GitHub release feed, so `check()` simply
+        // finds nothing. Activate it by following docs/FORK.md.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             // log_parser::types::trade_detection::init_detections();
@@ -186,7 +189,9 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let version = app.package_info().version.to_string();
                 let name = app.package_info().name.as_str();
-                let _ = window.set_title(&format!("{name} v{version} - By Kenya-DK"));
+                let _ = window.set_title(&format!(
+                    "{name} v{version} - based on Quantframe by Kenya-DK"
+                ));
             }
             // Clone the handle for async task
             let app_handle = app.handle().clone();

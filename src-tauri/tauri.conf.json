@@ -16,21 +16,21 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "resources": {
       "resources/*": "resources/",
       "resources/sounds/*": "resources/sounds/"
     }
   },
-  "productName": "Quantframe",
-  "mainBinaryName": "Quantframe",
+  "productName": "Quantframe Sneak",
+  "mainBinaryName": "QuantframeSneak",
   "version": "1.6.29",
-  "identifier": "dev.kenya.quantframe",
+  "identifier": "dev.thesneakattack.quantframe",
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ3NEIwMTI1MzA3Q0E1OEYKUldTUHBYd3dKUUZMMTczQ2pIYTR0bklLQXlaMkxvK0V0a0RMQytNMTdqZzBCWitQRnNIWDhxYnAK",
+      "pubkey": "",
       "endpoints": [
-        "https://api.quantframe.app/release/{{target}}/{{arch}}/{{current_version}}"
+        "https://github.com/thesneakattack/quantframe-sneak/releases/latest/download/latest.json"
       ]
     }
   },
@@ -40,7 +40,7 @@
         "fullscreen": false,
         "userAgent": "Quantframe",
         "resizable": true,
-        "title": "Quantframe - By Kenya-DK",
+        "title": "Quantframe Sneak",
         "width": 1455,
         "height": 912,
         "useHttpsScheme": true

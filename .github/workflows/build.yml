@@ -53,12 +53,13 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          # Updater artifacts are disabled in this fork (no signing key), so the
+          # TAURI_SIGNING_* variables are intentionally absent. docs/FORK.md explains
+          # how to generate a key and restore them.
         with:
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: "Quantframe v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
+          releaseName: "Quantframe Sneak v__VERSION__"
+          releaseBody: "Unofficial modified build of Quantframe. See the assets to download and install."
           releaseDraft: true
           prerelease: false
           releaseAssetNamePattern: "debug"

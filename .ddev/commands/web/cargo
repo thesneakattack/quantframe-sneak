@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+## Description: Run cargo against the Tauri backend inside the web container
+## Usage: cargo [args]
+## Example: "ddev cargo check" / "ddev cargo clippy --all-targets" / "ddev cargo test"
+set -eu
+cd /var/www/html/src-tauri
+exec cargo "$@"

@@ -1,0 +1,18 @@
+# Rust toolchain for the Tauri backend.
+#
+# Installed into /usr/local at image-build time (as root) so it is baked into the
+# image and never touches the bind-mounted project directory. Both trees are made
+# world-writable so the unprivileged `ddev` user -- which DDEV maps to the host
+# UID/GID -- can run `rustup update` and `cargo install` without sudo.
+#
+# At runtime CARGO_HOME is redirected to the named cache volume (see config.yaml);
+# the rustup shims below stay on PATH regardless.
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:$PATH
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --no-modify-path --profile minimal \
+        --default-toolchain stable --component clippy --component rustfmt \
+ && chmod -R a+w "$RUSTUP_HOME" "$CARGO_HOME" \
+ && rustc --version && cargo --version

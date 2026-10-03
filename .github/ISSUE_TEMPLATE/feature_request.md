@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea to improve Quantframe
+about: Suggest an idea to improve Quantframe Sneak
 title: "[FEATURE]: "
 labels: enhancement
 assignees: ""

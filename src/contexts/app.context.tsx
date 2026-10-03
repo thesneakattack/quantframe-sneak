@@ -106,7 +106,17 @@ export function AppContextProvider({ children }: AppContextProviderProps) {
   };
 
   const checkForUpdates = async (info: TauriTypes.AppInfo | undefined, canClose: boolean, notifyIfNone?: boolean) => {
-    const update = await check({ headers: { IsPreRelease: info?.is_pre_release ? "true" : "false" } });
+    // The updater is a stub in this fork: it points at this repo's release feed, which
+    // does not exist yet, so `check()` rejects on a 404. Treat any updater failure as
+    // "no update available" rather than surfacing an error. Once docs/FORK.md is followed
+    // and real releases exist, this path starts working with no further changes.
+    let update: Awaited<ReturnType<typeof check>> = null;
+    try {
+      update = await check({ headers: { IsPreRelease: info?.is_pre_release ? "true" : "false" } });
+    } catch (e) {
+      console.info("Updater is disabled in this build; skipping update check.", e);
+      update = null;
+    }
     if (notifyIfNone && !update)
       notifications.show({
         title: useTranslateCommon("notifications.no_updates_available.title"),

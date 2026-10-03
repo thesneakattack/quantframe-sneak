@@ -63,7 +63,7 @@ impl DiscordNotify {
                         "color": 5814783,
                         "footer": {
                             "text": format!("{} v{} ({})",app_info.name, app_info.version, app_info.authors),
-                            "icon_url": "https://raw.githubusercontent.com/Kenya-DK/quantframe-react/refs/heads/main/app-icon.png"
+                            "icon_url": "https://raw.githubusercontent.com/thesneakattack/quantframe-sneak/refs/heads/main/app-icon.png"
                         },
                         "timestamp": timestamp
                     }

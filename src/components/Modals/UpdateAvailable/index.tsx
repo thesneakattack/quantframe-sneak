@@ -100,7 +100,7 @@ export function UpdateAvailableModal({ is_manual, download_url, updater, new_ver
         <Button
           disabled={isDownloading}
           onClick={async () => {
-            open(`https://github.com/Kenya-DK/quantframe-react/releases/tag/v${updater?.version || new_version}`);
+            open(`https://github.com/thesneakattack/quantframe-sneak/releases/tag/v${updater?.version || new_version}`);
           }}
         >
           {useTranslateModal("buttons.read_more")}

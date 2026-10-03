@@ -1,91 +1,74 @@
-# QuantFrame
+# Quantframe Sneak
 
-Inspired by [Akmayer's Warframe-Algo-Trader](https://github.com/akmayer/Warframe-Algo-Trader), this is a re-implementation using tauri. Tauri allows for easy distribution to windows & linux without technical knowledge.
+A modified build of **[Quantframe](https://github.com/Kenya-DK/quantframe-react)** by
+[Kenya-DK](https://github.com/Kenya-DK) — a Warframe Market trading assistant built with
+Tauri, React and Rust.
 
-## Features
+> **This is not official Quantframe.** It is an independent, modified version.
+> Do not report problems with this build to the upstream project. See
+> [`NOTICE.md`](./NOTICE.md) for exactly what was changed and why.
+>
+> It installs under its own identifier (`dev.thesneakattack.quantframe`), so it keeps a
+> separate database and settings directory and will not disturb an official Quantframe
+> installation on the same machine.
 
-- Distribute as windows
-  - Install size: 35MB
-  - Idle resource consumption: 60MB, extremely small cpu footprint (on my rig, 0-0.1%)
-  - Update distribution
-- Save data in sqllite db located at `C:\Users\*\AppData\Local\dev.kenya.quantframe\quantframe.sqlite`
-- Logs and setings wil be save at `C:\Users\*\AppData\Local\dev.kenya.quantframe`
-  - easily inspectible with db tools like https://beekeeperstudio.io
-- Api client to communicate with wf.market
-- Easy debugging / developer experience via edge dev tools
+If you want the real thing, maintained by its author, go to
+[Kenya-DK/quantframe-react](https://github.com/Kenya-DK/quantframe-react) — and consider
+supporting their work via [Buy Me a Coffee](https://www.buymeacoffee.com/kenyadk) or
+[Patreon](https://patreon.com/kenya_dk).
 
-## Screenshots
+## What it does
 
-![Login Screen](./docs/assets/login.png)
+- Warframe Market API client — orders, auctions, rivens, syndicate items
+- Live scraper: an automated buy/sell pipeline with profit thresholds and order cooldowns
+- Log parser that watches Warframe's `EE.log` to detect in-game trades
+- Inventory sync from a Warframe profile, AlecaFrame, or a plain JSON file
+- Trading analytics with transaction history and profit charting
+- Local SQLite storage, inspectable with tools like [Beekeeper Studio](https://beekeeperstudio.io)
 
-![Main Screen](./docs/assets/main-screen.png)
-https://github.com/Kenya-DK/quantframe-react
-![Listing an item](./docs/assets/listing.png)
+Data and logs live in `%LOCALAPPDATA%\dev.thesneakattack.quantframe\` on Windows.
 
-## Installation
+## Stack
 
-### Download installer
+| Layer | Technology |
+| --- | --- |
+| Shell | [Tauri 2](https://tauri.app) — Rust backend, system webview, no Chromium |
+| Frontend | [React 19](https://react.dev) + [Mantine 9](https://mantine.dev), TanStack Query, i18next |
+| Backend | Rust workspace: app + `qf_api`, `service`, `entity`, `migration`, `utils` |
+| Storage | SQLite via [SeaORM](https://www.sea-ql.org/SeaORM/), with migrations |
 
-You can download the latest release from [here](https://github.com/Kenya-DK/quantframe-react/releases)
+## Building
 
-### OR Build it from source
-
-If you prefer to build it locally for whatever reason, heres what you need:
-
-#### Step 1. Install Pre-Requisites
-
-Follow the [Tauri Pre-requisites](https://tauri.app/v1/guides/getting-started/prerequisites) guide to get necessary dependencies.
-
-> If you're using **Windows**, you CANNOT use WSL for this project. You MUST install pre-requisites on windows, not WSL.
-
-You will also need to make sure you've got Nodejs installed.
-
-#### Step 2. Download code
-
-I would strongly recommend installing [git](https://git-scm.com/) or [Github Desktop](https://desktop.github.com/) and use those to download the project source code from github. The reason is this will allow you to download new versions of the code much easier than clicking "download zip" every time.
-
-##### Step 2.1. Delete
-
-delete the `pubkey` filed in `tauri/src-tauri/tauri.conf.json`.
-
-##### Step 2.2 Copy the 'PRODUCTION_URL' to 'DEVELOPMENT_URL' field in `tauri/src-tauri/qf_api/src/client.rs`.
-
-#### Step 3. Build the project
-
-Open a terminal at the project root and run:
-
-<details>
-<summary>
-<i>How do I do this on windows?</i>
-</summary>
-
-On windows, this is easily done by click the path:
-
-![path](./docs/assets/open-terminal-1.png)
-
-Then type in `powershell` and hit enter
-
-![ps](./docs/assets/open-terminal-2.png)
-
-</details>
+The repository ships a [DDEV](https://ddev.com) environment so you do not need Rust or
+pnpm on your host. It is a **build-and-check** environment — it compiles everything but
+does not open the desktop window; run the app itself on Windows.
 
 ```bash
-pnpm i # Install nodejs deps
-pnpm run tauri build
+ddev start          # first run builds the image: Rust toolchain + webkit2gtk
+ddev pnpm install
+ddev check          # eslint, tsc, vite build, cargo fmt, clippy, cargo test
 ```
 
-> For developers, you can also use yarn or pnpm if you prefer. (pnpm is the fastest package manager)
+See [`docs/FORK.md`](./docs/FORK.md) for the full command list, how upstream changes get
+merged in, and how to activate the (currently stubbed) auto-updater.
 
-## About the project
+### Building without DDEV
 
-This project uses:
+Install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) and Node,
+then:
 
-- [Tauri](https://tauri.app): like electron but using a [Rust](https://www.rust-lang.org/) backend and doesn't use Chromium, leading to better performance.
-- [React](https://react.dev/): For the frontend.
-- [Mantine](https://mantine.dev/): use for the UI.
-- [Sqlite](https://www.sqlite.org/index.html): For the database.
+```bash
+pnpm install
+pnpm tauri build
+```
 
-## 💰 Support My work
+On Windows, build on Windows — not in WSL.
 
-<p><a href="https://www.buymeacoffee.com/kenyadk"> <img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="45" width="210" alt="kenyadk" /></a></p>
-<p><a href="https://patreon.com/kenya_dk"> <img align="left" src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" height="45" width="210" alt="kenya_dk" /></a></p>
+## Licence
+
+GPL-3.0-only, inherited from the upstream project. See [`LICENSE`](./LICENSE) and
+[`NOTICE.md`](./NOTICE.md).
+
+Quantframe was itself inspired by
+[Akmayer's Warframe-Algo-Trader](https://github.com/akmayer/Warframe-Algo-Trader);
+[`docs/readme.md`](./docs/readme.md) maps the two implementations against each other.

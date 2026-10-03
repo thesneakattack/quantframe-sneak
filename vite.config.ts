@@ -25,6 +25,10 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
+    // Bind all interfaces so the dev server is reachable when Vite runs inside the
+    // DDEV web container (exposed on 1420/1421 via .ddev/config.yaml). No effect
+    // when running directly on a host.
+    host: true,
     port: 1420,
     strictPort: true,
     watch: {

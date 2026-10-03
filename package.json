@@ -1,8 +1,9 @@
 {
-  "name": "quantframe-react",
+  "name": "quantframe-sneak",
   "private": true,
   "version": "1.6.29",
   "type": "module",
+  "packageManager": "pnpm@9.12.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

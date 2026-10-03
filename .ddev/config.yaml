@@ -1,0 +1,53 @@
+name: quantframe-sneak
+type: generic
+docroot: ""
+
+# Node matches the host (24.x) and CI (`lts/*`). pnpm comes from corepack, pinned
+# by the "packageManager" field in package.json so the container and CI agree.
+nodejs_version: "24"
+corepack_enable: true
+
+# This project has no database and no SSH-key needs; skipping both keeps startup fast.
+omit_containers: [db, ddev-ssh-agent]
+
+# Native build dependencies for Tauri v2 on Debian. Mirrors the apt list in
+# .github/workflows/pr-build-check.yml so a green container build means a green CI build.
+webimage_extra_packages:
+  - build-essential
+  - pkg-config
+  - libssl-dev
+  - libwebkit2gtk-4.1-dev
+  - libjavascriptcoregtk-4.1-dev
+  - libsoup-3.0-dev
+  - librsvg2-dev
+  - libgtk-3-dev
+  - libayatana-appindicator3-dev
+  - libseccomp-dev
+  - liblcms2-dev
+  - libkrb5-dev
+  - patchelf
+
+web_environment:
+  # Toolchain lives in the image (root-owned, world-writable) -- see web-build/Dockerfile.rust.
+  - RUSTUP_HOME=/usr/local/rustup
+  # Registry, git checkouts and the build target all live in DDEV's named cache volume
+  # rather than the bind-mounted project directory. Two reasons:
+  #   1. Ownership: nothing the container writes ever lands in your host working tree,
+  #      so you never get root-owned target/ or .cargo/ files to chown back.
+  #   2. Speed: a named volume is native overlay I/O, a bind mount on Docker Desktop is not.
+  # Trade-off: `ddev delete --omit-snapshot` or a volume prune drops the build cache.
+  - CARGO_HOME=/mnt/ddev-global-cache/cargo
+  - CARGO_TARGET_DIR=/mnt/ddev-global-cache/cargo-target/quantframe-sneak
+  - PNPM_HOME=/mnt/ddev-global-cache/pnpm
+  # Vite dev server, reachable from the host via web_extra_exposed_ports below.
+  - VITE_HOST=0.0.0.0
+
+web_extra_exposed_ports:
+  - name: vite
+    container_port: 1420
+    http_port: 1420
+    https_port: 1421
+
+hooks:
+  post-start:
+    - exec: mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$PNPM_HOME"

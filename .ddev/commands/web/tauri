@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+## Description: Run the Tauri CLI inside the web container (build/check only -- no GUI)
+## Usage: tauri [args]
+## Example: "ddev tauri build --debug --no-bundle" / "ddev tauri info"
+set -eu
+cd /var/www/html
+exec pnpm tauri "$@"
