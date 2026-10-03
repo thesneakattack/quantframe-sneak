@@ -4,6 +4,7 @@ use entity::{dto::PaginatedResult, enums::FieldChange};
 use utils::Error;
 
 use crate::{
+    cache::modules::{build_price_index, lookup_price},
     helper::paginate,
     utils::modules::states,
     wf_inventory::{item_base::WFInvItemBase, modules::item::owned_counts, *},
@@ -30,6 +31,7 @@ impl SetsModule {
         let cache = states::cache_client()?;
 
         let counts = owned_counts(&[&root.recipes, &root.misc_items]);
+        let prices = build_price_index(&cache.item_price().get_items()?);
 
         let mut sets: Vec<WFInvSet> = Vec::new();
         for cache_set in cache.item_set().get_all_sets()? {
@@ -64,6 +66,8 @@ impl SetsModule {
             };
             base.properties
                 .set_property_value("tags", cache_set.set.tags.clone());
+            base.properties
+                .set_property_value("price", lookup_price(&prices, &cache_set.set.wfm_url, None));
 
             sets.push(WFInvSet {
                 base,

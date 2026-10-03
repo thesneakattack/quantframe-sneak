@@ -5,7 +5,10 @@ use entity::{dto::PaginatedResult, enums::FieldChange};
 use utils::{Error, SortDirection, SubType};
 
 use crate::{
-    cache::CacheTradableItem,
+    cache::{
+        modules::{build_price_index, lookup_price},
+        CacheTradableItem,
+    },
     helper::paginate,
     utils::modules::states,
     wf_inventory::{item_base::WFInvItemBase, *},
@@ -108,7 +111,18 @@ pub fn sort_rows(
         _ => "name",
     };
     let rank = |item: &WFInvItemBase| item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0);
+    // Unpriced rows sort as 0 so they gather at one end rather than
+    // interleaving unpredictably.
+    let price = |item: &WFInvItemBase| item.properties.get_property_value("price", 0.0f64);
     match column {
+        "price" => rows.sort_by(|a, b| {
+            let (left, right) = match dir {
+                SortDirection::Asc => (price(a), price(b)),
+                SortDirection::Desc => (price(b), price(a)),
+            };
+            left.partial_cmp(&right)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }),
         "quantity" => rows.sort_by(|a, b| match dir {
             SortDirection::Asc => a.quantity.cmp(&b.quantity),
             SortDirection::Desc => b.quantity.cmp(&a.quantity),
@@ -150,6 +164,7 @@ impl ItemModule {
 
         let counts = owned_counts(&[&root.recipes, &root.misc_items]);
         let item_set = cache.item_set();
+        let prices = build_price_index(&cache.item_price().get_items()?);
 
         let mut items: Vec<WFInvItemBase> = Vec::new();
         for (unique_name, quantity) in counts {
@@ -182,6 +197,10 @@ impl ItemModule {
             item.properties.set_property_value("in_sets", in_sets);
             item.properties
                 .set_property_value("in_set_urls", in_set_urls);
+            item.properties.set_property_value(
+                "price",
+                lookup_price(&prices, &item.wfm_url, item.sub_type.clone()),
+            );
             item.properties
                 .set_property_value("tags", tradable.tags.clone());
             items.push(item);
@@ -238,6 +257,7 @@ impl ItemModule {
         }
         let rows = merge_rank_rows(rows);
 
+        let prices = build_price_index(&cache.item_price().get_items()?);
         let mut items: Vec<WFInvItemBase> = Vec::new();
         for (unique_name, rank, quantity) in rows {
             let Ok(tradable) = cache.tradable_item().get_by(&unique_name) else {
@@ -269,6 +289,10 @@ impl ItemModule {
             item.properties.set_property_value(
                 "max_rank",
                 tradable.sub_type.as_ref().and_then(|s| s.max_rank),
+            );
+            item.properties.set_property_value(
+                "price",
+                lookup_price(&prices, &item.wfm_url, item.sub_type.clone()),
             );
             items.push(item);
         }

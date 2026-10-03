@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{
     fs::File,
     io::Write,
@@ -179,5 +180,107 @@ impl ItemPriceModule {
             .into_iter()
             .filter(|item| predicate(item))
             .collect::<Vec<ItemPriceInfo>>()
+    }
+}
+
+/// The warframe.market moving average per (item, sub type).
+///
+/// Built once per request from a single `get_items()` call: `find_by` clones
+/// all ~1390 entries and scans them linearly, which is fine for one lookup
+/// and ruinous for the hundreds a table page needs.
+pub type PriceIndex = HashMap<(String, Option<SubType>), f64>;
+
+pub fn build_price_index(items: &[ItemPriceInfo]) -> PriceIndex {
+    let mut index = PriceIndex::new();
+    for item in items {
+        // moving_avg is the figure the live scraper itself prices against
+        // (live_scraper/modules/item.rs). An absent one is not a zero.
+        if let Some(moving_avg) = item.moving_avg {
+            index.insert((item.wfm_url.clone(), item.sub_type.clone()), moving_avg);
+        }
+    }
+    index
+}
+
+/// The moving average for an item, preferring an exact sub-type match.
+///
+/// Most ranks are not priced individually, so a rank with no entry of its own
+/// falls back to the plain entry: a number of the right order beats a blank
+/// cell. An exact match always wins, which matters for maxed mods - those are
+/// a different product at a very different price.
+pub fn lookup_price(index: &PriceIndex, wfm_url: &str, sub_type: Option<SubType>) -> Option<f64> {
+    if let Some(price) = index.get(&(wfm_url.to_string(), sub_type.clone())) {
+        return Some(*price);
+    }
+    if sub_type.is_some() {
+        return index.get(&(wfm_url.to_string(), None)).copied();
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_price_index, lookup_price};
+    use crate::cache::ItemPriceInfo;
+    use utils::SubType;
+
+    fn priced(url: &str, sub_type: Option<SubType>, moving_avg: f64) -> ItemPriceInfo {
+        ItemPriceInfo {
+            wfm_url: url.to_string(),
+            sub_type,
+            moving_avg: Some(moving_avg),
+            ..Default::default()
+        }
+    }
+
+    fn ranked(rank: i64) -> Option<SubType> {
+        Some(SubType {
+            rank: Some(rank),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn finds_the_price_for_an_item_with_no_sub_type() {
+        let index = build_price_index(&[priced("nova_prime_set", None, 72.0)]);
+        assert_eq!(lookup_price(&index, "nova_prime_set", None), Some(72.0));
+    }
+
+    /// A maxed mod is a different product from an unranked one and is priced
+    /// separately: 213 of the cached rows are rank 5, 68 are rank 10.
+    #[test]
+    fn prefers_an_exact_sub_type_match_over_the_plain_entry() {
+        let index = build_price_index(&[
+            priced("serration", None, 38.0),
+            priced("serration", ranked(10), 120.0),
+        ]);
+        assert_eq!(lookup_price(&index, "serration", ranked(10)), Some(120.0));
+        assert_eq!(lookup_price(&index, "serration", None), Some(38.0));
+    }
+
+    /// Most ranks are not priced individually. Falling back to the plain
+    /// entry gives a number of the right order rather than a blank cell.
+    #[test]
+    fn falls_back_to_the_plain_entry_when_the_rank_is_not_priced() {
+        let index = build_price_index(&[priced("serration", None, 38.0)]);
+        assert_eq!(lookup_price(&index, "serration", ranked(7)), Some(38.0));
+    }
+
+    #[test]
+    fn reports_nothing_for_an_item_with_no_price_at_all() {
+        let index = build_price_index(&[priced("serration", None, 38.0)]);
+        assert_eq!(lookup_price(&index, "ammo_drum", None), None);
+    }
+
+    /// moving_avg is Option on the type even though the shipped data always
+    /// sets it; an absent one must not become a confident zero.
+    #[test]
+    fn skips_entries_with_no_moving_average() {
+        let index = build_price_index(&[ItemPriceInfo {
+            wfm_url: "obscure_item".to_string(),
+            moving_avg: None,
+            ..Default::default()
+        }]);
+        assert_eq!(lookup_price(&index, "obscure_item", None), None);
     }
 }

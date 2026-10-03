@@ -5,7 +5,7 @@ import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { SegmentedControl } from "@mantine/core";
+import { Group, NumberFormatter, SegmentedControl, Text } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -98,6 +98,23 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
             title: useTranslateDataGridColumns("owned"),
             sortable: true,
             width: 100,
+          },
+          {
+            accessor: "price",
+            title: useTranslateCommon("datatable_columns.price"),
+            sortable: true,
+            width: 110,
+            render: (row) =>
+              row.properties?.price != null ? (
+                <Group gap={4}>
+                  <NumberFormatter value={Math.round(row.properties.price)} thousandSeparator="." decimalSeparator="," />
+                  <Text c="dimmed" size="xs">
+                    p
+                  </Text>
+                </Group>
+              ) : (
+                <Text c="dimmed">—</Text>
+              ),
           },
           {
             accessor: "actions",

@@ -524,7 +524,8 @@
       },
       "volume": {
         "title": "Volume"
-      }
+      },
+      "price": "Price"
     },
     "item_name": {
       "title": "Name",

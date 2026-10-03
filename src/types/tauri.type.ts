@@ -989,8 +989,11 @@ export namespace TauriTypes {
     is_in_stock: boolean;
     tags: string[];
     in_sets?: string[];
+    in_set_urls?: string[];
     in_stock_sets?: string[];
     max_rank?: number | null;
+    /** warframe.market moving average, or null when the item has no price data. */
+    price?: number | null;
   };
   export type WFInvItemRow = WFInvItemBase<WFInvItemRowProperties>;
   export type WFInvPartsControllerGetListData = PaginatedDto & {

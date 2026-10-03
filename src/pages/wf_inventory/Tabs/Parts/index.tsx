@@ -6,7 +6,7 @@ import { faAdd, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { Group, Switch, Text, Tooltip } from "@mantine/core";
+import { Group, NumberFormatter, Switch, Text, Tooltip } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -111,6 +111,23 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
             accessor: "in_sets",
             title: useTranslateDataGridColumns("set"),
             render: (row) => <Text c="dimmed">{(row.properties?.in_sets || []).join(", ")}</Text>,
+          },
+          {
+            accessor: "price",
+            title: useTranslateCommon("datatable_columns.price"),
+            sortable: true,
+            width: 110,
+            render: (row) =>
+              row.properties?.price != null ? (
+                <Group gap={4}>
+                  <NumberFormatter value={Math.round(row.properties.price)} thousandSeparator="." decimalSeparator="," />
+                  <Text c="dimmed" size="xs">
+                    p
+                  </Text>
+                </Group>
+              ) : (
+                <Text c="dimmed">—</Text>
+              ),
           },
           {
             accessor: "actions",
