@@ -14,7 +14,6 @@ use ::utils::LoggerOptions;
 use app::AppState;
 use migration::{Migrator, MigratorTrait};
 use service::sea_orm::{Database, DatabaseConnection};
-use std::collections::HashMap;
 
 use std::panic;
 use std::sync::{Mutex, OnceLock};
@@ -211,7 +210,7 @@ pub fn run() {
                 if let Err(e) = app_handle.emit("app:ready", ()) {
                     error(
                         "Emit",
-                        &format!("Failed to emit app:ready event: {:?}", e),
+                        format!("Failed to emit app:ready event: {:?}", e),
                         &LoggerOptions::default().set_file("emit_error.log"),
                     );
                 }

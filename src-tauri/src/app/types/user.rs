@@ -122,7 +122,7 @@ impl User {
             Err(_) => {
                 let default_user = User::default();
                 default_user.save()?;
-                return Ok(default_user);
+                Ok(default_user)
             }
         }
     }

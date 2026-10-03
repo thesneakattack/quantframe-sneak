@@ -2,6 +2,7 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ItemSettings {
     pub general: ItemGeneralSettings,
     pub wtb: ItemWtbSettings,
@@ -23,14 +24,5 @@ impl ItemSettings {
             self.wts.min_profit,
             self.wts.min_profit_percentage
         )
-    }
-}
-impl Default for ItemSettings {
-    fn default() -> Self {
-        Self {
-            general: ItemGeneralSettings::default(),
-            wtb: ItemWtbSettings::default(),
-            wts: ItemWtsSettings::default(),
-        }
     }
 }

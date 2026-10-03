@@ -150,7 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "memory_required_gb": 4.5,
             "cpu_cores_utilized": 8,
             "temp_files_created": 15,
-            "intermediate_results": format!("{}", "long_intermediate_data_".repeat(100))
+            "intermediate_results": "long_intermediate_data_".repeat(100).to_string()
         }
     }));
 

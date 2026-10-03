@@ -13,7 +13,7 @@ pub fn block_on_async<F: std::future::Future>(future: F) -> F::Output {
 pub fn parse_lastdata(raw: &str) -> Result<WarframeRootObject, Error> {
     let mut json = raw.trim_end_matches(|c| c != '}').to_string();
 
-    let json_value = serde_json::from_str::<Value>(&json).map_err(|e| Error::from(e))?;
+    let json_value = serde_json::from_str::<Value>(&json).map_err(Error::from)?;
     if json_value.get("InventoryJson").is_some() {
         info(
             "WFInventory:ParseLastData",
@@ -26,7 +26,7 @@ pub fn parse_lastdata(raw: &str) -> Result<WarframeRootObject, Error> {
             .replace("\\\"", "\"");
         json = json[1..json.len() - 1].to_string();
     }
-    let mut value: Value = serde_json::from_str(&json).map_err(|e| Error::from(e))?;
+    let mut value: Value = serde_json::from_str(&json).map_err(Error::from)?;
     if value.get("Results").is_some() && value.get("Stats").is_some() {
         info(
             "WFInventory:ParseLastData",
@@ -43,5 +43,5 @@ pub fn parse_lastdata(raw: &str) -> Result<WarframeRootObject, Error> {
             value = Value::Object(merged);
         }
     }
-    serde_json::from_value(value).map_err(|e| Error::from(e))
+    serde_json::from_value(value).map_err(Error::from)
 }

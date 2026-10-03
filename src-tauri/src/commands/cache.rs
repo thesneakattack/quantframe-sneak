@@ -17,11 +17,11 @@ pub async fn cache_get_tradable_items(
     let cache = cache.lock()?;
     match cache.tradable_item().get_items() {
         Ok(items) => {
-            return Ok(items);
+            Ok(items)
         }
         Err(e) => {
             e.log("cache_get_tradable_items.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -32,11 +32,11 @@ pub async fn cache_get_syndicates(
     let cache = cache.lock()?;
     match cache.syndicate().get_items() {
         Ok(items) => {
-            return Ok(items);
+            Ok(items)
         }
         Err(e) => {
             e.log("cache_get_syndicates.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -47,11 +47,11 @@ pub async fn cache_get_riven_attributes(
     let cache = cache.lock()?;
     match cache.attribute().get_items() {
         Ok(items) => {
-            return Ok(items);
+            Ok(items)
         }
         Err(e) => {
             e.log("cache_get_riven_attributes.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -64,13 +64,13 @@ pub async fn cache_get_riven_weapons(
         Ok(items) => {
             let riven_weapons = items
                 .into_iter()
-                .filter(|item| item.wfm_riven_url != "")
+                .filter(|item| !item.wfm_riven_url.is_empty())
                 .collect::<Vec<_>>();
-            return Ok(riven_weapons);
+            Ok(riven_weapons)
         }
         Err(e) => {
             e.log("cache_get_riven_weapons.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -81,11 +81,11 @@ pub async fn cache_get_chat_icons(
     let cache = cache.lock()?;
     match cache.chat_icon().get_items() {
         Ok(items) => {
-            return Ok(items);
+            Ok(items)
         }
         Err(e) => {
             e.log("cache_get_chat_icons.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -96,11 +96,11 @@ pub async fn cache_get_theme_presets(
     let cache = cache.lock()?;
     match cache.theme().get_items() {
         Ok(items) => {
-            return Ok(items);
+            Ok(items)
         }
         Err(e) => {
             e.log("cache_get_theme_presets.log");
-            return Err(e);
+            Err(e)
         }
     }
 }
@@ -150,7 +150,7 @@ pub fn cache_open_theme_folder(cache: tauri::State<'_, Mutex<CacheState>>) -> Re
         .map_err(|e| {
             Error::new(
                 "Commands:CacheOpenThemeFolder",
-                &format!("Failed to open theme folder: {e}"),
+                format!("Failed to open theme folder: {e}"),
                 get_location!(),
             )
         });

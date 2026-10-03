@@ -42,7 +42,7 @@ impl RivenPriceRoute {
             .await
         {
             Ok((ApiResponse::Json(alerts), _, _)) => Ok(alerts),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }
@@ -64,7 +64,7 @@ impl RivenPriceRoute {
             .await
         {
             Ok((ApiResponse::Json(details), _, _)) => Ok(details),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

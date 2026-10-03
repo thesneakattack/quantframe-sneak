@@ -7,7 +7,6 @@ use crate::{
     utils::{modules::states, OrderListExt},
 };
 use qf_api::enums::app_events::ApplicationEvent as EventType;
-use serde_json::json;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -233,11 +232,11 @@ impl LiveScraperState {
 
     pub fn elapsed(&self) -> u64 {
         let started_at = self.started_at.lock().map(|g| *g).unwrap_or(None);
-        let total_secs = match started_at {
+        
+        match started_at {
             Some(start) => start.elapsed().as_secs(),
             None => 0,
-        };
-        total_secs
+        }
     }
 
     pub fn item(&self) -> Arc<ItemModule> {

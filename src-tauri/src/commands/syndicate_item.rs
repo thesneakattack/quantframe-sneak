@@ -1,4 +1,4 @@
-use std::{collections::HashMap, os::raw, sync::Mutex};
+use std::{collections::HashMap, sync::Mutex};
 
 use entity::{dto::*, syndicate_item::*};
 use qf_api::enums::app_events::ApplicationEvent as EventType;
@@ -140,9 +140,9 @@ pub async fn get_syndicate_item_pagination(
 ) -> Result<PaginatedResult<syndicate_item::Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match SyndicateItemQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
@@ -187,7 +187,7 @@ pub async fn syndicate_item_create(
                 EventType::SyndicateItemCreate,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -197,9 +197,9 @@ pub async fn syndicate_item_create(
                     ("error_type", "create_failed".to_string()),
                 ]
             );
-            return Err(e
+            Err(e
                 .with_location(get_location!())
-                .log("syndicate_item_create.log"));
+                .log("syndicate_item_create.log"))
         }
     }
 }
@@ -227,7 +227,7 @@ pub async fn syndicate_item_sell(
                 EventType::SyndicateItemSell,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -237,9 +237,9 @@ pub async fn syndicate_item_sell(
                     ("error_type", "sell_failed".to_string()),
                 ]
             );
-            return Err(e
+            Err(e
                 .with_location(get_location!())
-                .log("syndicate_item_sell.log"));
+                .log("syndicate_item_sell.log"))
         }
     }
 }
@@ -368,7 +368,7 @@ pub async fn syndicate_item_update(
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -536,7 +536,7 @@ pub async fn export_syndicate_item_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -546,7 +546,7 @@ pub async fn export_syndicate_item_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

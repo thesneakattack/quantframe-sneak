@@ -137,7 +137,7 @@ fn example_multi_dimensional_grouping(metrics: &[LogMetric]) {
     // Group by endpoint and day
     let by_endpoint_day = group_by(metrics, |m| {
         let day_key = group_by_date(
-            &[m.clone()],
+            std::slice::from_ref(m),
             |metric| metric.timestamp,
             &[GroupByDate::Year, GroupByDate::Month, GroupByDate::Day],
         )
@@ -267,7 +267,7 @@ fn example_custom_aggregations(metrics: &[LogMetric]) {
     // Service health score by day
     let by_service_day = group_by(metrics, |m| {
         let day_key = group_by_date(
-            &[m.clone()],
+            std::slice::from_ref(m),
             |metric| metric.timestamp,
             &[GroupByDate::Year, GroupByDate::Month, GroupByDate::Day],
         )
@@ -302,7 +302,7 @@ fn example_custom_aggregations(metrics: &[LogMetric]) {
         .iter()
         .map(|(hour, logs)| (hour.clone(), logs.len()))
         .collect();
-    hour_counts.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by count descending
+    hour_counts.sort_by_key(|a| std::cmp::Reverse(a.1)); // Sort by count descending
 
     println!("\n  Peak Usage Hours:");
     for (i, (hour, count)) in hour_counts.iter().take(3).enumerate() {

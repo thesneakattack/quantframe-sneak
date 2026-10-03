@@ -37,17 +37,17 @@ impl HttpServer {
 
     pub fn stock_item(&self) -> Arc<StockItemRoute> {
         self.stock_item_route
-            .get_or_init(|| StockItemRoute::new())
+            .get_or_init(StockItemRoute::new)
             .clone()
     }
     pub fn stock_riven(&self) -> Arc<StockRivenRoute> {
         self.stock_riven_route
-            .get_or_init(|| StockRivenRoute::new())
+            .get_or_init(StockRivenRoute::new)
             .clone()
     }
     pub fn wish_list(&self) -> Arc<WishListRoute> {
         self.wish_list_route
-            .get_or_init(|| WishListRoute::new())
+            .get_or_init(WishListRoute::new)
             .clone()
     }
     pub fn set_host(&self, new_host: impl Into<String>, port: u16) -> String {
@@ -78,7 +78,7 @@ impl HttpServer {
         let host = self.host.lock().unwrap().clone();
         info(
             "HTTPServer",
-            &format!("🚀 Starting server on http://{}", host),
+            format!("🚀 Starting server on http://{}", host),
             &LoggerOptions::default(),
         );
         *running = true;
@@ -93,7 +93,7 @@ impl HttpServer {
                 if let Err(e) = listener.set_nonblocking(true) {
                     error(
                         "HTTPServer",
-                        &format!("❌ Failed to set non-blocking mode: {}", e),
+                        format!("❌ Failed to set non-blocking mode: {}", e),
                         &LoggerOptions::default(),
                     );
                     return;
@@ -121,7 +121,7 @@ impl HttpServer {
                         Err(e) => {
                             error(
                                 "HTTPServer",
-                                &format!("❌ Error accepting connection: {}", e),
+                                format!("❌ Error accepting connection: {}", e),
                                 &LoggerOptions::default(),
                             );
                             // Brief pause before retrying
@@ -132,7 +132,7 @@ impl HttpServer {
             } else {
                 error(
                     "HTTPServer",
-                    &format!("❌ Failed to bind to {}", host),
+                    format!("❌ Failed to bind to {}", host),
                     &LoggerOptions::default(),
                 );
             }

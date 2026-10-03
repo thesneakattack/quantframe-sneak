@@ -69,8 +69,8 @@ pub async fn handle_wfm_item(
             .find_order(&wfm_id, &wf_sub_type, order_type)
     else {
         info(
-            &format!("{component}:NoOrder"),
-            &format!(
+            format!("{component}:NoOrder"),
+            format!(
                 "No WFM order found for WFM ID: {} | SubType: {} | OrderType: {:?}",
                 wfm_id, wf_sub_type, order_type
             ),
@@ -88,7 +88,7 @@ pub async fn handle_wfm_item(
 
     // ---- Helpers ----
     let map_err = |stage: &str, msg: &str, e| {
-        let err = Error::from_wfm(&format!("{component}:{stage}"), msg, e, get_location!());
+        let err = Error::from_wfm(format!("{component}:{stage}"), msg, e, get_location!());
         err.log(file);
         err
     };
@@ -102,8 +102,8 @@ pub async fn handle_wfm_item(
             .map_err(|e| map_err("Close", "Failed to close WFM order", e))?;
 
         info(
-            &format!("{component}:Close"),
-            &format!("Closed WFM order: {:?}, {:?}", order.id, quantity),
+            format!("{component}:Close"),
+            format!("Closed WFM order: {:?}, {:?}", order.id, quantity),
             &log_options,
         );
 
@@ -118,8 +118,8 @@ pub async fn handle_wfm_item(
             .map_err(|e| map_err("Delete", "Failed to delete WFM order", e))?;
 
         info(
-            &format!("{component}:Delete"),
-            &format!("Deleted WFM order: {:?}", order.id),
+            format!("{component}:Delete"),
+            format!("Deleted WFM order: {:?}", order.id),
             &log_options,
         );
 
@@ -137,8 +137,8 @@ pub async fn handle_wfm_item(
         .map_err(|e| map_err("Update", "Failed to update WFM order", e))?;
 
     info(
-        &format!("{component}:Update"),
-        &format!("Updated WFM order: {:?}, {:?}", order.id, order.quantity),
+        format!("{component}:Update"),
+        format!("Updated WFM order: {:?}, {:?}", order.id, order.quantity),
         &log_options,
     );
 
@@ -187,7 +187,7 @@ pub async fn handle_transaction(
         use_current_date = false;
         info(
             format!("{component}:SetDate"),
-            &format!("Setting transaction date to: {}", date),
+            format!("Setting transaction date to: {}", date),
             &utils::LoggerOptions::default().set_enable(!flags.contains("DisableSetDateLog")),
         );
         transaction.created_at = chrono::DateTime::parse_from_rfc3339(&date)
@@ -203,6 +203,6 @@ pub async fn handle_transaction(
     }
     match TransactionMutation::create(conn, &transaction, use_current_date).await {
         Ok(updated_item) => Ok(updated_item),
-        Err(e) => return Err(e.with_location(get_location!()).log(file)),
+        Err(e) => Err(e.with_location(get_location!()).log(file)),
     }
 }

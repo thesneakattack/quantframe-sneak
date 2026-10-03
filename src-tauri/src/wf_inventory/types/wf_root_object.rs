@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::wf_inventory::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct WarframeRootObject {
     #[serde(rename = "PlayerLevel", default)]
     pub mastery_rank: i64,
@@ -66,31 +67,4 @@ pub struct WarframeRootObject {
 
     #[serde(rename = "Affiliations", default)]
     pub affiliations: Vec<WFInvAffiliation>,
-}
-impl Default for WarframeRootObject {
-    fn default() -> Self {
-        Self {
-            mastery_rank: 0,
-            platinum: 0,
-            credits: 0,
-            daily_affiliation_syndicate: 0,
-            daily_affiliation_pvp: 0,
-            daily_affiliation_library: 0,
-            daily_affiliation_cetus: 0,
-            daily_affiliation_quills: 0,
-            daily_affiliation_ventkids: 0,
-            daily_affiliation_vox: 0,
-            daily_affiliation_entrati: 0,
-            daily_affiliation_zariman: 0,
-            daily_affiliation_necraloid: 0,
-            daily_affiliation_kahl: 0,
-            daily_affiliation_cavia: 0,
-            daily_affiliation_hex: 0,
-            trades_remaining: 0,
-            raw_upgrades: vec![],
-            upgrades: vec![],
-            recipes: vec![],
-            affiliations: vec![],
-        }
-    }
 }

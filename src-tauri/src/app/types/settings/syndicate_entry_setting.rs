@@ -13,10 +13,6 @@ impl SyndicateEntrySetting {
         if self.ignore_standing {
             return true;
         }
-        if self.standing >= cost {
-            true
-        } else {
-            false
-        }
+        self.standing >= cost
     }
 }

@@ -1,15 +1,13 @@
 use qf_api::errors::ApiError as QFApiError;
 use qf_api::types::UserPrivate as QFUserPrivate;
 use qf_api::Client as QFClient;
-use utils::{get_location, info, log_json, Error, LogLevel, LoggerOptions};
+use utils::{get_location, Error, LogLevel};
 use wf_market::types::websocket::WsClient;
 use wf_market::types::UserPrivate as WFUserPrivate;
-use wf_market::Client as WFClient;
 
 use crate::app::modules::ws::setup_socket;
 use crate::app::{AppState, User};
 use crate::utils::ErrorFromExt;
-use crate::{emit_startup, SENSITIVE_FIELDS};
 
 pub fn update_user(mut cu_user: User, user: &WFUserPrivate, qf_user: &QFUserPrivate) -> User {
     cu_user.anonymous = false;
@@ -102,7 +100,7 @@ impl AppState {
     }
 
     pub async fn validate(&mut self) -> Result<(WFUserPrivate, QFUserPrivate), Error> {
-        if self.user.wfm_token == "" || self.user.qf_token == "" {
+        if self.user.wfm_token.is_empty() || self.user.qf_token.is_empty() {
             return Err(Error::new(
                 "AppState:Validate",
                 "User tokens are empty, please login first.",
@@ -144,8 +142,8 @@ impl AppState {
                 .set_log_level(level));
             }
         };
-        if !qf_user.token.is_none() {
-            self.qf_client.set_token(qf_user.token.as_ref().unwrap());
+        if let Some(token) = qf_user.token.as_ref() {
+            self.qf_client.set_token(token);
         }
         let (ws, ws_chat) = setup_socket(self.wfm_client.clone()).await?;
         self.wfm_socket = Some(ws);

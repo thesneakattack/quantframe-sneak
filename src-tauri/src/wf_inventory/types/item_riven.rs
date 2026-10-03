@@ -26,7 +26,6 @@ impl WFInvItemRiven {
         Self {
             base: ItemRivenBase::default(),
             riven_type: state,
-            ..Default::default()
         }
     }
 
@@ -62,9 +61,9 @@ impl WFInvItemRiven {
 
     fn populate_unveiled(
         &mut self,
-        raw: &WFInvItemRaw,
-        fingerprint: &UpgradeFingerprint,
-        cache: &CacheState,
+        _raw: &WFInvItemRaw,
+        _fingerprint: &UpgradeFingerprint,
+        _cache: &CacheState,
     ) -> Result<(), Error> {
         // let challenge = fingerprint.challenge.clone().ok_or_else(|| {
         //     Error::new(
@@ -162,8 +161,7 @@ impl WFInvItemRiven {
         let grade = cache
             .riven_good_roll()
             .get_by(&weapon.unique_name)
-            .ok()
-            .and_then(|god_roll| Some(grade_riven(&god_roll, &self.base.attributes, "tag").0))
+            .ok().map(|god_roll| grade_riven(&god_roll, &self.base.attributes, "tag").0)
             .unwrap_or(RivenGrade::Unknown);
         self.base.properties.set_property_value("grade", grade);
         self.base.polarity = normalize_polarity(fingerprint.polarity.clone());

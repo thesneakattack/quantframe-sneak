@@ -58,16 +58,14 @@ impl TradeEntryMutation {
             if let Some(existing) = existing {
                 let mut updated_model = form_data.to_owned();
                 updated_model.id = existing.id;
-                return Ok(
-                    TradeEntryMutation::update_by_id(db, updated_model.to_update())
+                return TradeEntryMutation::update_by_id(db, updated_model.to_update())
                         .await
-                        .map_err(|e| e.with_location(get_location!()))?,
-                );
+                        .map_err(|e| e.with_location(get_location!()));
             }
         }
-        Ok(TradeEntryMutation::create(db, form_data)
+        TradeEntryMutation::create(db, form_data)
             .await
-            .map_err(|e| e.with_location(get_location!()))?)
+            .map_err(|e| e.with_location(get_location!()))
     }
 
     pub async fn update_by_id(

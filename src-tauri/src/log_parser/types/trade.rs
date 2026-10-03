@@ -217,7 +217,7 @@ impl PlayerTrade {
             .collect::<Vec<String>>()
             .join("\n");
 
-        return HashMap::from([
+        HashMap::from([
             ("<TR_TYPE>".to_string(), self.trade_type.to_string()),
             ("<PLAYER_NAME>".to_string(), self.player_name.clone()),
             (
@@ -238,7 +238,7 @@ impl PlayerTrade {
             ),
             ("<RE_ITEMS>".to_string(), received_items),
             ("<TOTAL_PLAT>".to_string(), self.platinum.to_string()),
-        ]);
+        ])
     }
 
     pub fn set_time(&mut self, time: DateTime<chrono::Utc>) -> PlayerTrade {

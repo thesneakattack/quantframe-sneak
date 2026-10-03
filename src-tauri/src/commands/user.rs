@@ -28,7 +28,7 @@ pub async fn user_set_status(
         Ok(_) => {
             info(
                 "Commands:UserSetStatus",
-                &format!("User status set to {}", status),
+                format!("User status set to {}", status),
                 &LoggerOptions::default(),
             );
         }

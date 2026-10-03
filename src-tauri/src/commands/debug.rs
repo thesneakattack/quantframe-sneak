@@ -92,21 +92,15 @@ pub fn debug_get_ee_logs(
         log_parser.get_all_cached_lines()
     };
     let filtered_auctions = filters_by(&cached_lines, |o| {
-        match &query.query {
-            FieldChange::Value(q) => {
-                if !o.line.as_str().contains(q) {
-                    return false;
-                }
+        if let FieldChange::Value(q) = &query.query {
+            if !o.line.as_str().contains(q) {
+                return false;
             }
-            _ => {}
         }
-        match &query.hide_empty {
-            FieldChange::Value(hide_empty) => {
-                if *hide_empty && o.line.is_empty() {
-                    return false;
-                }
+        if let FieldChange::Value(hide_empty) = &query.hide_empty {
+            if *hide_empty && o.line.is_empty() {
+                return false;
             }
-            _ => {}
         }
 
         true

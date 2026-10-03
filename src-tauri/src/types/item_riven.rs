@@ -95,10 +95,10 @@ impl ItemRivenBase {
         riven.unique_name = weapon.unique_name.clone();
         riven.wfm_url = weapon.wfm_url.clone();
         riven.sub_type = Some(SubType::rank(auction.item.mod_rank.unwrap_or(0) as i64));
-        riven.mod_name = auction.item.mod_name.clone().unwrap_or(String::new());
+        riven.mod_name = auction.item.mod_name.clone().unwrap_or_default();
         riven.mastery_rank = auction.item.mastery_level.unwrap_or(0) as i64;
         riven.re_rolls = auction.item.re_rolls.unwrap_or(0) as i64;
-        riven.polarity = auction.item.polarity.clone().unwrap_or(String::new());
+        riven.polarity = auction.item.polarity.clone().unwrap_or_default();
         riven.uuid = auction.uuid.clone();
         for attr in auction.item.attributes.as_deref().unwrap_or(&[]) {
             let formatted_value = match cache.attribute().get_by(&attr.url_name) {

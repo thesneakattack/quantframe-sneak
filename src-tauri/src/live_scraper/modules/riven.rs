@@ -78,13 +78,13 @@ impl RivenModule {
                 warning(
                     format!("{}:ProcessRiven", COMPONENT),
                     "Live Scraper is not running or user is banned, stopping processing.",
-                    &&LoggerOptions::default(),
+                    &LoggerOptions::default(),
                 );
                 return Ok(());
             }
             info(
                 COMPONENT,
-                &format!(
+                format!(
                     "Starting process for riven mod: {}",
                     stock_riven.weapon_name
                 ),
@@ -127,11 +127,11 @@ impl RivenModule {
             if stock_riven.is_hidden && stock_riven.status == StockStatus::InActive {
                 info(
                     format!("{}Skip", COMPONENT),
-                    &format!(
+                    format!(
                         "Riven {} is marked as hidden and inactive. Skipping.",
                         stock_riven.weapon_name
                     ),
-                    &log_options,
+                    log_options,
                 );
                 continue;
             } else if stock_riven.is_hidden && stock_riven.status != StockStatus::InActive {
@@ -146,7 +146,7 @@ impl RivenModule {
             } else {
                 match wfm_client
                     .auction()
-                    .search_auctions(get_filter(&stock_riven))
+                    .search_auctions(get_filter(stock_riven))
                     .await
                 {
                     Ok(auctions) => auctions,
@@ -154,11 +154,11 @@ impl RivenModule {
                         wf_market::errors::ApiError::TooManyRequests(err) => {
                             warning(
                                     format!("{}:Check", COMPONENT),
-                                    &format!(
+                                    format!(
                                         "Rate limited when getting live auctions for item {}. Skipping this item for now.",
                                         stock_riven.wfm_weapon_url
                                     ),
-                                    &log_options,
+                                    log_options,
                                 );
                             self.send_event(
                                 "rate_limited",
@@ -169,7 +169,7 @@ impl RivenModule {
                         _ => {
                             return Err(Error::from_wfm(
                                 format!("{}:Check", COMPONENT),
-                                &format!(
+                                format!(
                                     "Failed to get live auctions for item {}",
                                     stock_riven.wfm_weapon_url
                                 ),
@@ -232,7 +232,7 @@ impl RivenModule {
                 "Auction {}: PostPrice: {} | Profit: {} | IsStockDirty: {} | StockStatus: {:?} | StockListPrice: {:?} | Operations: {:?} | HighestPrice: {:?} | LowestPrice: {:?} | Profit: {:?}",
                 stock_riven.weapon_name, post_price, profit, stock_riven.is_dirty, stock_riven.status, stock_riven.list_price, operations, highest_price, lowest_price, profit
             ),
-            &log_options,
+            log_options,
             );
 
             // Prepare properties for auction creation or update
@@ -285,11 +285,11 @@ impl RivenModule {
                     Ok(auction) => {
                         info(
                             format!("{}CreateSuccess", COMPONENT),
-                            &format!(
+                            format!(
                                 "Created auction for weapon {}: {}",
                                 auction.item.weapon_url_name, auction.id
                             ),
-                            &log_options,
+                            log_options,
                         );
                         send_event!(UIEvent::RefreshWfmAuctions, json!({"source": COMPONENT}));
                     }
@@ -320,11 +320,11 @@ impl RivenModule {
                     Ok(auction) => {
                         info(
                             format!("{}UpdateSuccess", COMPONENT),
-                            &format!(
+                            format!(
                                 "Updated auction for weapon {}: {}",
                                 auction.item.weapon_url_name, auction.id
                             ),
-                            &log_options,
+                            log_options,
                         );
                     }
                     Err(e) => {
@@ -345,11 +345,11 @@ impl RivenModule {
                         send_event!(UIEvent::RefreshWfmAuctions, json!({"source": COMPONENT}));
                         info(
                             format!("{}DeleteSuccess", COMPONENT),
-                            &format!(
+                            format!(
                                 "Deleted auction for weapon {}: {}",
                                 stock_riven.weapon_name, auction_id
                             ),
-                            &log_options,
+                            log_options,
                         );
                     }
                     Err(e) => {
@@ -367,29 +367,29 @@ impl RivenModule {
             } else if operations.has("Delete") {
                 info(
                     format!("{}Skip", COMPONENT),
-                    &format!(
+                    format!(
                         "Auction {} is marked as hidden or inactive. Skipping.",
                         stock_riven.weapon_name
                     ),
-                    &log_options,
+                    log_options,
                 );
             } else if !can_create {
                 warning(
                     format!("{}Skip", COMPONENT),
-                    &format!(
+                    format!(
                         "Auction {} has reached the auction limit. Skipping.",
                         stock_riven.weapon_name
                     ),
-                    &log_options,
+                    log_options,
                 );
             } else {
                 warning(
                     format!("{}Skip", COMPONENT),
-                    &format!(
+                    format!(
                         "Auction {} is not optimal for buying. Skipping.",
                         stock_riven.weapon_name
                     ),
-                    &log_options,
+                    log_options,
                 );
             }
             stock_riven.set_list_price(Some(post_price));
@@ -405,8 +405,8 @@ impl RivenModule {
                     Ok(_) => {
                         info(
                             format!("{}StockRivenUpdate", COMPONENT),
-                            &format!("Updated stock item: {:?}", stock_riven.id),
-                            &log_options,
+                            format!("Updated stock item: {:?}", stock_riven.id),
+                            log_options,
                         );
                         send_event!(
                             UIEvent::RefreshStockRivens,

@@ -1,4 +1,4 @@
-use ::entity::{dto::*, enums::*, syndicate_item::*};
+use ::entity::{enums::*, syndicate_item::*};
 use sea_orm::*;
 use utils::*;
 
@@ -76,10 +76,10 @@ impl SyndicateItemMutation {
         .await
         {
             Ok(up_item) => {
-                return Ok(("Updated".to_string(), up_item));
+                Ok(("Updated".to_string(), up_item))
             }
             Err(e) => {
-                return Err(e);
+                Err(e)
             }
         }
     }

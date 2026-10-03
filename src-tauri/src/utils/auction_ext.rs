@@ -15,26 +15,23 @@ pub trait AuctionExt {
 
 impl AuctionExt for Auction {
     fn apply_item_info(&mut self, cache: &CacheState) -> Result<(), Error> {
-        match self.item.item_type {
-            AuctionType::Riven => {
-                self.apply_uuid();
-                let riven = ItemRivenBase::try_from_auction(&self, cache)
-                    .map_err(|e| e.with_location(get_location!()))?;
-                self.properties
-                    .set_property_value("name", json!(riven.name));
-                self.properties
-                    .set_property_value("mod_name", json!(riven.mod_name));
-                self.item.attributes = Some(vec![]);
-                for attr in riven.attributes {
-                    let mut wf_attr =
-                        ItemAttribute::new(attr.wfm_url.clone(), attr.positive, attr.value);
-                    wf_attr
-                        .properties
-                        .set_property_value("formattedValue", json!(attr.formatted_value));
-                    self.item.attributes.as_mut().unwrap().push(wf_attr);
-                }
+        if self.item.item_type == AuctionType::Riven {
+            self.apply_uuid();
+            let riven = ItemRivenBase::try_from_auction(self, cache)
+                .map_err(|e| e.with_location(get_location!()))?;
+            self.properties
+                .set_property_value("name", json!(riven.name));
+            self.properties
+                .set_property_value("mod_name", json!(riven.mod_name));
+            self.item.attributes = Some(vec![]);
+            for attr in riven.attributes {
+                let mut wf_attr =
+                    ItemAttribute::new(attr.wfm_url.clone(), attr.positive, attr.value);
+                wf_attr
+                    .properties
+                    .set_property_value("formattedValue", json!(attr.formatted_value));
+                self.item.attributes.as_mut().unwrap().push(wf_attr);
             }
-            _ => {}
         }
         Ok(())
     }
@@ -62,10 +59,10 @@ impl AuctionExt for Auction {
 
         let item = CreateStockRiven::new(
             self.item.weapon_url_name.clone(),
-            self.item.mod_name.clone().unwrap_or(String::new()),
+            self.item.mod_name.clone().unwrap_or_default(),
             self.item.mastery_level.unwrap_or(0).into(),
             self.item.re_rolls.unwrap_or(0).into(),
-            self.item.polarity.clone().unwrap_or(String::new()),
+            self.item.polarity.clone().unwrap_or_default(),
             attributes,
             self.item.mod_rank.unwrap_or(0).into(),
         );

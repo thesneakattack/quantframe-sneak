@@ -37,7 +37,7 @@ impl TradableItemModule {
             Ok(mut items) => {
                 let mut item_lookup = self.item_lookup.lock().unwrap();
                 for item in items.iter_mut() {
-                    item.translate(&language);
+                    item.translate(language);
 
                     let mut keys = vec![
                         item.wfm_id.clone(),

@@ -31,8 +31,8 @@ impl SystemNotify {
         let mut title = self.title.clone();
         let mut content = self.content.clone();
         for (k, v) in variables.iter() {
-            title = title.replace(&format!("{}", k), v);
-            content = content.replace(&format!("{}", k), v);
+            title = title.replace(&k.to_string(), v);
+            content = content.replace(&k.to_string(), v);
         }
         if !self.sound_file.is_empty() && self.sound_file != "none" {
             play_sound!(self.sound_file.clone(), self.volume);

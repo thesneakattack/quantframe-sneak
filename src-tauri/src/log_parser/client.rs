@@ -1,5 +1,5 @@
 use crate::{
-    app::{AdvancedSettings, LogSettings},
+    app::LogSettings,
     helper,
     log_parser::*,
 };
@@ -59,7 +59,7 @@ impl LogParserState {
         if !path_buf.exists() {
             return Err(Error::new(
                 "LogParserState:set_path",
-                &format!("Path does not exist: {}", path),
+                format!("Path does not exist: {}", path),
                 get_location!(),
             )
             .with_location(get_location!()));
@@ -69,7 +69,7 @@ impl LogParserState {
     }
     pub fn warframe_gdpr(&self) -> Arc<WarframeGDPRModule> {
         self.warframe_gdpr_module
-            .get_or_init(|| WarframeGDPRModule::new())
+            .get_or_init(WarframeGDPRModule::new)
             .clone()
     }
     pub fn get_all_cached_lines(&self) -> Vec<LineEntry> {

@@ -1,11 +1,11 @@
-use entity::{dto::*, enums::*, wish_list::*};
+use entity::{enums::*, wish_list::*};
 use service::{WishListMutation, WishListQuery};
 use std::vec;
 use utils::SubType;
 use utils::{get_location, info, warning, Error, OperationSet};
 use wf_market::enums::OrderType;
 
-use crate::{handlers::*, types::*, utils::*, DATABASE};
+use crate::{handlers::*, utils::*, DATABASE};
 
 // --------------------------------------------------
 // Helper functions.
@@ -30,7 +30,7 @@ fn log(
     match (status, updated) {
         ("NotFound", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Wish list item not found for URL: {} | Operations: {:?} | Flags: {:?}",
                 item.wfm_url, operations.operations, flags.operations
             ),
@@ -39,7 +39,7 @@ fn log(
 
         (_, Some(updated)) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Bought wish list item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 updated.item_name, updated.quantity, status, operations.operations, flags.operations
             ),
@@ -48,7 +48,7 @@ fn log(
 
         ("Deleted", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Deleted wish list item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -57,7 +57,7 @@ fn log(
 
         ("Updated", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Updated wish list item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -66,7 +66,7 @@ fn log(
 
         ("Created", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Created wish list item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -75,7 +75,7 @@ fn log(
 
         ("Complete", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Completed wish list item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -85,7 +85,7 @@ fn log(
         _ => {
             warning(
                 format!("{component}:{sub_component}"),
-                &format!(
+                format!(
                     "Unhandled status: {} for wish list item: {} | Operations: {:?} | Flags: {:?}",
                     status, item.item_name, operations.operations, flags.operations
                 ),
@@ -130,10 +130,9 @@ pub async fn handle_wish_list_by_entity(
     // --------------------------------------------------
     // Validate
     // --------------------------------------------------
-    item.validate().map_err(|e| {
+    item.validate().inspect_err(|e| {
         let err = e.clone();
         err.with_location(get_location!()).log(file);
-        e
     })?;
 
     let mut model = item.to_model();

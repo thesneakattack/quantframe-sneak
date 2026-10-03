@@ -20,7 +20,7 @@ pub async fn riven_prices_lookup(
                     ("count", data.results.len().to_string()),
                 ]
             );
-            return Ok(data);
+            Ok(data)
         }
         Err(e) => {
             let error_type = e.error_type().to_string();
@@ -38,9 +38,9 @@ pub async fn riven_prices_lookup(
                     ("error_type", error_type),
                 ]
             );
-            return Err(error);
+            Err(error)
         }
-    };
+    }
 }
 #[tauri::command]
 pub async fn export_riven_price_data(

@@ -78,7 +78,7 @@ impl ThemeModule {
         }
         info(
             "Cache:Theme:load",
-            &format!("Loaded {} themes", items_lock.len()),
+            format!("Loaded {} themes", items_lock.len()),
             &LoggerOptions::default(),
         );
 

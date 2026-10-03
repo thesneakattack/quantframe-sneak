@@ -73,9 +73,9 @@ impl ActiveEnum for StockStatus {
     }
 }
 
-impl Into<sea_orm::sea_query::Value> for StockStatus {
-    fn into(self) -> sea_orm::sea_query::Value {
-        <Self as sea_orm::ActiveEnum>::to_value(&self).into()
+impl From<StockStatus> for sea_orm::sea_query::Value {
+    fn from(val: StockStatus) -> Self {
+        <StockStatus as sea_orm::ActiveEnum>::to_value(&val).into()
     }
 }
 
@@ -112,7 +112,6 @@ impl sea_orm::sea_query::ValueType for StockStatus {
         <Self as sea_orm::ActiveEnum>::db_type()
             .get_column_type()
             .to_owned()
-            .into()
     }
 }
 

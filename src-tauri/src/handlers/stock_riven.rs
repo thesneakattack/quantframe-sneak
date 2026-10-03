@@ -3,7 +3,7 @@ use crate::{
     utils::{modules::states, CreateStockRivenExt},
     DATABASE,
 };
-use entity::{dto::*, enums::*, stock_riven::*};
+use entity::{enums::*, stock_riven::*};
 use service::{sea_orm::DatabaseConnection, StockRivenMutation, StockRivenQuery};
 use utils::SubType;
 use utils::{get_location, info, warning, Error, OperationSet};
@@ -31,7 +31,7 @@ fn log(
     match (status, updated_model) {
         ("NotFound", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Stock riven not found for UUID: {} | Operations: {:?} | Flags: {:?}",
                 model.uuid, operations.operations, flags.operations
             ),
@@ -40,7 +40,7 @@ fn log(
 
         (_, Some(updated)) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Sold stock riven {} {} | Bought: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 updated.weapon_name,
                 updated.mod_name,
@@ -54,7 +54,7 @@ fn log(
 
         ("Deleted", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Deleted stock riven {} {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 model.weapon_name,
                 model.mod_name,
@@ -67,7 +67,7 @@ fn log(
 
         ("Updated", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Updated stock riven: {} {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 model.weapon_name,
                 model.mod_name,
@@ -80,7 +80,7 @@ fn log(
 
         ("Created", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Created stock riven: {} {} | Bought: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 model.weapon_name,
                 model.mod_name,
@@ -94,7 +94,7 @@ fn log(
 
         ("Complete", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Completed stock riven: {} {} | Bought: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 model.weapon_name,
                 model.mod_name,
@@ -108,7 +108,7 @@ fn log(
         _ => {
             warning(
                 format!("{component}:{sub_component}"),
-                &format!(
+                format!(
                     "Unhandled status: {} for stock riven: {} {} | Operations: {:?} | Flags: {:?}",
                     status,
                     model.weapon_name,
@@ -257,7 +257,7 @@ pub async fn handle_riven_by_model(
         tx.transaction_type = TransactionType::Sale;
     }
 
-    handle_transaction(tx, &flags)
+    handle_transaction(tx, flags)
         .await
         .map_err(|e| e.with_location(get_location!()).log(file))?;
     log(component, &model, &None, "Complete", flags, &operations);
@@ -271,10 +271,9 @@ pub async fn handle_riven_by_entity(
     flags: &OperationSet,
 ) -> Result<(OperationSet, Model), Error> {
     let file = "handle_riven.log";
-    item.validate().map_err(|e| {
+    item.validate().inspect_err(|e| {
         let err = e.clone();
         err.with_location(get_location!()).log(file);
-        e
     })?;
     handle_riven_by_model(item.to_model(), user_name, operation, flags)
         .await
@@ -309,9 +308,9 @@ pub async fn handle_riven_by_name(
     model.bought = bought;
     match handle_riven_by_model(model, user_name, operation, flags).await {
         Ok((operations, model)) => {
-            return Ok((operations, Some(model)));
+            Ok((operations, Some(model)))
         }
-        Err(e) => return Err(e.with_location(get_location!()).log(file)),
+        Err(e) => Err(e.with_location(get_location!()).log(file)),
     }
 }
 pub async fn handle_riven(

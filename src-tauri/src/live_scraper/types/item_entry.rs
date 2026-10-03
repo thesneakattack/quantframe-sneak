@@ -7,7 +7,6 @@ use entity::stock_item::Model as StockItemModel;
 use entity::syndicate_item::Model as SyndicateItemModel;
 use entity::wish_list::Model as WishListModel;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use service::{
     sea_orm::DatabaseConnection, StockItemMutation, StockItemQuery, SyndicateItemMutation,
     SyndicateItemQuery, WishListMutation, WishListQuery,
@@ -18,7 +17,7 @@ use wf_market::{
     types::{OrderList, OrderWithUser},
 };
 
-use crate::{cache::types::ItemPriceInfo, send_event, types::UIEvent, utils::SubTypeExt};
+use crate::{cache::types::ItemPriceInfo, send_event, types::UIEvent};
 
 //
 // Market Information
@@ -294,7 +293,7 @@ impl ItemEntry {
                 Ok(_) => {
                     info(
                         format!("{}StockItemUpdate", component),
-                        &format!("Updated stock item: {:?}", self.stock_id),
+                        format!("Updated stock item: {:?}", self.stock_id),
                         log_options,
                     );
                     if stock_item.update_gui() {
@@ -321,7 +320,7 @@ impl ItemEntry {
                 Ok(_) => {
                     info(
                         format!("{}SyndicateItemUpdate", component),
-                        &format!("Updated syndicate item: {:?}", self.syndicate_id),
+                        format!("Updated syndicate item: {:?}", self.syndicate_id),
                         log_options,
                     );
                     if stock_item.update_gui() {
@@ -349,7 +348,7 @@ impl ItemEntry {
                 Ok(_) => {
                     info(
                         format!("{}WishListUpdate", component),
-                        &format!("Updated wishlist item: {:?}", self.wish_list_id),
+                        format!("Updated wishlist item: {:?}", self.wish_list_id),
                         log_options,
                     );
                     send_event!(

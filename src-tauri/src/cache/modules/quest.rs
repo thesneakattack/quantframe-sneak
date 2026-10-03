@@ -25,7 +25,7 @@ impl QuestModule {
             Ok(mut items) => {
                 let mut lookup = self.lookup.lock().unwrap();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let mut keys = vec![item.base.unique_name.clone(), item.base.name.clone()];
 
                     if let Some(wfm_url) = &item.base.wfm_url {
@@ -71,6 +71,9 @@ impl QuestModule {
     /* -------------------------------------------------------------
         Vector Functions
     ------------------------------------------------------------- */
+    // Unused today but part of this type's intended surface; kept rather than
+    // deleted so the capability is not silently lost.
+    #[allow(dead_code)]
     pub fn get_all_items(&self) -> Result<Vec<CacheQuest>, Error> {
         let lookup = self.lookup.lock().unwrap();
         Ok(lookup.get_all_values())

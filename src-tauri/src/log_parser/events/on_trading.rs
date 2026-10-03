@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{LazyLock, Mutex},
+    sync::Mutex,
 };
 
 use crate::{
@@ -14,12 +14,11 @@ use crate::{
     notify_gui, send_event, track_event,
     types::*,
     utils::{modules::states, SubTypeExt},
-    APP,
 };
 use entity::enums::TransactionType;
 use qf_api::enums::app_events::ApplicationEvent as EventType;
 use serde_json::json;
-use tauri::{Emitter, Listener, Manager};
+use tauri::{Emitter, Listener};
 use utils::*;
 use wf_market::enums::OrderType;
 //----------------------------
@@ -115,7 +114,7 @@ impl OnTradeEvent {
             .get_cached_lines_between(log_start.index.saturating_sub(5), log_end.index + 5);
         self.logger.create_file(
             "RawEELogs.txt",
-            format!("{}", json!(raw_logs).to_string()).as_bytes(),
+            format!("{}", json!(raw_logs)).as_bytes(),
         );
         self.logger.finalize(format!("{}_TRADE.zip", timestamp))?;
         Ok(())
@@ -337,7 +336,7 @@ async fn handle_multi_items(
 
     match process_mutable_items(trade, trade_type, order_type).await {
         Ok(op) => {
-            logger.add_log(&format!(
+            logger.add_log(format!(
                 "Mutable item processing completed | Operations: {:?}",
                 op.operations
             ));
@@ -345,7 +344,7 @@ async fn handle_multi_items(
         }
         Err(mut e) => {
             e = e.with_location(get_location!());
-            logger.add_log(&format!("Error in process_mutable_items | Error: {}", e));
+            logger.add_log(format!("Error in process_mutable_items | Error: {}", e));
         }
     }
 }
@@ -368,13 +367,13 @@ async fn execute_auto_trade_if_needed(
 
     match process_trade_item(item, trade.platinum, &trade.player_name, order_type).await {
         Ok(op) => {
-            logger.add_log(&format!(
+            logger.add_log(format!(
                 "AutoTrade processing completed | Operations: {:?}",
                 op.operations
             ));
             operations.merge(&op);
         }
-        Err(e) => logger.add_log(&format!("Error in AutoTrade | Error: {}", e)),
+        Err(e) => logger.add_log(format!("Error in AutoTrade | Error: {}", e)),
     }
 }
 
@@ -530,7 +529,7 @@ fn process_operations(trade: &PlayerTrade, operations: OperationSet) {
 
     info(
         get_component("TradeAccepted"),
-        &trade.to_string(),
+        trade.to_string(),
         &LoggerOptions::default(),
     );
 }
@@ -738,7 +737,7 @@ impl LineHandler for OnTradeEvent {
                     .add_log("Trade Failed or Cancelled, resetting state");
                 info(
                     get_component("TradeFailed"),
-                    &format!(
+                    format!(
                         "Trade failed or cancelled with result: {}",
                         result.display()
                     ),

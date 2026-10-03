@@ -16,15 +16,15 @@ pub async fn get_trade_entry_pagination(
 ) -> Result<PaginatedResult<Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match TradeEntryQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
 pub async fn trade_entry_create(mut input: CreateTradeEntry) -> Result<Model, Error> {
     let conn = DATABASE.get().unwrap();
-    input.validate().map_err(|e| {
+    input.validate().inspect_err(|e| {
         let err = e.clone();
         track_event!(
             EventType::TradeEntryCreate,
@@ -35,7 +35,6 @@ pub async fn trade_entry_create(mut input: CreateTradeEntry) -> Result<Model, Er
         );
         err.with_location(get_location!())
             .log("trade_entry_create.log");
-        e
     })?;
 
     let model = input.to_model();
@@ -55,7 +54,7 @@ pub async fn trade_entry_create(mut input: CreateTradeEntry) -> Result<Model, Er
                     ("error_type", "create_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -64,7 +63,7 @@ pub async fn trade_entry_create_multiple(mut inputs: Vec<CreateTradeEntry>) -> R
     let conn = DATABASE.get().unwrap();
     let mut total = 0;
     for input in inputs.iter_mut() {
-        input.validate().map_err(|e| {
+        input.validate().inspect_err(|e| {
             let err = e.clone();
             track_event!(
                 EventType::TradeEntryCreate,
@@ -75,7 +74,6 @@ pub async fn trade_entry_create_multiple(mut inputs: Vec<CreateTradeEntry>) -> R
             );
             err.with_location(get_location!())
                 .log("trade_entry_create_multiple.log");
-            e
         })?;
         let model = input.to_model();
         match TradeEntryMutation::create_or_update(conn, input.override_existing, &model).await {
@@ -204,7 +202,7 @@ pub async fn trade_entry_update(input: UpdateTradeEntry) -> Result<Model, Error>
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -224,7 +222,7 @@ pub async fn trade_entry_get_by_id(id: i64) -> Result<Model, Error> {
                 ))
             }
         }
-        Err(e) => return Err(e.with_location(get_location!())),
+        Err(e) => Err(e.with_location(get_location!())),
     }
 }
 #[tauri::command]
@@ -343,7 +341,7 @@ pub async fn export_trade_entry_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -353,7 +351,7 @@ pub async fn export_trade_entry_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

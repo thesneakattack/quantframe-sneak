@@ -51,6 +51,7 @@ impl CacheTradableItem {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Default)]
 pub struct SubType {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "maxRank")]
@@ -69,6 +70,9 @@ pub struct SubType {
     pub cyan_stars: Option<i64>,
 }
 impl SubType {
+    // Unused today but part of this type's intended surface; kept rather than
+    // deleted so the capability is not silently lost.
+    #[allow(dead_code)]
     pub fn has_variant(&self, variant: impl Into<String>) -> bool {
         let variant = variant.into();
         if let Some(variants) = &self.variants {
@@ -86,15 +90,5 @@ impl SubType {
             return true;
         }
         false
-    }
-}
-impl Default for SubType {
-    fn default() -> Self {
-        Self {
-            max_rank: None,
-            variants: None,
-            amber_stars: None,
-            cyan_stars: None,
-        }
     }
 }

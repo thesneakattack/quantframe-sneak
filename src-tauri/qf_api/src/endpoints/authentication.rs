@@ -59,9 +59,9 @@ impl AuthenticationRoute {
                 Ok(user)
             }
             Err(e) => match e {
-                ApiError::BadRequest(err) => return Err(ApiError::InvalidCredentials(err)),
-                ApiError::Unauthorized(err) => return Err(ApiError::InvalidCredentials(err)),
-                ApiError::RequestError(err) => return Err(ApiError::InvalidCredentials(err)),
+                ApiError::BadRequest(err) => Err(ApiError::InvalidCredentials(err)),
+                ApiError::Unauthorized(err) => Err(ApiError::InvalidCredentials(err)),
+                ApiError::RequestError(err) => Err(ApiError::InvalidCredentials(err)),
                 _ => Err(e),
             },
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
@@ -110,7 +110,7 @@ impl AuthenticationRoute {
                 Ok(user)
             }
 
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }
@@ -148,7 +148,7 @@ impl AuthenticationRoute {
                 Ok(user)
             }
             Err(e) => {
-                return Err(e);
+                Err(e)
             }
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
@@ -193,7 +193,7 @@ impl AuthenticationRoute {
      */
     pub fn from_existing(old: &AuthenticationRoute, client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
-            count: Mutex::new(old.count.lock().unwrap().clone()),
+            count: Mutex::new(*old.count.lock().unwrap()),
             user: Mutex::new(old.user.lock().unwrap().clone()), // Clone the user state
             client: Arc::downgrade(&client),
         })

@@ -57,7 +57,7 @@ fn validate_sound_file(file_path: &str) -> Result<String, Error> {
     let metadata = fs::metadata(path).map_err(|e| {
         Error::new(
             "Sound",
-            &format!("Failed to read sound file metadata: {}", e),
+            format!("Failed to read sound file metadata: {}", e),
             utils::get_location!(),
         )
     })?;
@@ -125,9 +125,8 @@ pub async fn sound_add_custom_sound(
         );
     };
 
-    let normalized_name = normalize_sound_name(&name).map_err(|e| {
+    let normalized_name = normalize_sound_name(&name).inspect_err(|_e| {
         track_failure("invalid_name");
-        e
     })?;
     let normalized_name_key = normalized_name.to_lowercase();
     if app
@@ -146,9 +145,8 @@ pub async fn sound_add_custom_sound(
         return Err(err);
     }
 
-    let extension = validate_sound_file(&file_path).map_err(|e| {
+    let extension = validate_sound_file(&file_path).inspect_err(|_e| {
         track_failure("invalid_file");
-        e
     })?;
 
     // Add file to sound dir
@@ -159,7 +157,7 @@ pub async fn sound_add_custom_sound(
     fs::copy(&file_path, &destination).map_err(|e| {
         let err = Error::new(
             "Sound",
-            &format!("Failed to copy sound file: {}", e),
+            format!("Failed to copy sound file: {}", e),
             utils::get_location!(),
         );
         track_failure("file_copy_error");
@@ -169,9 +167,8 @@ pub async fn sound_add_custom_sound(
     // Add to settings
     let new_sound = CustomSound::new(normalized_name, file_name);
     app.settings.notifications.custom_sounds.push(new_sound);
-    app.settings.save().map_err(|e| {
+    app.settings.save().inspect_err(|_e| {
         track_failure("settings_save_error");
-        e
     })?;
 
     track_event!(EventType::SoundAddCustomSound, [("success", "true".to_string())]);
@@ -185,7 +182,7 @@ pub async fn sound_delete_custom_sound(
 ) -> Result<Vec<CustomSound>, Error> {
     let mut app = app.lock()?;
 
-    validate_file_name(&file_name).map_err(|e| {
+    validate_file_name(&file_name).inspect_err(|_e| {
         track_event!(
             EventType::SoundDeleteCustomSound,
             [
@@ -193,7 +190,6 @@ pub async fn sound_delete_custom_sound(
                 ("error_type", "invalid_name".to_string()),
             ]
         );
-        e
     })?;
 
     // Remove file from sounds dir
@@ -204,7 +200,7 @@ pub async fn sound_delete_custom_sound(
         if error.kind() != io::ErrorKind::NotFound {
             let err = Error::new(
                 "Sound",
-                &format!("Failed to delete sound file: {}", error),
+                format!("Failed to delete sound file: {}", error),
                 utils::get_location!(),
             );
             track_event!(
@@ -223,7 +219,7 @@ pub async fn sound_delete_custom_sound(
         .notifications
         .custom_sounds
         .retain(|s| s.file_name != file_name);
-    app.settings.save().map_err(|e| {
+    app.settings.save().inspect_err(|_e| {
         track_event!(
             EventType::SoundDeleteCustomSound,
             [
@@ -231,7 +227,6 @@ pub async fn sound_delete_custom_sound(
                 ("error_type", "settings_save_error".to_string()),
             ]
         );
-        e
     })?;
 
     track_event!(

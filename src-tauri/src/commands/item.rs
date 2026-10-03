@@ -99,7 +99,7 @@ pub async fn export_item_price_data(
     let data = match app_state.qf_client.item().get_prices(query).await {
         Ok(data) => data,
         Err(e) => {
-            trace_event_error(&e.error_type().to_string());
+            trace_event_error(e.error_type());
 
             return Err(Error::from_qf(
                 "ItemPricesLookup",

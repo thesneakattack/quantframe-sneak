@@ -26,7 +26,7 @@ impl RecipeModule {
                 let mut lookup = self.lookup.lock().unwrap();
                 *lookup = MultiKeyMap::new();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let mut keys = vec![item.base.name.clone(), item.base.unique_name.clone()];
                     if !item.override_unique_name.is_empty() {
                         keys.push(item.override_unique_name.clone());

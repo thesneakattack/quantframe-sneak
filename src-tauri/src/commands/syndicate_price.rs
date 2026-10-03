@@ -21,7 +21,7 @@ pub async fn syndicate_item_prices_lookup(
                     ("count", data.results.len().to_string()),
                 ]
             );
-            return Ok(data);
+            Ok(data)
         }
         Err(e) => {
             let error_type = e.error_type().to_string();
@@ -39,9 +39,9 @@ pub async fn syndicate_item_prices_lookup(
                     ("error_type", error_type),
                 ]
             );
-            return Err(error);
+            Err(error)
         }
-    };
+    }
 }
 #[tauri::command]
 pub async fn export_syndicate_item_price_data(
@@ -112,7 +112,7 @@ pub async fn export_syndicate_item_price_data(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             let error_type = e.error_type().to_string();
@@ -130,7 +130,7 @@ pub async fn export_syndicate_item_price_data(
                     ("error_type", error_type),
                 ]
             );
-            return Err(error);
+            Err(error)
         }
-    };
+    }
 }

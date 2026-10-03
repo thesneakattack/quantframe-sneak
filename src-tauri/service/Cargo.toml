@@ -28,3 +28,6 @@ mock = ["sea-orm/mock"]
 [[test]]
 name = "mock"
 required-features = ["mock"]
+
+[lints]
+workspace = true

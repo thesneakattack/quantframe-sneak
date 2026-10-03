@@ -6,7 +6,7 @@ use utils::{get_location, Error};
 
 use crate::{
     cache::{
-        modules::{ModModule, WeaponModule},
+        modules::ModModule,
         types::*,
         CacheState,
     },
@@ -64,10 +64,9 @@ pub fn lookup_riven_multipliers(buffs: usize, curses: usize) -> Result<&'static 
 // MOD NAME
 // --------------------------------------------------
 
-pub fn build_riven_mod_name(attrs: &Vec<RivenAttribute>, buffs: usize) -> String {
+pub fn build_riven_mod_name(attrs: &[RivenAttribute], buffs: usize) -> String {
     // Remove Negative Stat Suffixes
-    let binding = attrs.clone();
-    let attributes = binding.iter().filter(|a| a.positive).collect::<Vec<_>>();
+    let attributes = attrs.iter().filter(|a| a.positive).collect::<Vec<_>>();
 
     let prefix = |i: usize| -> String {
         attributes[i]
@@ -191,7 +190,7 @@ pub fn apply_rank_multiplier(current_value: f64, disposition: f64, rank: f64) ->
     current_value * level_multiplier
 }
 
-pub fn scale_attributes(attrs: &Vec<RivenAttribute>, ratio: f64, rank: i32) -> Vec<RivenAttribute> {
+pub fn scale_attributes(attrs: &[RivenAttribute], ratio: f64, rank: i32) -> Vec<RivenAttribute> {
     attrs
         .iter()
         .map(|attr| scale_attribute(attr, ratio, rank))
@@ -228,7 +227,7 @@ pub fn derive_riven_summary_attributes(
 ) -> Result<Vec<RivenAttribute>, Error> {
     let mut out = Vec::with_capacity(attributes.len());
 
-    let (total_buffs, total_curses) = count_riven_positive_and_negative_stats(&attributes);
+    let (total_buffs, total_curses) = count_riven_positive_and_negative_stats(attributes);
     let multipliers = lookup_riven_multipliers(total_buffs, total_curses)?;
 
     for (tag, rolled, positive) in attributes {
@@ -312,14 +311,14 @@ pub fn normalize_polarity(polarity: impl Into<String>) -> String {
 
 pub fn grade_riven(
     roll: &CacheRivenRoll,
-    attrs: &Vec<RivenAttribute>,
+    attrs: &[RivenAttribute],
     key: impl Into<String>,
 ) -> (RivenGrade, Vec<(bool, RivenAttributeGrade, String)>) {
     let key = key.into();
     let mut grads = vec![];
     for attr in attrs.iter() {
         let grade = roll.get_graded_attribute(
-            &attr.properties.get_property_value(&key, String::new()),
+            attr.properties.get_property_value(&key, String::new()),
             attr.positive,
         );
         grads.push((

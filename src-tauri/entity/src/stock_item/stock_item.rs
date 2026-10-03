@@ -143,9 +143,9 @@ impl Model {
             bought: FieldChange::Value(self.bought),
             list_price: self
                 .list_price
-                .map_or(FieldChange::Null, |v| FieldChange::Value(v)),
+                .map_or(FieldChange::Null, FieldChange::Value),
             is_hidden: FieldChange::Value(self.is_hidden),
-            status: FieldChange::Value(self.status.clone()),
+            status: FieldChange::Value(self.status),
             price_history: FieldChange::Value(self.price_history.0.clone()),
             sub_type: FieldChange::Value(self.sub_type.clone()),
             properties: FieldChange::Value(self.properties.clone()),

@@ -31,8 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if logs_path.exists() {
         for entry in std::fs::read_dir(logs_path)? {
             let entry = entry?;
-            if entry.path().is_dir() {
-                if let Some(dir_name) = entry.path().file_name().and_then(|name| name.to_str()) {
+            if entry.path().is_dir()
+                && let Some(dir_name) = entry.path().file_name().and_then(|name| name.to_str()) {
                     log_info_opt!(
                         "CleanupDemo",
                         &log_opts.clone(),
@@ -40,7 +40,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         dir_name
                     );
                 }
-            }
         }
     } else {
         log_info_opt!("CleanupDemo", &log_opts.clone(), "No logs directory found");
@@ -80,8 +79,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if logs_path.exists() {
         for entry in std::fs::read_dir(logs_path)? {
             let entry = entry?;
-            if entry.path().is_dir() {
-                if let Some(dir_name) = entry.path().file_name().and_then(|name| name.to_str()) {
+            if entry.path().is_dir()
+                && let Some(dir_name) = entry.path().file_name().and_then(|name| name.to_str()) {
                     log_info_opt!(
                         "CleanupDemo",
                         &log_opts.clone(),
@@ -89,7 +88,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         dir_name
                     );
                 }
-            }
         }
     }
 

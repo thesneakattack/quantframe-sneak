@@ -65,37 +65,30 @@ pub async fn get_chat_pagination(
 ) -> Result<PaginatedResult<Chat>, Error> {
     let app = app.lock()?;
     let mut filtered_chats = filters_by(&app.wfm_client.chat().cache_chats().chats, |o| {
-        match &query.query {
-            FieldChange::Value(q) => {
-                let item_name = o.chat_name.to_lowercase();
-                if !item_name.contains(&q.to_lowercase()) {
-                    return false;
-                }
+        if let FieldChange::Value(q) = &query.query {
+            let item_name = o.chat_name.to_lowercase();
+            if !item_name.contains(&q.to_lowercase()) {
+                return false;
             }
-            _ => {}
         }
 
         true
     });
 
-    match &query.sort_by {
-        FieldChange::Value(sort_by) => {
-            let dir = match &query.sort_direction {
-                FieldChange::Value(dir) => dir,
-                _ => &SortDirection::Asc,
-            };
-            // Only allow sorting by known columns for safety
-            match sort_by.as_str() {
-                "last_update" => filtered_chats.sort_by(|a, b| match dir {
-                    SortDirection::Asc => a.last_update.cmp(&b.last_update),
-                    SortDirection::Desc => b.last_update.cmp(&a.last_update),
-                }),
-                // "last_update" => stmt = stmt.order_by(stock_item::Column::Bought, order),
-                // "chat_name" => stmt = stmt.order_by(stock_item::Column::Status, order),
-                _ => {}
-            }
+    if let FieldChange::Value(sort_by) = &query.sort_by {
+        let dir = match &query.sort_direction {
+            FieldChange::Value(dir) => dir,
+            _ => &SortDirection::Asc,
+        };
+        // Only allow sorting by known columns for safety
+        // Only "last_update" is currently supported; other columns are commented out
+        // upstream (stock_item::Column::Bought / ::Status) and were never wired up.
+        if sort_by.as_str() == "last_update" {
+            filtered_chats.sort_by(|a, b| match dir {
+                SortDirection::Asc => a.last_update.cmp(&b.last_update),
+                SortDirection::Desc => b.last_update.cmp(&a.last_update),
+            });
         }
-        _ => {}
     }
 
     let paginate = paginate(
@@ -250,7 +243,7 @@ pub async fn chat_send_message(
         Ok(_) => {
             info(
                 "Commands:ChatSendMessage",
-                &format!("Sent message to chat {}", id),
+                format!("Sent message to chat {}", id),
                 &LoggerOptions::default(),
             );
 
@@ -272,7 +265,7 @@ pub async fn chat_send_message(
 
             let err = Error::new(
                 "Commands:ChatSendMessage",
-                &format!("Failed to send message: {:?}", e),
+                format!("Failed to send message: {:?}", e),
                 get_location!(),
             );
             err.log("command_chat_send_message.log");

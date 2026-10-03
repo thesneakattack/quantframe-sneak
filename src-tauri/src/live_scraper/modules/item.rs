@@ -18,8 +18,7 @@ use crate::{
     utils::OrderListExt,
 };
 use crate::{
-    enums::TradeMode, live_scraper::*, send_event, types::*, utils::modules::states,
-    utils::ErrorFromExt, utils::SubTypeExt, DATABASE,
+    enums::TradeMode, live_scraper::*, send_event, types::*, utils::modules::states, utils::SubTypeExt, DATABASE,
 };
 
 static COMPONENT: &str = "LiveScraper:Item:";
@@ -73,7 +72,7 @@ impl ItemModule {
                 warning(
                     comp("Delete"),
                     "Live Scraper is not running or user is banned, stopping deletion.",
-                    &&LoggerOptions::default(),
+                    &LoggerOptions::default(),
                 );
                 break;
             }
@@ -81,8 +80,8 @@ impl ItemModule {
                 Ok(_) => {
                     info(
                         comp("Delete"),
-                        &format!("Deleted order with ID: {} {}/{}", id, current_index, total),
-                        &&LoggerOptions::default(),
+                        format!("Deleted order with ID: {} {}/{}", id, current_index, total),
+                        &LoggerOptions::default(),
                     );
                     self.send_event(
                         "deleted",
@@ -95,8 +94,8 @@ impl ItemModule {
                 }
                 Err(e) => error(
                     comp("Delete"),
-                    &format!("Failed to delete order with ID {}: {}", id, e),
-                    &&LoggerOptions::default().set_file(LOG_FILE),
+                    format!("Failed to delete order with ID {}: {}", id, e),
+                    &LoggerOptions::default().set_file(LOG_FILE),
                 ),
             }
             current_index -= 1;
@@ -110,7 +109,7 @@ impl ItemModule {
         info(
             comp("Check"),
             "Checking Item items...",
-            &&LoggerOptions::default(),
+            &LoggerOptions::default(),
         );
 
         // Get My Orders from Warframe Market.
@@ -154,16 +153,16 @@ impl ItemModule {
             .collect();
 
         // Sort by priority (highest first)
-        interesting_items.sort_by(|a, b| b.priority.cmp(&a.priority));
+        interesting_items.sort_by_key(|a| std::cmp::Reverse(a.priority));
         let total = interesting_items.len();
 
         for item_entry in interesting_items.iter_mut() {
             // Stop if client stopped running or user is banned
-            if Self::should_stop(&client, &app) {
+            if Self::should_stop(&client, app) {
                 warning(
                     comp("ProcessItem"),
                     "Live Scraper is not running or user is banned, stopping processing.",
-                    &&LoggerOptions::default(),
+                    &LoggerOptions::default(),
                 );
                 break;
             }
@@ -220,8 +219,8 @@ impl ItemModule {
             item_entry.apply_market_info(&orders);
 
             info(
-                &comp("ProcessItem"),
-                &format!(
+                comp("ProcessItem"),
+                format!(
                     "Processing Item: {} | Buy Orders: {} | Sell Orders: {} | Operations: {:?} | Progress: {}/{}",
                     item_info.name,
                     orders.buy_orders.len(),
@@ -230,7 +229,7 @@ impl ItemModule {
                     current_index,
                     total
                 ),
-                &&LoggerOptions::default(),
+                &LoggerOptions::default(),
             );
 
             if item_entry.operations.has("Buy") && !item_entry.operations.has("WishList") {
@@ -242,8 +241,8 @@ impl ItemModule {
                 }
 
                 info(
-                    &comp("ProgressBuying"),
-                    &format!(
+                    comp("ProgressBuying"),
+                    format!(
                         "Successfully processed buying for item: {}",
                         item_entry.wfm_url
                     ),
@@ -252,7 +251,7 @@ impl ItemModule {
             }
 
             // Process wishlist logic (future expansion)
-            if item_entry.operations.has(&"WishList".to_string()) {
+            if item_entry.operations.has("WishList".to_string()) {
                 if let Err(e) = self
                     .progress_wish_list(&item_info, item_entry, &item_price, &orders)
                     .await
@@ -261,8 +260,8 @@ impl ItemModule {
                 }
 
                 info(
-                    &comp("ProgressWishList"),
-                    &format!(
+                    comp("ProgressWishList"),
+                    format!(
                         "Successfully processed wishlist for item: {}",
                         item_entry.wfm_url
                     ),
@@ -280,8 +279,8 @@ impl ItemModule {
                 }
 
                 info(
-                    &comp("ProgressSelling"),
-                    &format!(
+                    comp("ProgressSelling"),
+                    format!(
                         "Successfully processed selling for item: {}",
                         item_entry.wfm_url
                     ),
@@ -299,8 +298,8 @@ impl ItemModule {
                 }
 
                 info(
-                    &comp("ProgressSyndicate"),
-                    &format!(
+                    comp("ProgressSyndicate"),
+                    format!(
                         "Successfully processed syndicate for item: {}",
                         item_entry.wfm_url
                     ),
@@ -329,13 +328,13 @@ impl ItemModule {
         let max_total_price_cap = app.settings.live_scraper.items.wtb.max_total_price_cap;
         if all_buy_orders.len() > 1 && !is_disabled(max_total_price_cap) {
             info(
-                &comp("GlobalKnapsack"),
-                &format!(
+                comp("GlobalKnapsack"),
+                format!(
                     "Running global knapsack check: {} buy orders | Cap: {}",
                     all_buy_orders.len(),
                     max_total_price_cap
                 ),
-                &&LoggerOptions::default(),
+                &LoggerOptions::default(),
             );
             let (_, unselected) = knapsack(all_buy_orders, max_total_price_cap);
             if !unselected.is_empty() {
@@ -348,8 +347,8 @@ impl ItemModule {
                     if let Err(err) = app.wfm_client.order().delete(&order.3).await {
                         error(
                             &component,
-                            &format!("Failed to delete {}: {}", order.3, err),
-                            &&LoggerOptions::default().set_file(LOG_FILE),
+                            format!("Failed to delete {}: {}", order.3, err),
+                            &LoggerOptions::default().set_file(LOG_FILE),
                         );
                     }
                 }
@@ -373,7 +372,7 @@ impl ItemModule {
         let settings = states::get_settings()?.live_scraper.items;
 
         // Helper function to log messages with the component prefix
-        let log = |msg: &str| info(&component, msg, &log_options);
+        let log = |msg: &str| info(&component, msg, log_options);
 
         // Skip if item is blacklisted for buying
         if is_blacklisted(&settings, item_info, entry, &TradeMode::Buy) {
@@ -630,7 +629,7 @@ impl ItemModule {
         let component = comp("Selling");
         let settings = states::get_settings()?.live_scraper.items;
 
-        let log = |msg: &str| info(&component, msg, &log_options);
+        let log = |msg: &str| info(&component, msg, log_options);
 
         // Skip if item is blacklisted for selling
         if is_blacklisted(&settings, item_info, entry, &TradeMode::Sell) {
@@ -652,7 +651,7 @@ impl ItemModule {
 
         // Fetch existing order details and prepare mutable state
         let (_, current_order_price, mut properties, mut trade_operations) =
-            get_order_info(&entry, OrderType::Sell, &wfm_client);
+            get_order_info(entry, OrderType::Sell, &wfm_client);
 
         // Per-item overrides stored on the stock item (optional)
         let (min_price, min_profit, min_sma, is_bulk) = (
@@ -803,7 +802,7 @@ impl ItemModule {
         post_price = post_price.max(1);
 
         // Attach trade-operation metadata to the order properties
-        populate_order_properties(&mut properties, &item_info, &entry, &trade_operations);
+        populate_order_properties(&mut properties, item_info, entry, &trade_operations);
 
         // Attach market-metrics metadata (volume, velocity, etc.)
         set_order_market_metrics(
@@ -1098,7 +1097,7 @@ impl ItemModule {
         let settings = states::get_settings()?.live_scraper.items;
         let syndicate_settings = states::get_settings()?.live_scraper.syndicate;
 
-        let log = |msg: &str| info(&component, msg, &log_options);
+        let log = |msg: &str| info(&component, msg, log_options);
 
         // Skip if item is blacklisted for syndicate selling
         if is_blacklisted(&settings, item_info, entry, &TradeMode::Syndicate) {
@@ -1133,13 +1132,13 @@ impl ItemModule {
             .get_property_value("min_price", None::<i64>);
 
         // Check if the user has sufficient standing to post this syndicate item
-        let insufficient_standing = match syndicate_settings.wts.can_afford_posting(
-            &stock_syndicate.syndicate_unique_name,
-            stock_syndicate.standing_cost,
-        ) {
-            Ok(result) => result,
-            Err(_) => false,
-        };
+        let insufficient_standing = syndicate_settings
+            .wts
+            .can_afford_posting(
+                &stock_syndicate.syndicate_unique_name,
+                stock_syndicate.standing_cost,
+            )
+            .unwrap_or_default();
 
         // Check if the item can be posted based on syndicate restrictions
         if insufficient_standing {
@@ -1233,7 +1232,7 @@ impl ItemModule {
                 stock_syndicate.status,
                 trade_operations.operations,
             ),
-            &log_options,
+            log_options,
         );
 
         // If the item is not hidden and not locked, set its status to Live.
@@ -1247,7 +1246,7 @@ impl ItemModule {
             OrderType::Sell,
             post_price as u32,
             per_trade,
-            &log_options,
+            log_options,
             &mut properties,
             &trade_operations,
         )
@@ -1290,5 +1289,5 @@ impl ItemModule {
     }
 }
 fn comp(suffix: &str) -> String {
-    return format!("{}{}", COMPONENT, suffix);
+    format!("{}{}", COMPONENT, suffix)
 }

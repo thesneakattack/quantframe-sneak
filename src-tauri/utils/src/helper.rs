@@ -1,4 +1,4 @@
-use std::{fs::File, io, path::PathBuf};
+use std::path::PathBuf;
 
 use serde_json::{Map, Value, json};
 use uuid::Uuid;
@@ -84,12 +84,12 @@ pub fn read_json_file<T: serde::de::DeserializeOwned>(path: &PathBuf) -> Result<
         ));
     }
 
-    let content = match std::fs::read_to_string(&path) {
+    let content = match std::fs::read_to_string(path) {
         Ok(content) => content,
         Err(e) => {
             return Err(Error::from_io(
                 "Helper:ReadJsonFile",
-                &path,
+                path,
                 "Failed to read JSON file",
                 e,
                 get_location!(),
@@ -101,7 +101,7 @@ pub fn read_json_file<T: serde::de::DeserializeOwned>(path: &PathBuf) -> Result<
         Ok(data) => Ok(data),
         Err(e) => Err(Error::from_json(
             "Helper:ReadJsonFile",
-            &path,
+            path,
             &content,
             "Failed to parse JSON file",
             e,

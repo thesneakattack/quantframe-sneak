@@ -163,8 +163,8 @@ impl Model {
             id: self.id,
             list_price: self
                 .list_price
-                .map_or(FieldChange::Null, |v| FieldChange::Value(v)),
-            status: FieldChange::Value(self.status.clone()),
+                .map_or(FieldChange::Null, FieldChange::Value),
+            status: FieldChange::Value(self.status),
             price_history: FieldChange::Value(self.price_history.0.clone()),
             sub_type: FieldChange::Value(self.sub_type.clone()),
             syndicate_name: FieldChange::Value(self.syndicate_name.clone()),

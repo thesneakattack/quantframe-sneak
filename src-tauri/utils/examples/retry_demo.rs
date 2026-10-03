@@ -50,7 +50,7 @@ fn main() {
         || {
             let attempt = counter3.fetch_add(1, Ordering::SeqCst) + 1;
             println!("  -> Attempt {}", attempt);
-            return Err(format!("Permanent failure on attempt {}", attempt));
+            Err(format!("Permanent failure on attempt {}", attempt))
         },
         &RetryConfig::new(2, 100, BackoffStrategy::Fixed),
     );

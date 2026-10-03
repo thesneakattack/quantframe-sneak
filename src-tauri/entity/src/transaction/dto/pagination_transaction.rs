@@ -57,107 +57,74 @@ impl TransactionPaginationQueryDto {
     pub fn get_query(&self) -> Select<Entity> {
         use FieldChange::*;
         let mut stmt = Entity::find();
-        match &self.query {
-            Value(q) => {
-                stmt = stmt.filter(
-                    Condition::any()
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(transaction::Column::WfmUrl)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(transaction::Column::ItemName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(transaction::Column::UserName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        ),
-                )
-            }
-            _ => {}
+        if let Value(q) = &self.query {
+            stmt = stmt.filter(
+                Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(transaction::Column::WfmUrl)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(transaction::Column::ItemName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(transaction::Column::UserName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    ),
+            )
         }
-        match &self.transaction_type {
-            Value(q) => stmt = stmt.filter(transaction::Column::TransactionType.eq(q.to_string())),
-            _ => {}
+        if let Value(q) = &self.transaction_type { stmt = stmt.filter(transaction::Column::TransactionType.eq(q.to_string())) }
+        if let Value(q) = &self.item_type { stmt = stmt.filter(transaction::Column::ItemType.eq(q.to_string())) }
+        if let Value(from_date) = &self.from_date { stmt = stmt.filter(transaction::Column::CreatedAt.gte(*from_date)) }
+        if let Value(to_date) = &self.to_date { stmt = stmt.filter(transaction::Column::CreatedAt.lte(*to_date)) }
+        if let Value(wfm_id) = &self.wfm_id { stmt = stmt.filter(transaction::Column::WfmId.eq(wfm_id)) }
+        if let Value(wfm_url) = &self.wfm_url { stmt = stmt.filter(transaction::Column::WfmUrl.eq(wfm_url)) }
+        if let Value(unique_name) = &self.unique_name {
+            stmt = stmt.filter(transaction::Column::ItemUniqueName.eq(unique_name))
         }
-        match &self.item_type {
-            Value(q) => stmt = stmt.filter(transaction::Column::ItemType.eq(q.to_string())),
-            _ => {}
+        if let Value(sub_type) = &self.sub_type {
+            stmt = stmt.filter(transaction::Column::SubType.eq(sub_type.clone()))
         }
-        match &self.from_date {
-            Value(from_date) => stmt = stmt.filter(transaction::Column::CreatedAt.gte(*from_date)),
-            _ => {}
-        }
-        match &self.to_date {
-            Value(to_date) => stmt = stmt.filter(transaction::Column::CreatedAt.lte(*to_date)),
-            _ => {}
-        }
-        match &self.wfm_id {
-            Value(wfm_id) => stmt = stmt.filter(transaction::Column::WfmId.eq(wfm_id)),
-            _ => {}
-        }
-        match &self.wfm_url {
-            Value(wfm_url) => stmt = stmt.filter(transaction::Column::WfmUrl.eq(wfm_url)),
-            _ => {}
-        }
-        match &self.unique_name {
-            Value(unique_name) => {
-                stmt = stmt.filter(transaction::Column::ItemUniqueName.eq(unique_name))
-            }
-            _ => {}
-        }
-        match &self.sub_type {
-            Value(sub_type) => {
-                stmt = stmt.filter(transaction::Column::SubType.eq(sub_type.clone()))
-            }
-            _ => {}
-        }
-        match &self.tags {
-            Value(tags) => {
-                if !tags.is_empty() {
-                    // Create a condition that matches any of the provided tags
-                    let mut tag_condition = Condition::any();
-                    for tag in tags {
-                        if !tag.trim().is_empty() {
-                            tag_condition = tag_condition.add(
-                                Expr::col(transaction::Column::Tags)
-                                    .like(format!("%{}%", tag.trim())),
-                            );
-                        }
+        if let Value(tags) = &self.tags {
+            if !tags.is_empty() {
+                // Create a condition that matches any of the provided tags
+                let mut tag_condition = Condition::any();
+                for tag in tags {
+                    if !tag.trim().is_empty() {
+                        tag_condition = tag_condition.add(
+                            Expr::col(transaction::Column::Tags)
+                                .like(format!("%{}%", tag.trim())),
+                        );
                     }
-                    stmt = stmt.filter(tag_condition);
                 }
+                stmt = stmt.filter(tag_condition);
             }
-            _ => {}
         }
-        match &self.sort_by {
-            Value(sort_by) => {
-                let dir = match &self.sort_direction {
-                    Value(dir) => dir,
-                    _ => &SortDirection::Asc,
-                };
-                let order = match dir {
-                    SortDirection::Asc => Order::Asc,
-                    SortDirection::Desc => Order::Desc,
-                };
-                // Only allow sorting by known columns for safety
-                match sort_by.as_str() {
-                    "wfm_url" => stmt = stmt.order_by(transaction::Column::WfmUrl, order),
-                    "price" => stmt = stmt.order_by(transaction::Column::Price, order),
-                    "transaction_type" => {
-                        stmt = stmt.order_by(transaction::Column::TransactionType, order)
-                    }
-                    "item_type" => stmt = stmt.order_by(transaction::Column::ItemType, order),
-                    "created_at" => stmt = stmt.order_by(transaction::Column::CreatedAt, order),
-                    "item_name" => stmt = stmt.order_by(transaction::Column::ItemName, order),
-                    "user_name" => stmt = stmt.order_by(transaction::Column::UserName, order),
-                    "profit" => stmt = stmt.order_by(transaction::Column::Profit, order),
-                    "credits" => stmt = stmt.order_by(transaction::Column::Credits, order),
-                    _ => {}
+        if let Value(sort_by) = &self.sort_by {
+            let dir = match &self.sort_direction {
+                Value(dir) => dir,
+                _ => &SortDirection::Asc,
+            };
+            let order = match dir {
+                SortDirection::Asc => Order::Asc,
+                SortDirection::Desc => Order::Desc,
+            };
+            // Only allow sorting by known columns for safety
+            match sort_by.as_str() {
+                "wfm_url" => stmt = stmt.order_by(transaction::Column::WfmUrl, order),
+                "price" => stmt = stmt.order_by(transaction::Column::Price, order),
+                "transaction_type" => {
+                    stmt = stmt.order_by(transaction::Column::TransactionType, order)
                 }
+                "item_type" => stmt = stmt.order_by(transaction::Column::ItemType, order),
+                "created_at" => stmt = stmt.order_by(transaction::Column::CreatedAt, order),
+                "item_name" => stmt = stmt.order_by(transaction::Column::ItemName, order),
+                "user_name" => stmt = stmt.order_by(transaction::Column::UserName, order),
+                "profit" => stmt = stmt.order_by(transaction::Column::Profit, order),
+                "credits" => stmt = stmt.order_by(transaction::Column::Credits, order),
+                _ => {}
             }
-            _ => {}
         }
         stmt
     }

@@ -35,51 +35,42 @@ impl StockItemPaginationQueryDto {
     pub fn get_query(&self) -> Select<stock_item::Entity> {
         use FieldChange::*;
         let mut stmt = stock_item::Entity::find();
-        match &self.query {
-            Value(q) => {
-                stmt = stmt.filter(
-                    Condition::any()
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(stock_item::Column::WfmUrl)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(stock_item::Column::ItemName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(stock_item::Column::ItemUniqueName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        ),
-                )
-            }
-            _ => {}
+        if let Value(q) = &self.query {
+            stmt = stmt.filter(
+                Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(stock_item::Column::WfmUrl)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(stock_item::Column::ItemName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(stock_item::Column::ItemUniqueName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    ),
+            )
         }
-        match self.status {
-            Value(ref q) => stmt = stmt.filter(stock_item::Column::Status.eq(q)),
-            _ => {}
-        }
-        match &self.sort_by {
-            Value(sort_by) => {
-                let dir = match &self.sort_direction {
-                    Value(dir) => dir,
-                    _ => &SortDirection::Asc,
-                };
-                let order = match dir {
-                    SortDirection::Asc => Order::Asc,
-                    SortDirection::Desc => Order::Desc,
-                };
-                // Only allow sorting by known columns for safety
-                match sort_by.as_str() {
-                    "item_name" => stmt = stmt.order_by(stock_item::Column::ItemName, order),
-                    "bought" => stmt = stmt.order_by(stock_item::Column::Bought, order),
-                    "status" => stmt = stmt.order_by(stock_item::Column::Status, order),
-                    "list_price" => stmt = stmt.order_by(stock_item::Column::ListPrice, order),
-                    "owned" => stmt = stmt.order_by(stock_item::Column::Owned, order),
-                    _ => {}
-                }
+        if let Value(ref q) = self.status { stmt = stmt.filter(stock_item::Column::Status.eq(q)) }
+        if let Value(sort_by) = &self.sort_by {
+            let dir = match &self.sort_direction {
+                Value(dir) => dir,
+                _ => &SortDirection::Asc,
+            };
+            let order = match dir {
+                SortDirection::Asc => Order::Asc,
+                SortDirection::Desc => Order::Desc,
+            };
+            // Only allow sorting by known columns for safety
+            match sort_by.as_str() {
+                "item_name" => stmt = stmt.order_by(stock_item::Column::ItemName, order),
+                "bought" => stmt = stmt.order_by(stock_item::Column::Bought, order),
+                "status" => stmt = stmt.order_by(stock_item::Column::Status, order),
+                "list_price" => stmt = stmt.order_by(stock_item::Column::ListPrice, order),
+                "owned" => stmt = stmt.order_by(stock_item::Column::Owned, order),
+                _ => {}
             }
-            _ => {}
         }
         stmt
     }

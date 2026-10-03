@@ -26,7 +26,7 @@ impl ArchMeleeModule {
                 let mut lookup = self.lookup.lock().unwrap();
                 *lookup = MultiKeyMap::new();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let keys = vec![item.base.name.clone(), item.base.unique_name.clone()];
                     lookup.insert_value(item.clone(), keys);
                 }

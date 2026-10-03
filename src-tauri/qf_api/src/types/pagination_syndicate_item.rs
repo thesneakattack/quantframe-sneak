@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 use crate::enums::*;
 use crate::types::*;
@@ -52,49 +51,19 @@ impl SyndicateItemPricePaginationQueryDto {
         let mut query: Vec<String> = Vec::new();
         query.push(format!("page={}", self.pagination.page));
         query.push(format!("limit={}", self.pagination.limit));
-        match &self.query {
-            Value(q) => query.push(format!("query={}", q)),
-            _ => {}
-        }
-        match &self.sort_by {
-            Value(s) => query.push(format!("sort_by={}", s)),
-            _ => {}
-        }
-        match &self.sort_direction {
-            Value(d) => query.push(format!("sort_direction={}", d.to_string())),
-            _ => {}
-        }
-        match &self.volume_gt {
-            Value(v) => query.push(format!("volumeGt={}", v)),
-            _ => {}
-        }
-        match &self.volume_lt {
-            Value(v) => query.push(format!("volumeLt={}", v)),
-            _ => {}
-        }
-        match &self.min_price_gt {
-            Value(v) => query.push(format!("minPriceGt={}", v)),
-            _ => {}
-        }
-        match &self.min_price_lt {
-            Value(v) => query.push(format!("minPriceLt={}", v)),
-            _ => {}
-        }
-        match &self.standing_cost_gt {
-            Value(v) => query.push(format!("standingCostGt={}", v)),
-            _ => {}
-        }
-        match &self.standing_cost_lt {
-            Value(v) => query.push(format!("standingCostLt={}", v)),
-            _ => {}
-        }
-        match &self.syndicates {
-            Value(s) => {
-                for syndicate in s {
-                    query.push(format!("syndicates={}", syndicate));
-                }
+        if let Value(q) = &self.query { query.push(format!("query={}", q)) }
+        if let Value(s) = &self.sort_by { query.push(format!("sort_by={}", s)) }
+        if let Value(d) = &self.sort_direction { query.push(format!("sort_direction={}", d.to_string())) }
+        if let Value(v) = &self.volume_gt { query.push(format!("volumeGt={}", v)) }
+        if let Value(v) = &self.volume_lt { query.push(format!("volumeLt={}", v)) }
+        if let Value(v) = &self.min_price_gt { query.push(format!("minPriceGt={}", v)) }
+        if let Value(v) = &self.min_price_lt { query.push(format!("minPriceLt={}", v)) }
+        if let Value(v) = &self.standing_cost_gt { query.push(format!("standingCostGt={}", v)) }
+        if let Value(v) = &self.standing_cost_lt { query.push(format!("standingCostLt={}", v)) }
+        if let Value(s) = &self.syndicates {
+            for syndicate in s {
+                query.push(format!("syndicates={}", syndicate));
             }
-            _ => {}
         }
         query.join("&")
     }

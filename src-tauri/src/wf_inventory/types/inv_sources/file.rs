@@ -96,7 +96,7 @@ impl InventorySource for WFInvFileSource {
 
                 match fs::metadata(&path).and_then(|m| m.modified()) {
                     Ok(modified) => {
-                        if last_modified.map_or(true, |last| modified > last) {
+                        if last_modified.is_none_or(|last| modified > last) {
                             last_modified = Some(modified);
                             if let Err(e) = source.update(&root) {
                                 e.log("WFInventoryState.log").with_location(get_location!());

@@ -4,7 +4,6 @@ use entity::{dto::PaginatedResult, enums::FieldChange};
 use utils::*;
 
 use crate::{
-    cache::CacheSyndicateTitle,
     helper::paginate,
     utils::modules::states,
     wf_inventory::{item_base::WFInvItemBase, *},
@@ -30,19 +29,15 @@ impl SyndicateModule {
             .map(|affiliation| WFInvItemBase::from_affiliation(affiliation, &cache))
             .collect::<Result<Vec<_>, _>>()?;
 
-        match query.properties {
-            FieldChange::Value(properties) => {
-                let can_select = properties.get_property_value::<Option<bool>>("can_select", None);
-                if can_select.is_some() {
-                    let can_select = can_select.unwrap();
-                    items.retain(|item| {
-                        item.properties
-                            .get_property_value::<bool>("can_select", false)
-                            == can_select
-                    });
-                }
+        if let FieldChange::Value(properties) = query.properties {
+            let can_select = properties.get_property_value::<Option<bool>>("can_select", None);
+            if let Some(can_select) = can_select {
+                items.retain(|item| {
+                    item.properties
+                        .get_property_value::<bool>("can_select", false)
+                        == can_select
+                });
             }
-            _ => {}
         }
         let paginate = paginate(&items, query.pagination.page, query.pagination.limit);
         Ok(paginate)

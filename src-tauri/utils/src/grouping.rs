@@ -41,7 +41,7 @@ pub fn fill_missing_date_keys<T>(
 
     while cursor <= end.naive_utc() {
         let key = generate_date_key(cursor, group_by);
-        grouped.entry(key).or_insert_with(Vec::new);
+        grouped.entry(key).or_default();
 
         // Determine step size based on most granular group level
         cursor = match group_by.iter().max() {
@@ -50,7 +50,8 @@ pub fn fill_missing_date_keys<T>(
             Some(GroupByDate::Month) => {
                 let year = cursor.year();
                 let month = cursor.month();
-                let next_month = if month == 12 {
+                
+                if month == 12 {
                     NaiveDateTime::new(
                         chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1).unwrap(),
                         chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
@@ -60,15 +61,14 @@ pub fn fill_missing_date_keys<T>(
                         chrono::NaiveDate::from_ymd_opt(year, month + 1, 1).unwrap(),
                         chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
                     )
-                };
-                next_month
+                }
             }
             Some(GroupByDate::Year) => {
-                let next_year = NaiveDateTime::new(
+                
+                NaiveDateTime::new(
                     chrono::NaiveDate::from_ymd_opt(cursor.year() + 1, 1, 1).unwrap(),
                     chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
-                );
-                next_year
+                )
             }
             None => break,
         };

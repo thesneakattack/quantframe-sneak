@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    ops::Mul,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -77,7 +76,7 @@ impl LanguageModule {
                 languages_lock.insert(lang.clone(), multi_key_map.clone());
                 Ok(multi_key_map)
             }
-            Err(e) => return Err(e.with_location(get_location!())),
+            Err(e) => Err(e.with_location(get_location!())),
         }
     }
 

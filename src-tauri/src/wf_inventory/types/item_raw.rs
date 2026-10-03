@@ -31,21 +31,27 @@ impl WFInvItemRaw {
         {
             return false;
         }
-        if !self.get_upgrade_fingerprint().is_riven_unveiled() && self.id.id.is_some() {
-            return true;
-        } else if self.id.id.is_none() {
-            return true;
-        } else if self.get_upgrade_fingerprint().is_riven_unveiled() {
-            return true;
-        }
-        false
+        // NOTE: the branch chain that used to live here was unconditionally true.
+        // It tested (!unveiled && id.is_some()), then (id.is_none()), then (unveiled),
+        // which between them cover all four combinations of those two booleans, so
+        // every path returned true and the trailing `false` was unreachable. Removing
+        // it is behaviour-preserving, but the dead branches suggest one of them was
+        // meant to return false - if is_riven() should be stricter than the prefix
+        // check alone, that intent was never actually implemented.
+        true
     }
+    // Unused today but part of this type's intended surface; kept rather than
+    // deleted so the capability is not silently lost.
+    #[allow(dead_code)]
     pub fn is_arcane(&self) -> bool {
         !self.unique_name.contains("/CosmeticEnhancers/Peculiars/")
             && self
                 .unique_name
                 .contains("/Lotus/Upgrades/CosmeticEnhancers")
     }
+    // Unused today but part of this type's intended surface; kept rather than
+    // deleted so the capability is not silently lost.
+    #[allow(dead_code)]
     pub fn is_mod(&self) -> bool {
         !self.unique_name.contains("/Beginner/")
             && (self.unique_name.contains("/CosmeticEnhancers/Peculiars/")

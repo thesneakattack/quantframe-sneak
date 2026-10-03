@@ -19,9 +19,9 @@ pub async fn get_transaction_pagination(
 ) -> Result<PaginatedResult<transaction::Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match TransactionQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
@@ -31,7 +31,7 @@ pub async fn get_transaction_financial_report(
     let items = get_transaction_pagination(query.clone()).await?.results;
 
     let mut trading_partners = group_by(&items, |item| {
-        if item.user_name == "" {
+        if item.user_name.is_empty() {
             "Unknown".to_string()
         } else {
             item.user_name.clone()
@@ -47,7 +47,7 @@ pub async fn get_transaction_financial_report(
             }))
         })
         .collect::<Vec<FinancialReport>>();
-    trading_partners.sort_by(|a, b| b.total_transactions.cmp(&a.total_transactions));
+    trading_partners.sort_by_key(|a| std::cmp::Reverse(a.total_transactions));
 
     let mut report = FinancialReport::from(&items);
     report.properties.set_property_value(
@@ -166,7 +166,7 @@ pub async fn transaction_update(input: UpdateTransaction) -> Result<transaction:
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -251,7 +251,7 @@ pub async fn export_transaction_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -261,7 +261,7 @@ pub async fn export_transaction_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

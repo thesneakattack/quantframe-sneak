@@ -49,7 +49,7 @@ impl CacheRivenRoll {
     }
     pub fn get_graded_riven(
         &self,
-        grades: &Vec<(bool, RivenAttributeGrade, String)>,
+        grades: &[(bool, RivenAttributeGrade, String)],
     ) -> RivenGrade {
         let buffs_tags: HashSet<String> = grades
             .iter()
@@ -137,9 +137,9 @@ impl CacheRivenRoll {
         }
 
         if useful_positive_count >= 1 {
-            return RivenGrade::HasPotential;
+            RivenGrade::HasPotential
         } else {
-            return RivenGrade::Bad;
+            RivenGrade::Bad
         }
     }
 
@@ -172,19 +172,10 @@ impl CacheRivenRoll {
 
         // Good rolls
         for roll in self.good_rolls.iter() {
-            let mut roll_summary = RollCriteria::default();
-
-            roll_summary.required = roll
-                .required
-                .iter()
-                .map(|r| resolve_attr(r, true))
-                .collect();
-
-            roll_summary.optional = roll
-                .optional
-                .iter()
-                .map(|o| resolve_attr(o, true))
-                .collect();
+            let roll_summary = RollCriteria {
+                required: roll.required.iter().map(|r| resolve_attr(r, true)).collect(),
+                optional: roll.optional.iter().map(|o| resolve_attr(o, true)).collect(),
+            };
 
             summary.add_valid_roll(roll_summary);
         }

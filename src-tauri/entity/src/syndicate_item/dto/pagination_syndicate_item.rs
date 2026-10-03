@@ -36,61 +36,49 @@ impl SyndicateItemPaginationQueryDto {
     pub fn get_query(&self) -> Select<syndicate_item::Entity> {
         use FieldChange::*;
         let mut stmt = syndicate_item::Entity::find();
-        match &self.query {
-            Value(q) => {
-                stmt = stmt.filter(
-                    Condition::any()
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(syndicate_item::Column::WfmUrl)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(syndicate_item::Column::ItemName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(
-                                syndicate_item::Column::ItemUniqueName,
-                            )))
-                            .like(&format!("%{}%", q.to_lowercase())),
-                        ),
-                )
-            }
-            _ => {}
+        if let Value(q) = &self.query {
+            stmt = stmt.filter(
+                Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(syndicate_item::Column::WfmUrl)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(syndicate_item::Column::ItemName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(
+                            syndicate_item::Column::ItemUniqueName,
+                        )))
+                        .like(format!("%{}%", q.to_lowercase())),
+                    ),
+            )
         }
-        match self.status {
-            Value(ref q) => stmt = stmt.filter(syndicate_item::Column::Status.eq(q)),
-            _ => {}
-        }
-        match self.syndicate {
-            Value(ref q) => stmt = stmt.filter(syndicate_item::Column::SyndicateName.eq(q)),
-            _ => {}
-        }
-        match &self.sort_by {
-            Value(sort_by) => {
-                let dir = match &self.sort_direction {
-                    Value(dir) => dir,
-                    _ => &SortDirection::Asc,
-                };
-                let order = match dir {
-                    SortDirection::Asc => Order::Asc,
-                    SortDirection::Desc => Order::Desc,
-                };
-                // Only allow sorting by known columns for safety
-                match sort_by.as_str() {
-                    "item_name" => stmt = stmt.order_by(syndicate_item::Column::ItemName, order),
-                    "status" => stmt = stmt.order_by(syndicate_item::Column::Status, order),
-                    "list_price" => stmt = stmt.order_by(syndicate_item::Column::ListPrice, order),
-                    "syndicate_name" => {
-                        stmt = stmt.order_by(syndicate_item::Column::SyndicateName, order)
-                    }
-                    "standing_cost" => {
-                        stmt = stmt.order_by(syndicate_item::Column::StandingCost, order)
-                    }
-                    _ => {}
+        if let Value(ref q) = self.status { stmt = stmt.filter(syndicate_item::Column::Status.eq(q)) }
+        if let Value(ref q) = self.syndicate { stmt = stmt.filter(syndicate_item::Column::SyndicateName.eq(q)) }
+        if let Value(sort_by) = &self.sort_by {
+            let dir = match &self.sort_direction {
+                Value(dir) => dir,
+                _ => &SortDirection::Asc,
+            };
+            let order = match dir {
+                SortDirection::Asc => Order::Asc,
+                SortDirection::Desc => Order::Desc,
+            };
+            // Only allow sorting by known columns for safety
+            match sort_by.as_str() {
+                "item_name" => stmt = stmt.order_by(syndicate_item::Column::ItemName, order),
+                "status" => stmt = stmt.order_by(syndicate_item::Column::Status, order),
+                "list_price" => stmt = stmt.order_by(syndicate_item::Column::ListPrice, order),
+                "syndicate_name" => {
+                    stmt = stmt.order_by(syndicate_item::Column::SyndicateName, order)
                 }
+                "standing_cost" => {
+                    stmt = stmt.order_by(syndicate_item::Column::StandingCost, order)
+                }
+                _ => {}
             }
-            _ => {}
         }
         stmt
     }

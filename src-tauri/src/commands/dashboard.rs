@@ -44,7 +44,7 @@ pub async fn get_total_summary(transactions: &Vec<transaction::Model>) -> Result
     Ok(payload)
 }
 
-pub async fn get_today_summary(transactions: &Vec<transaction::Model>) -> Result<Value, Error> {
+pub async fn get_today_summary(transactions: &[transaction::Model]) -> Result<Value, Error> {
     let (report, graph) = generate_transaction_summary(
         transactions,
         Utc::now(),
@@ -58,7 +58,7 @@ pub async fn get_today_summary(transactions: &Vec<transaction::Model>) -> Result
     }))
 }
 pub async fn get_best_selling_items(
-    transactions: &Vec<transaction::Model>,
+    transactions: &[transaction::Model],
 ) -> Result<FinancialReport, Error> {
     let mut reports = Vec::new();
 
@@ -77,7 +77,7 @@ pub async fn get_best_selling_items(
         }
     }
 
-    reports.sort_by(|a, b| b.total_profit.cmp(&a.total_profit));
+    reports.sort_by_key(|a| std::cmp::Reverse(a.total_profit));
 
     let best_seller = reports.into_iter().next().unwrap_or_else(|| {
         FinancialReport::default().with_properties(json!({
@@ -90,11 +90,11 @@ pub async fn get_best_selling_items(
     Ok(best_seller)
 }
 pub async fn get_recent_days_summary(
-    transactions: &Vec<transaction::Model>,
+    transactions: &[transaction::Model],
     days: i64,
 ) -> Result<Value, Error> {
     let (mut start, end) = get_start_end_of(Utc::now(), GroupByDate::Day);
-    start = start - chrono::Duration::days(days); // Include the end date
+    start -= chrono::Duration::days(days); // Include the end date
 
     let transactions = filters_by(transactions, |t| {
         t.created_at >= start && t.created_at <= end
@@ -123,7 +123,7 @@ pub async fn get_recent_days_summary(
     }))
 }
 pub async fn get_category_summary(
-    transactions: &Vec<transaction::Model>,
+    transactions: &[transaction::Model],
     categories: &Vec<SummaryCategorySetting>,
 ) -> Result<Vec<FinancialReport>, Error> {
     let mut items = vec![];
@@ -153,7 +153,7 @@ pub async fn get_category_summary(
 pub async fn dashboard_summary(app: tauri::State<'_, Mutex<AppState>>) -> Result<Value, Error> {
     let conn = DATABASE.get().unwrap();
     let transactions = TransactionQuery::get_all(
-        &conn,
+        conn,
         TransactionPaginationQueryDto::new(1, -1)
             .set_sort_by("created_at".to_string())
             .set_sort_direction(SortDirection::Desc),

@@ -44,7 +44,7 @@ impl AlecaframeRoute {
             .await
         {
             Ok((ApiResponse::Json(decrypt_keys), _, _)) => Ok(decrypt_keys),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

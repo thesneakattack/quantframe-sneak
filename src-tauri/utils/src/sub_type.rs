@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+#[derive(Default)]
 pub struct SubType {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "rank", alias = "Rank")]
@@ -22,17 +23,6 @@ pub struct SubType {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "cyan_stars", alias = "cyanStars")]
     pub cyan_stars: Option<i64>,
-}
-impl Default for SubType {
-    fn default() -> Self {
-        Self {
-            rank: None,
-            variant: None,
-            charges: None,
-            amber_stars: None,
-            cyan_stars: None,
-        }
-    }
 }
 
 impl SubType {

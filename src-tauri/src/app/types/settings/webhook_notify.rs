@@ -42,14 +42,14 @@ impl WebHookNotify {
                 Ok(_) => {
                     info(
                         "Helper",
-                        &format!("Message sent to webhook: {}", url),
+                        format!("Message sent to webhook: {}", url),
                         &LoggerOptions::default(),
                     );
                 }
                 Err(e) => {
                     let err = Error::new(
                         "WebhookNotificationError",
-                        &format!("{:?}", e),
+                        format!("{:?}", e),
                         get_location!(),
                     );
                     err.log("webhook_notification.log");

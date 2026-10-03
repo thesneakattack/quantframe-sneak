@@ -105,13 +105,13 @@ impl Client {
                     app_id: self.app_id.clone(),
                     platform: self.platform.clone(),
                     device: self.device.clone(),
-                    is_development: self.is_development.clone(),
+                    is_development: self.is_development,
                     app: self.app.clone(),
                     version: self.version.clone(),
                     wfm_platform: self.wfm_platform.clone(),
                     wfm_username: self.wfm_username.clone(),
                     wfm_id: self.wfm_id.clone(),
-                    is_pre_release: self.is_pre_release.clone(),
+                    is_pre_release: self.is_pre_release,
                     user_agent: self.user_agent.clone(),
                     limiter: self.limiter.clone(),
                     callbacks: self.callbacks.clone(),
@@ -168,7 +168,7 @@ impl Client {
             app_id: app_id.to_string(),
             platform: platform.to_string(),
             device: device.to_string(),
-            is_development: is_development,
+            is_development,
             app: app.to_string(),
             version: version.to_string(),
             wfm_platform: wfm_platform.to_string(),
@@ -244,7 +244,7 @@ impl Client {
         default_headers.insert("User-Agent", self.user_agent.parse().unwrap());
 
         // If the client is authenticated, add the token to the headers
-        if self.token != "" {
+        if !self.token.is_empty() {
             default_headers.insert(
                 reqwest::header::AUTHORIZATION,
                 format!("JWT {}", self.token).parse().unwrap(),
@@ -384,10 +384,10 @@ impl Client {
                         match resp.bytes().await {
                             Ok(bytes) => Ok((ApiResponse::Bytes(bytes.to_vec()), headers, error)),
                             Err(e) => {
-                                return Err(ApiError::Unknown(format!(
+                                Err(ApiError::Unknown(format!(
                                     "Failed to read bytes: {}",
                                     e
-                                )));
+                                )))
                             }
                         }
                     }
@@ -584,13 +584,12 @@ impl Client {
      * * `data` - JSON value containing event data to pass to callbacks.
      */
     pub fn emit(&self, event: &str, data: &Value) {
-        if let Ok(callbacks) = self.callbacks.lock() {
-            if let Some(event_callbacks) = callbacks.get(event) {
+        if let Ok(callbacks) = self.callbacks.lock()
+            && let Some(event_callbacks) = callbacks.get(event) {
                 for callback in event_callbacks {
                     callback(event, data);
                 }
             }
-        }
     }
 
     /**

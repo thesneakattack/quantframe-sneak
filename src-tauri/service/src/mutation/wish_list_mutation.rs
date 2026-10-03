@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{ErrorFromExt, WishListQuery};
-use ::entity::{dto::*, wish_list::*};
+use ::entity::wish_list::*;
 use sea_orm::*;
 use utils::*;
 
@@ -66,10 +66,10 @@ impl WishListMutation {
         .await
         {
             Ok(up_item) => {
-                return Ok(("Updated".to_string(), up_item));
+                Ok(("Updated".to_string(), up_item))
             }
             Err(e) => {
-                return Err(e);
+                Err(e)
             }
         }
     }
@@ -115,14 +115,14 @@ impl WishListMutation {
 
         // Update the item
         let mut item = item.unwrap();
-        item.quantity = item.quantity - quantity;
+        item.quantity -= quantity;
         if item.quantity <= 0 {
             match WishListMutation::delete_by_id(db, id).await {
                 Ok(_) => {
-                    return Ok(("Deleted".to_string(), Some(item)));
+                    Ok(("Deleted".to_string(), Some(item)))
                 }
                 Err(e) => {
-                    return Err(e);
+                    Err(e)
                 }
             }
         } else {
@@ -133,10 +133,10 @@ impl WishListMutation {
             .await
             {
                 Ok(_) => {
-                    return Ok(("Updated".to_string(), Some(item)));
+                    Ok(("Updated".to_string(), Some(item)))
                 }
                 Err(e) => {
-                    return Err(e);
+                    Err(e)
                 }
             }
         }

@@ -6,7 +6,6 @@ use utils::SubType;
 
 use crate::syndicate_item::*;
 
-use crate::dto::*;
 use crate::enums::*;
 use crate::transaction::Model as TransactionModel;
 
@@ -84,7 +83,8 @@ impl CreateSyndicateItem {
     }
 
     pub fn to_model(&self) -> Model {
-        let model = Model::new(
+        
+        Model::new(
             self.wfm_id.clone(),
             self.wfm_url.clone(),
             self.item_name.clone(),
@@ -94,8 +94,7 @@ impl CreateSyndicateItem {
             self.syndicate_unique_name.clone(),
             self.standing_cost,
             self.properties.clone(),
-        );
-        model
+        )
     }
     pub fn to_transaction(
         &self,

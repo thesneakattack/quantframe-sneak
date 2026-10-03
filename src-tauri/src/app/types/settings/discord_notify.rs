@@ -44,7 +44,7 @@ impl DiscordNotify {
         }
         let mut content = self.content.clone();
         for (k, v) in variables.iter() {
-            content = content.replace(&format!("{}", k), v);
+            content = content.replace(&k.to_string(), v);
         }
         let webhook = self.webhook.clone();
         let tauri_app = APP.get().expect("App handle not found");
@@ -81,7 +81,7 @@ impl DiscordNotify {
                 Err(e) => {
                     let err = Error::new(
                         "DiscordNotificationError",
-                        &format!("{:?}", e),
+                        format!("{:?}", e),
                         get_location!(),
                     );
                     err.log("discord_notification.log");

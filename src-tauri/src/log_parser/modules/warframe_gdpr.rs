@@ -32,7 +32,7 @@ impl WarframeGDPRModule {
         enable_logging(false);
         let cache = states::cache_client()?;
         // Read the file content
-        let content = std::fs::read_to_string(&file_path)?;
+        let content = std::fs::read_to_string(file_path)?;
         let lines: Vec<String> = content.lines().map(|l| l.trim().to_string()).collect();
         info(
             format!("{}:Load", COMPONENT),
@@ -95,7 +95,7 @@ impl WarframeGDPRModule {
                 continue;
             }
 
-            if let Some(_) = trades_re.captures(&line) {
+            if trades_re.captures(&line).is_some() {
                 section = Some("trades");
                 if let Some(acc) = current_account.as_mut() {
                     acc.trades.clear();
@@ -103,7 +103,7 @@ impl WarframeGDPRModule {
                 continue;
             }
 
-            if let Some(_) = logins_re.captures(&line) {
+            if logins_re.captures(&line).is_some() {
                 if previous_line.eq("Stats") {
                     continue;
                 }
@@ -114,7 +114,7 @@ impl WarframeGDPRModule {
                 continue;
             }
 
-            if let Some(_) = purchases_re.captures(&line) {
+            if purchases_re.captures(&line).is_some() {
                 section = Some("purchases");
                 if let Some(acc) = current_account.as_mut() {
                     acc.purchases.clear();
@@ -122,7 +122,7 @@ impl WarframeGDPRModule {
                 continue;
             }
 
-            if let Some(_) = transactions_re.captures(&line) {
+            if transactions_re.captures(&line).is_some() {
                 section = Some("transactions");
                 if let Some(acc) = current_account.as_mut() {
                     acc.transactions.clear();
@@ -341,7 +341,7 @@ impl WarframeGDPRModule {
 
                 /* ---------- Create + Validate Item ---------- */
 
-                let (_, mut item) = TradeItem::from_string(&raw, "", &detection, &[]);
+                let (_, mut item) = TradeItem::from_string(&raw, "", detection, &[]);
 
                 if item.item_type == TradeItemType::Unknown {
                     let validations = [
@@ -352,7 +352,7 @@ impl WarframeGDPRModule {
 
                     for attempt in validations {
                         item.raw = attempt;
-                        match item.validate("", &detection, &[]) {
+                        match item.validate("", detection, &[]) {
                             Ok(status) => {
                                 if status.is_found() {
                                     break;
@@ -380,14 +380,11 @@ impl WarframeGDPRModule {
                 }
 
                 /* ---------- Push results ---------- */
-                match cache.tradable_item().get_by(&item.unique_name) {
-                    Ok(cached_item) => {
-                        item.properties
-                            .set_property_value("item_name", cached_item.name.clone());
-                        item.properties
-                            .set_property_value("tags", cached_item.tags.clone());
-                    }
-                    Err(_) => {}
+                if let Ok(cached_item) = cache.tradable_item().get_by(&item.unique_name) {
+                    item.properties
+                        .set_property_value("item_name", cached_item.name.clone());
+                    item.properties
+                        .set_property_value("tags", cached_item.tags.clone());
                 }
                 /* ---------- Push results ---------- */
 

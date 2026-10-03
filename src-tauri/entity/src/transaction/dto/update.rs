@@ -19,35 +19,17 @@ pub struct UpdateTransaction {
 impl UpdateTransaction {
     pub fn apply_to(self, mut item: transaction::ActiveModel) -> transaction::ActiveModel {
         use FieldChange::*;
-        match self.price {
-            Value(v) => item.price = Set(v),
-            _ => {}
-        }
-        match self.quantity {
-            Value(v) => item.quantity = Set(v),
-            _ => {}
-        }
-        match self.user_name {
-            Value(v) => item.user_name = Set(v),
-            _ => {}
-        }
-        match self.created_at {
-            Value(v) => item.created_at = Set(v.parse().unwrap()),
-            _ => {}
-        }
+        if let Value(v) = self.price { item.price = Set(v) }
+        if let Value(v) = self.quantity { item.quantity = Set(v) }
+        if let Value(v) = self.user_name { item.user_name = Set(v) }
+        if let Value(v) = self.created_at { item.created_at = Set(v.parse().unwrap()) }
         match self.properties {
             Value(v) => item.properties = Set(Some(v)),
             Null => item.properties = Set(None),
             _ => {}
         }
-        match self.credits {
-            Value(v) => item.credits = Set(v),
-            _ => {}
-        }
-        match self.item_unique_name {
-            Value(v) => item.item_unique_name = Set(v),
-            _ => {}
-        }
+        if let Value(v) = self.credits { item.credits = Set(v) }
+        if let Value(v) = self.item_unique_name { item.item_unique_name = Set(v) }
 
         item
     }

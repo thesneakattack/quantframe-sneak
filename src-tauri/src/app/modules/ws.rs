@@ -133,7 +133,7 @@ fn handle_new_message(wfm_client: &WFClient<WFAuthenticated>, msg: &WsMessage) {
         );
         info(
             "ChatMessage:Notify",
-            &format!("New message in chat {} from {}", chat.chat_name, from_user),
+            format!("New message in chat {} from {}", chat.chat_name, from_user),
             &LoggerOptions::default(),
         );
     }
@@ -141,14 +141,15 @@ fn handle_new_message(wfm_client: &WFClient<WFAuthenticated>, msg: &WsMessage) {
     let chat = binding
         .cache_chats_mut()
         .handle_chat_message(&chat_message, &active_chat_id);
-    if chat.is_none() {
+    match chat {
+        None => {
         tauri::async_runtime::spawn(async move {
             match binding.get_chats().await {
                 Ok(mut messages) => {
                     let chat = messages.get_by_id(&chat_message.chat_id, true);
-                    if chat.is_some() {
+                    if let Some(chat) = chat {
                         handle_notify(
-                            &chat.unwrap(),
+                            &chat,
                             &chat_message,
                             &active_chat_id,
                             true,
@@ -167,14 +168,16 @@ fn handle_new_message(wfm_client: &WFClient<WFAuthenticated>, msg: &WsMessage) {
                 }
             }
         });
-    } else {
+        }
+        Some(chat) => {
         handle_notify(
-            &chat.unwrap(),
+            &chat,
             &chat_message,
             &active_chat_id,
             false,
             binding.cache_chats().total_unread_count(),
         );
+        }
     }
 }
 
@@ -225,16 +228,12 @@ pub async fn setup_socket(
         .register_callback("event/reports/online", move |_, _, _| Ok(()))
         .unwrap()
         .register_callback("cmd/status/set:ok", move |msg, _, _| {
-            match msg.payload.as_ref() {
-                Some(payload) => update_user_status(
-                    payload["status"]
-                        .as_str()
-                        .unwrap_or("invisible")
-                        .to_string(),
-                ),
-
-                None => {}
-            }
+            if let Some(payload) = msg.payload.as_ref() { update_user_status(
+                payload["status"]
+                    .as_str()
+                    .unwrap_or("invisible")
+                    .to_string(),
+            ) }
             Ok(())
         })
         .unwrap()
@@ -242,16 +241,12 @@ pub async fn setup_socket(
             if !HAS_STARTED.get().cloned().unwrap_or(false) {
                 return Ok(());
             }
-            match msg.payload.as_ref() {
-                Some(payload) => update_user_status(
-                    payload["status"]
-                        .as_str()
-                        .unwrap_or("invisible")
-                        .to_string(),
-                ),
-
-                None => {}
-            }
+            if let Some(payload) = msg.payload.as_ref() { update_user_status(
+                payload["status"]
+                    .as_str()
+                    .unwrap_or("invisible")
+                    .to_string(),
+            ) }
             Ok(())
         })
         .unwrap()

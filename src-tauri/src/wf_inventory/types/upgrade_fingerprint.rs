@@ -24,6 +24,7 @@ pub struct UpgradeChallenge {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct UpgradeFingerprint {
     #[serde(rename = "challenge", skip_serializing_if = "Option::is_none")]
     pub challenge: Option<UpgradeChallenge>,
@@ -50,20 +51,6 @@ pub struct UpgradeFingerprint {
     pub curses: Vec<UpgradeStat>,
 }
 
-impl Default for UpgradeFingerprint {
-    fn default() -> Self {
-        Self {
-            polarity: String::new(),
-            compatibility: String::new(),
-            mod_rank: 0,
-            rerolls: 0,
-            mastery_rank: 0,
-            buffs: Vec::new(),
-            curses: Vec::new(),
-            challenge: None,
-        }
-    }
-}
 
 impl UpgradeFingerprint {
     pub fn is_riven_unveiled(&self) -> bool {

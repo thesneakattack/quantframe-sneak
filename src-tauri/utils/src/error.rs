@@ -2,7 +2,7 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, MutexGuard, PoisonError},
 };
 // const MAX_LOCATION_LENGTH: usize = 1024;
@@ -305,7 +305,7 @@ impl Error {
         if !file_name.is_empty() && options.file.is_none() {
             options.file = Some(file_name);
         }
-        let mut message = format!("{}", self.message);
+        let mut message = self.message.to_string();
 
         if !self.cause.is_empty() {
             message.push_str(&format!(" | Cause: {}", self.cause));
@@ -415,7 +415,7 @@ impl Error {
     }
     pub fn from_json(
         component: impl Into<String>,
-        path: &PathBuf,
+        path: &Path,
         content: impl Into<String>,
         message: impl Into<String>,
         err: serde_json::Error,

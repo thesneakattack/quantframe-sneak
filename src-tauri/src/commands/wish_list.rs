@@ -22,9 +22,9 @@ pub async fn get_wish_list_pagination(
 ) -> Result<PaginatedResult<Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match WishListQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
@@ -54,7 +54,7 @@ pub async fn wish_list_create(input: CreateWishListItem) -> Result<Model, Error>
                 EventType::WishListCreate,
                 [("success", "true".to_string())]
             );
-            return Ok(item);
+            Ok(item)
         }
         Err(e) => {
             track_event!(
@@ -64,7 +64,7 @@ pub async fn wish_list_create(input: CreateWishListItem) -> Result<Model, Error>
                     ("error_type", "create_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()).log("wish_list_buy.log"));
+            Err(e.with_location(get_location!()).log("wish_list_buy.log"))
         }
     }
 }
@@ -92,7 +92,7 @@ pub async fn wish_list_bought(
                 EventType::WishListBought,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -102,7 +102,7 @@ pub async fn wish_list_bought(
                     ("error_type", "bought_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()).log("wish_list_buy.log"));
+            Err(e.with_location(get_location!()).log("wish_list_buy.log"))
         }
     }
 }
@@ -227,7 +227,7 @@ pub async fn wish_list_update(input: UpdateWishList) -> Result<Model, Error> {
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -394,7 +394,7 @@ pub async fn export_wish_list_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -404,7 +404,7 @@ pub async fn export_wish_list_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

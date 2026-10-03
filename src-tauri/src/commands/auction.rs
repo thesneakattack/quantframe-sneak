@@ -247,7 +247,7 @@ pub async fn get_wfm_auction_by_id(
         &auction.item.weapon_url_name,
         auction.item.mastery_level.unwrap_or(8) as i64,
         auction.item.re_rolls.unwrap_or(0) as i64,
-        auction.item.mod_rank.unwrap_or(0) as i32,
+        auction.item.mod_rank.unwrap_or(0),
         auction.item.as_raw_attributes(),
         auction.uuid.clone(),
         0,

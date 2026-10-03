@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, sea_orm::EnumIter, sea_orm::DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(Some(50))")]
 #[derive(Eq)]
+#[derive(Default)]
 pub enum RivenAttributeGrade {
     #[sea_orm(string_value = "Decisive")]
     Decisive,
@@ -13,6 +14,7 @@ pub enum RivenAttributeGrade {
     #[sea_orm(string_value = "bad")]
     Bad,
     #[sea_orm(string_value = "unknown")]
+    #[default]
     Unknown,
 }
 impl RivenAttributeGrade {
@@ -44,11 +46,6 @@ impl RivenAttributeGrade {
             "unknown" => RivenAttributeGrade::Unknown,
             _ => RivenAttributeGrade::Unknown,
         }
-    }
-}
-impl Default for RivenAttributeGrade {
-    fn default() -> Self {
-        RivenAttributeGrade::Unknown
     }
 }
 impl Serialize for RivenAttributeGrade {

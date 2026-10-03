@@ -23,7 +23,7 @@ fn example_basic_truncation() {
 
     // Short text - no truncation needed
     let short_text = "This is a short message";
-    let (result, was_truncated) = truncate_with_indicator(&short_text, 100, None);
+    let (result, was_truncated) = truncate_with_indicator(short_text, 100, None);
     println!("  Short text: '{}' (truncated: {})", result, was_truncated);
 
     // Long text - will be truncated
@@ -58,7 +58,7 @@ fn example_smart_processing() {
         println!("  {} text ({} chars):", name, text.len());
 
         let (console_text, file_text) = smart_text_processing(
-            &text,
+            text,
             2048,       // Console limit
             Some(5000), // File limit
             "Context",
@@ -120,11 +120,9 @@ fn example_practical_usage() {
     let large_payload = format!("Large payload: {}", "data".repeat(1000));
     let debug_info = format!("Massive debug info: {}", "debug".repeat(2000));
 
-    let log_messages = vec![
-        "User login successful",
+    let log_messages = ["User login successful",
         large_payload.as_str(),
-        debug_info.as_str(),
-    ];
+        debug_info.as_str()];
 
     for (i, message) in log_messages.iter().enumerate() {
         println!("    Message {}: {} chars", i + 1, message.len());

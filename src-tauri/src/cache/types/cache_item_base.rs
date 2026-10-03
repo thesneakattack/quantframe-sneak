@@ -88,7 +88,7 @@ impl Display for CacheItemBase {
         }
 
         if self.is_tradeable {
-            items.push(format!("Tradeable"));
+            items.push("Tradeable".to_string());
         }
         if !self.tags.is_empty() {
             items.push(format!("Tags: [{}]", self.tags.join(", ")));

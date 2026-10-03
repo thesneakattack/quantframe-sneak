@@ -38,47 +38,32 @@ impl UpdateWishList {
     pub fn apply_to(self, mut item: wish_list::ActiveModel) -> wish_list::ActiveModel {
         use FieldChange::*;
 
-        match self.quantity {
-            Value(v) => item.quantity = Set(v),
-            _ => {}
-        }
+        if let Value(v) = self.quantity { item.quantity = Set(v) }
         match self.list_price {
             Value(v) => item.list_price = Set(Some(v)),
             Null => item.list_price = Set(None),
             _ => {}
         }
-        match self.is_hidden {
-            Value(v) => item.is_hidden = Set(v),
-            _ => {}
-        }
-        match self.status {
-            Value(v) => item.status = Set(v),
-            _ => {}
-        }
-        match self.price_history {
-            Value(v) => item.price_history = Set(PriceHistoryVec(v)),
-            _ => {}
-        }
+        if let Value(v) = self.is_hidden { item.is_hidden = Set(v) }
+        if let Value(v) = self.status { item.status = Set(v) }
+        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
         match self.sub_type {
             Value(v) => item.sub_type = Set(v),
             Null => item.sub_type = Set(None),
             _ => {}
         }
-        match self.properties {
-            Value(mut v) => {
-                v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
-                v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);
+        if let Value(mut v) = self.properties {
+            v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
+            v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);
 
-                let properties = match item.properties {
-                    ActiveValue::Set(mut existing) | ActiveValue::Unchanged(mut existing) => {
-                        existing.merge_properties(v.properties, true, true);
-                        existing
-                    }
-                    _ => v,
-                };
-                item.properties = Set(properties);
-            }
-            _ => {}
+            let properties = match item.properties {
+                ActiveValue::Set(mut existing) | ActiveValue::Unchanged(mut existing) => {
+                    existing.merge_properties(v.properties, true, true);
+                    existing
+                }
+                _ => v,
+            };
+            item.properties = Set(properties);
         }
 
         item

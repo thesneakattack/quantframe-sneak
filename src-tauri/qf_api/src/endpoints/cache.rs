@@ -39,7 +39,7 @@ impl CacheRoute {
             .await
         {
             Ok((ApiResponse::String(md5), _, _)) => Ok(md5),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

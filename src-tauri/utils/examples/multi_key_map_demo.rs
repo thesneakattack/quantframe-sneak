@@ -83,7 +83,7 @@ fn main() {
     for i in 0..num_entries {
         let user = UserData {
             name: format!("User {}", i),
-            age: 20 + (i % 50) as u32,
+            age: 20 + (i % 50),
         };
 
         // Each user has 3 different keys

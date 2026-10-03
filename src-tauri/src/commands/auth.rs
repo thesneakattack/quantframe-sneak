@@ -27,7 +27,7 @@ pub async fn auth_me(app: tauri::State<'_, Mutex<AppState>>) -> Result<User, Err
 
     info(
         "Commands:AuthMe",
-        &format!("Returning user {}", user.wfm_username),
+        format!("Returning user {}", user.wfm_username),
         &LoggerOptions::default(),
     );
 
@@ -50,7 +50,7 @@ pub async fn auth_login(
 
         info(
             "Commands:AuthLogin",
-            &format!("User {} logged in successfully", updated_user.wfm_username),
+            format!("User {} logged in successfully", updated_user.wfm_username),
             &LoggerOptions::default(),
         );
 
@@ -131,7 +131,7 @@ pub async fn auth_logout(
             ws.disconnect().map_err(|e| {
                 Error::new(
                     "Commands:AuthLogout",
-                    &format!("Failed to close WebSocket: {:?}", e),
+                    format!("Failed to close WebSocket: {:?}", e),
                     get_location!(),
                 )
             })?;
@@ -177,13 +177,13 @@ pub async fn auth_has_permission(
 ) -> Result<bool, Error> {
     let app_state = app.lock().unwrap().clone();
 
-    if let Err(_) = app_state
+    if app_state
         .user
-        .has_permission(PermissionsFlags::from_str(&flag))
+        .has_permission(PermissionsFlags::from_str(&flag)).is_err()
     {
         warning(
             "Commands:AuthHasPermission",
-            &format!("User does not have permission for flag: {}", flag),
+            format!("User does not have permission for flag: {}", flag),
             &LoggerOptions::default(),
         );
 

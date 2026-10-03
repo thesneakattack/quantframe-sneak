@@ -25,7 +25,7 @@ impl MiscModule {
             Ok(mut items) => {
                 let mut lookup_lock = self.lookup.lock().unwrap();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let mut keys = vec![item.base.name.clone(), item.base.unique_name.clone()];
                     keys.extend(item.base.previous_names.clone());
                     lookup_lock.insert_value(item.clone(), keys);

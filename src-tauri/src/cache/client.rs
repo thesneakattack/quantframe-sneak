@@ -291,8 +291,8 @@ impl CacheState {
         self.bundle().load(language)?;
         self.gear().load(language)?;
         self.syndicate().load(language)?;
-        self.weapon().load(&self)?;
-        self.all_items().load(&self)?;
+        self.weapon().load(self)?;
+        self.all_items().load(self)?;
         Ok((cache_version_id, price_version_id))
     }
 
@@ -324,7 +324,7 @@ impl CacheState {
             let mut file = archive.by_index(i).map_err(|e| {
                 Error::from_zip(
                     "Cache:Extract",
-                    &format!("cache.zip[{}]", i),
+                    format!("cache.zip[{}]", i),
                     "Failed to read file from cache zip",
                     e,
                     get_location!(),
@@ -394,7 +394,7 @@ impl CacheState {
             let hms = wa.elapsed_hms();
             info(
                 "DataBase:UpdateNames",
-                &format!(
+                format!(
                     "{} completed in {:02}:{:02}:{:02}",
                     step, hms.0, hms.1, hms.2
                 ),
@@ -478,7 +478,7 @@ impl CacheState {
     }
     pub fn all_items(&self) -> Arc<AllItemsModule> {
         self.all_items_module
-            .get_or_init(|| AllItemsModule::new())
+            .get_or_init(AllItemsModule::new)
             .clone()
     }
     pub fn arcane(&self) -> Arc<ArcaneModule> {
@@ -588,7 +588,7 @@ impl CacheState {
     }
     pub fn weapon(&self) -> Arc<WeaponModule> {
         self.weapon_module
-            .get_or_init(|| WeaponModule::new())
+            .get_or_init(WeaponModule::new)
             .clone()
     }
     pub fn recipe(&self) -> Arc<RecipeModule> {

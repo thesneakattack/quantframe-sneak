@@ -33,6 +33,12 @@ impl MatchRivenStruct {
     }
 }
 
+impl Default for MatchRivenStruct {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MatchRivenAttributeStruct {
     pub url_name: String,
@@ -67,9 +73,7 @@ impl MatchRivenStruct {
             .attributes
             .clone()
             .unwrap_or_default()
-            .iter()
-            .cloned()
-            .filter(|a| a.positive && a.is_required)
+            .into_iter().filter(|a| a.positive && a.is_required)
             .map(|a| a.url_name.clone())
             .collect::<Vec<_>>();
 
@@ -78,9 +82,7 @@ impl MatchRivenStruct {
             .attributes
             .clone()
             .unwrap_or_default()
-            .iter()
-            .cloned()
-            .filter(|a| !a.positive && a.is_required)
+            .into_iter().filter(|a| !a.positive && a.is_required)
             .map(|a| a.url_name.clone())
             .collect::<Vec<_>>();
 
@@ -92,8 +94,7 @@ impl MatchRivenStruct {
         // Match Rerolls
         let mut min_rerolls: Option<i64> = None;
         let mut max_rerolls: Option<i64> = None;
-        if self.re_rolls.is_some() {
-            let re_rolls = self.re_rolls.as_ref().unwrap();
+        if let Some(re_rolls) = self.re_rolls.as_ref() {
             if re_rolls.min != 0 {
                 min_rerolls = Some(re_rolls.min);
             }
@@ -103,8 +104,7 @@ impl MatchRivenStruct {
         // Match Mastery Rank
         let mut min_mastery_rank: Option<i64> = None;
         let mut max_mastery_rank: Option<i64> = None;
-        if self.mastery_rank.is_some() {
-            let mastery_rank = &self.mastery_rank.as_ref().unwrap();
+        if let Some(mastery_rank) = self.mastery_rank.as_ref() {
             if mastery_rank.min != 0 {
                 min_mastery_rank = Some(mastery_rank.min);
             }
@@ -120,14 +120,14 @@ impl MatchRivenStruct {
                 polarity = Some(self.polarity.clone().unwrap());
             }
         }
-        return (
+        (
             Some(positive_stats),
-            negative_stats.get(0).cloned(),
+            negative_stats.first().cloned(),
             min_rerolls,
             max_rerolls,
             min_mastery_rank,
             max_mastery_rank,
             polarity,
-        );
+        )
     }
 }

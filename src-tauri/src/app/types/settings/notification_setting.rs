@@ -32,8 +32,10 @@ impl NotificationSetting {
         if self.discord_notify.enabled {
             self.discord_notify.send(variables);
         }
-        if self.webhook_notify.enabled && value.is_some() {
-            self.webhook_notify.send(value.unwrap());
+        if self.webhook_notify.enabled {
+            if let Some(value) = value {
+                self.webhook_notify.send(value);
+            }
         }
     }
 }

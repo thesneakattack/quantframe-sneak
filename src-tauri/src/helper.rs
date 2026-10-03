@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use entity::{
-    dto::{FinancialGraph, FinancialReport, PaginatedResult, PriceHistory, PriceHistoryVec},
+    dto::{FinancialGraph, FinancialReport, PaginatedResult, PriceHistory},
     enums::RivenGrade,
     stock_riven::RivenAttribute,
     transaction::TransactionPaginationQueryDto,
@@ -20,7 +20,6 @@ use crate::{
     cache::{
         derive_riven_summary_attributes, grade_riven, scale_attributes, CacheState, CacheWeaponBase,
     },
-    live_scraper::get_cooldown,
     utils::{auction_list_ext::AuctionWithOwnerListExt, ErrorFromExt, OrderListExt, SubTypeExt},
     APP, DATABASE,
 };
@@ -73,7 +72,7 @@ pub fn get_desktop_path() -> PathBuf {
     desktop_path
 }
 pub fn generate_transaction_summary(
-    transactions: &Vec<entity::transaction::Model>,
+    transactions: &[entity::transaction::Model],
     date: DateTime<Utc>,
     group_by1: GroupByDate,
     group_by2: &[GroupByDate],
@@ -173,7 +172,7 @@ pub fn get_or_create_window(
     let window = builder.build().map_err(|e| {
         Error::new(
             "Helper::GetOrCreateWindow",
-            &format!("Failed to build window: {}", e),
+            format!("Failed to build window: {}", e),
             get_location!(),
         )
     })?;
@@ -340,7 +339,7 @@ pub async fn populate_riven_market_properties(
 
     // ---------------- Attributes Info ----------------
     let mut attributes =
-        derive_riven_summary_attributes(&cache, &weapon_info, &raw_attributes, rank)?;
+        derive_riven_summary_attributes(cache, &weapon_info, &raw_attributes, rank)?;
     // ---------------- Auction Info ----------------
     let auction = wfm.auction().cache_auctions().get_by_uuid(&uuid);
 
@@ -386,7 +385,7 @@ pub async fn populate_riven_market_properties(
             Err(_) => {
                 warning(
                     "GradeInfo",
-                    &format!(
+                    format!(
                         "Could not find good roll info for weapon: {}",
                         weapon_info.unique_name
                     ),
@@ -451,7 +450,7 @@ pub async fn populate_riven_market_properties(
             Err(_) => {
                 warning(
                     "RollEvaluation",
-                    &format!(
+                    format!(
                         "Could not find good roll info for weapon: {}",
                         weapon_info.unique_name
                     ),
@@ -503,7 +502,7 @@ pub async fn populate_riven_market_properties(
             )
         })?;
         auctions.sort_by_similarity(false);
-        auctions.apply_item_info(&cache)?;
+        auctions.apply_item_info(cache)?;
 
         // Metrics for Lowest Sell
         let sell_highest = auctions.highest_price();

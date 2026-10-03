@@ -43,46 +43,28 @@ impl UpdateSyndicateItem {
             Null => item.list_price = Set(None),
             _ => {}
         }
-        match self.status {
-            Value(v) => item.status = Set(v),
-            _ => {}
-        }
-        match self.price_history {
-            Value(v) => item.price_history = Set(PriceHistoryVec(v)),
-            _ => {}
-        }
+        if let Value(v) = self.status { item.status = Set(v) }
+        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
         match self.sub_type {
             Value(v) => item.sub_type = Set(v),
             Null => item.sub_type = Set(None),
             _ => {}
         }
-        match self.syndicate_name {
-            Value(v) => item.syndicate_name = Set(v),
-            _ => {}
-        }
-        match self.syndicate_unique_name {
-            Value(v) => item.syndicate_unique_name = Set(v),
-            _ => {}
-        }
-        match self.standing_cost {
-            Value(v) => item.standing_cost = Set(v),
-            _ => {}
-        }
-        match self.properties {
-            Value(mut v) => {
-                v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
-                v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);
+        if let Value(v) = self.syndicate_name { item.syndicate_name = Set(v) }
+        if let Value(v) = self.syndicate_unique_name { item.syndicate_unique_name = Set(v) }
+        if let Value(v) = self.standing_cost { item.standing_cost = Set(v) }
+        if let Value(mut v) = self.properties {
+            v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
+            v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);
 
-                let properties = match item.properties {
-                    ActiveValue::Set(mut existing) | ActiveValue::Unchanged(mut existing) => {
-                        existing.merge_properties(v.properties, true, true);
-                        existing
-                    }
-                    _ => v,
-                };
-                item.properties = Set(properties);
-            }
-            _ => {}
+            let properties = match item.properties {
+                ActiveValue::Set(mut existing) | ActiveValue::Unchanged(mut existing) => {
+                    existing.merge_properties(v.properties, true, true);
+                    existing
+                }
+                _ => v,
+            };
+            item.properties = Set(properties);
         }
         item
     }

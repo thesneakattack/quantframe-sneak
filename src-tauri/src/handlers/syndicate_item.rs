@@ -1,16 +1,16 @@
 use std::sync::Mutex;
 
-use entity::{dto::*, enums::*, syndicate_item::*};
+use entity::{enums::*, syndicate_item::*};
 use service::{SyndicateItemMutation, SyndicateItemQuery};
 use tauri::Manager;
 use utils::SubType;
 use utils::{get_location, info, warning, Error, OperationSet};
 use wf_market::enums::OrderType;
 
-use crate::app::{settings, AppState};
+use crate::app::AppState;
 use crate::types::UIEvent;
 use crate::{handlers::*, utils::CreateSyndicateItemExt, DATABASE};
-use crate::{send_event, send_event_update, APP};
+use crate::{send_event, APP};
 
 // --------------------------------------------------
 // Helper functions.
@@ -34,7 +34,7 @@ fn log(
     match (status, updated_item) {
         ("NotFound", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Syndicate item not found for URL: {} | Operations: {:?} | Flags: {:?}",
                 item.wfm_url, operations.operations, flags.operations
             ),
@@ -43,7 +43,7 @@ fn log(
 
         (_, Some(updated)) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Sold syndicate item {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 updated.item_name, status, operations.operations, flags.operations
             ),
@@ -52,7 +52,7 @@ fn log(
 
         ("Deleted", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Deleted syndicate item {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, status, operations.operations, flags.operations
             ),
@@ -61,7 +61,7 @@ fn log(
 
         ("Updated", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Updated syndicate item: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, status, operations.operations, flags.operations
             ),
@@ -70,7 +70,7 @@ fn log(
 
         ("Created", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Created syndicate item: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, status, operations.operations, flags.operations
             ),
@@ -79,7 +79,7 @@ fn log(
 
         ("Complete", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Completed syndicate item: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, status, operations.operations, flags.operations
             ),
@@ -88,7 +88,7 @@ fn log(
         _ => {
             warning(
                 format!("{component}:{sub_component}"),
-                &format!(
+                format!(
                     "Unhandled status: {} for syndicate item: {} | Operations: {:?} | Flags: {:?}",
                     status, item.item_name, operations.operations, flags.operations
                 ),
@@ -121,10 +121,9 @@ pub async fn handle_syndicate_item_by_entity(
     // --------------------------------------------------
     // Validate
     // --------------------------------------------------
-    item.validate().map_err(|e| {
+    item.validate().inspect_err(|e| {
         let err = e.clone();
         err.with_location(get_location!()).log(file);
-        e
     })?;
 
     let mut model = item.to_model();
@@ -165,14 +164,14 @@ pub async fn handle_syndicate_item_by_entity(
 
             model = created_item;
             operations.add(format!("ItemBuy_{s_operation}"));
-            log(component, &item, &None, &s_operation, &flags, &operations);
+            log(component, &item, &None, &s_operation, flags, &operations);
         }
     }
 
     // --------------------------------------------------
     // WFM sync
     // --------------------------------------------------
-    if should_run_wfm(&flags, &operations) && order_type == OrderType::Sell {
+    if should_run_wfm(flags, &operations) && order_type == OrderType::Sell {
         let operation = if delete {
             "ShouldDelete"
         } else {
@@ -198,7 +197,7 @@ pub async fn handle_syndicate_item_by_entity(
     // --------------------------------------------------
     if price <= 0 {
         operations.add("PriceZeroNoTransaction");
-        log(component, &item, &None, "Complete", &flags, &operations);
+        log(component, &item, &None, "Complete", flags, &operations);
         return Ok((operations, model));
     }
 
@@ -215,10 +214,10 @@ pub async fn handle_syndicate_item_by_entity(
         tx.transaction_type = TransactionType::Sale;
     }
 
-    handle_transaction(tx, &flags)
+    handle_transaction(tx, flags)
         .await
         .map_err(|e| e.with_location(get_location!()).log(file))?;
-    log(component, &item, &None, "Complete", &flags, &operations);
+    log(component, &item, &None, "Complete", flags, &operations);
     Ok((operations, model))
 }
 

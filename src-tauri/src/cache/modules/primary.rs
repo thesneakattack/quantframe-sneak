@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Mutex},
 };
 
 use utils::{get_location, info, read_json_file_optional, Error, LoggerOptions, MultiKeyMap};
@@ -26,7 +26,7 @@ impl PrimaryModule {
                 let mut lookup = self.lookup.lock().unwrap();
                 *lookup = MultiKeyMap::new();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let keys = vec![item.base.name.clone(), item.base.unique_name.clone()];
                     lookup.insert_value(item.clone(), keys);
                 }

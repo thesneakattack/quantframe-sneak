@@ -1,6 +1,6 @@
 use crate::*;
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Configuration options for ZIP folder operations
 #[derive(Default, Debug, Clone)]
@@ -130,12 +130,11 @@ impl<'a> ZipOptions<'a> {
             .unix_permissions(0o755);
 
         // Helper function to check if a path should be excluded
-        fn should_exclude(path: &PathBuf, name: &str, exclude_patterns: Option<&[&str]>) -> bool {
+        fn should_exclude(path: &Path, name: &str, exclude_patterns: Option<&[&str]>) -> bool {
             if let Some(patterns) = exclude_patterns {
                 for pattern in patterns {
                     // Check for exact folder match (with trailing slash)
-                    if pattern.ends_with('/') {
-                        let folder_name = &pattern[..pattern.len() - 1];
+                    if let Some(folder_name) = pattern.strip_suffix('/') {
                         if name == folder_name {
                             return true;
                         }
@@ -143,30 +142,25 @@ impl<'a> ZipOptions<'a> {
                     // Check for wildcard patterns
                     else if pattern.contains('*') {
                         // Simple wildcard matching for file extensions
-                        if pattern.starts_with("*.") {
-                            let extension = &pattern[2..];
-                            if let Some(file_ext) = path.extension() {
-                                if file_ext.to_string_lossy().to_lowercase()
+                        if let Some(extension) = pattern.strip_prefix("*.") {
+                            if let Some(file_ext) = path.extension()
+                                && file_ext.to_string_lossy().to_lowercase()
                                     == extension.to_lowercase()
                                 {
                                     return true;
                                 }
-                            }
                         }
                         // Wildcard at the end
-                        else if pattern.ends_with('*') {
-                            let prefix = &pattern[..pattern.len() - 1];
+                        else if let Some(prefix) = pattern.strip_suffix('*') {
                             if name.starts_with(prefix) {
                                 return true;
                             }
                         }
                         // Wildcard at the beginning
-                        else if pattern.starts_with('*') {
-                            let suffix = &pattern[1..];
-                            if name.ends_with(suffix) {
+                        else if let Some(suffix) = pattern.strip_prefix('*')
+                            && name.ends_with(suffix) {
                                 return true;
                             }
-                        }
                     }
                     // Check for exact name match
                     else if name == *pattern {
@@ -421,7 +415,7 @@ impl<'a> ZipOptions<'a> {
                     }
                 } else if path.is_dir() {
                     // Add directory (create empty directory entry)
-                    zip.add_directory(&format!("{}/", zip_path), file_options)
+                    zip.add_directory(format!("{}/", zip_path), file_options)
                         .map_err(|e| {
                             Error::from_zip(
                                 "ZipFolder",

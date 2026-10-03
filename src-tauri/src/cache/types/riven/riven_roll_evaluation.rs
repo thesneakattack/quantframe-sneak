@@ -22,6 +22,7 @@ pub struct RollCriteria {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[derive(Default)]
 pub struct RivenRollEvaluation {
     pub valid_rolls: Vec<RollCriteria>,
     pub tolerated_negative_attributes: Vec<AttributeMatch>,
@@ -37,13 +38,5 @@ impl RivenRollEvaluation {
 
     pub fn add_valid_roll(&mut self, criteria: RollCriteria) {
         self.valid_rolls.push(criteria);
-    }
-}
-impl Default for RivenRollEvaluation {
-    fn default() -> Self {
-        Self {
-            valid_rolls: vec![],
-            tolerated_negative_attributes: vec![],
-        }
     }
 }

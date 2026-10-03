@@ -103,7 +103,7 @@ impl CreateWishListItem {
             self.item_name.clone(),
             self.item_unique_name.clone(),
             self.sub_type.clone(),
-            self.quantity.clone(),
+            self.quantity,
             self.properties.clone(),
         )
     }

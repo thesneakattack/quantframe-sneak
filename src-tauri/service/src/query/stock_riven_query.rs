@@ -98,7 +98,7 @@ impl StockRivenQuery {
         // Ignore case for mod_name
         Entity::find()
             .filter(stock_riven::Column::WfmWeaponUrl.eq(weapon_url.into()))
-            .filter(stock_riven::Column::ModName.like(format!("{}", mod_name.into())))
+            .filter(stock_riven::Column::ModName.like(mod_name.into().to_string()))
             .filter(stock_riven::Column::SubType.eq(sub_type))
             .one(db)
             .await

@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utils::{
-    extract_json_values, get_location, log_json_formatted, merge_json, validate_json, Error,
+    extract_json_values, get_location, merge_json, validate_json, Error,
 };
 
 use super::*;
@@ -78,7 +78,7 @@ impl Settings {
         let mut json_value: Value = serde_json::from_str(&content).map_err(|e| {
             Error::from_json(
                 "Settings",
-                &path,
+                path,
                 &content,
                 "Failed to parse settings.json",
                 e,
@@ -88,7 +88,7 @@ impl Settings {
         let required_json = serde_json::to_value(Settings::default()).map_err(|e| {
             Error::new(
                 "Settings",
-                &format!("Failed to serialize default settings: {}", e),
+                format!("Failed to serialize default settings: {}", e),
                 get_location!(),
             )
         })?;
@@ -216,7 +216,7 @@ impl Settings {
             data.generate_trade_message.templates.push(default_template);
         }
 
-        if missing_properties.len() > 0 {
+        if !missing_properties.is_empty() {
             data.save()?;
         }
         Ok(data)

@@ -35,45 +35,36 @@ impl WishListPaginationQueryDto {
     pub fn get_query(&self) -> Select<Entity> {
         use FieldChange::*;
         let mut stmt = Entity::find();
-        match &self.query {
-            Value(q) => {
-                stmt = stmt.filter(
-                    Condition::any()
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(Column::WfmUrl)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(Column::ItemName)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        ),
-                )
-            }
-            _ => {}
+        if let Value(q) = &self.query {
+            stmt = stmt.filter(
+                Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(Column::WfmUrl)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(Column::ItemName)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    ),
+            )
         }
-        match self.status {
-            Value(ref q) => stmt = stmt.filter(Column::Status.eq(q)),
-            _ => {}
-        }
-        match &self.sort_by {
-            Value(sort_by) => {
-                let dir = match &self.sort_direction {
-                    Value(dir) => dir,
-                    _ => &SortDirection::Asc,
-                };
-                let order = match dir {
-                    SortDirection::Asc => Order::Asc,
-                    SortDirection::Desc => Order::Desc,
-                };
-                // Only allow sorting by known columns for safety
-                match sort_by.as_str() {
-                    "item_name" => stmt = stmt.order_by(Column::ItemName, order),
-                    "status" => stmt = stmt.order_by(Column::Status, order),
-                    "list_price" => stmt = stmt.order_by(Column::ListPrice, order),
-                    _ => {}
-                }
+        if let Value(ref q) = self.status { stmt = stmt.filter(Column::Status.eq(q)) }
+        if let Value(sort_by) = &self.sort_by {
+            let dir = match &self.sort_direction {
+                Value(dir) => dir,
+                _ => &SortDirection::Asc,
+            };
+            let order = match dir {
+                SortDirection::Asc => Order::Asc,
+                SortDirection::Desc => Order::Desc,
+            };
+            // Only allow sorting by known columns for safety
+            match sort_by.as_str() {
+                "item_name" => stmt = stmt.order_by(Column::ItemName, order),
+                "status" => stmt = stmt.order_by(Column::Status, order),
+                "list_price" => stmt = stmt.order_by(Column::ListPrice, order),
+                _ => {}
             }
-            _ => {}
         }
         stmt
     }

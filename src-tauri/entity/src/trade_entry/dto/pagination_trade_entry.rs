@@ -38,64 +38,52 @@ impl TradeEntryPaginationQueryDto {
     pub fn get_query(&self) -> Select<trade_entry::Entity> {
         use FieldChange::*;
         let mut stmt = trade_entry::Entity::find();
-        match &self.query {
-            Value(q) => {
-                stmt = stmt.filter(
-                    Condition::any()
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(trade_entry::Column::Name)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        )
-                        .add(
-                            Expr::expr(Func::lower(Expr::col(trade_entry::Column::SubType)))
-                                .like(&format!("%{}%", q.to_lowercase())),
-                        ),
-                )
-            }
-            _ => {}
+        if let Value(q) = &self.query {
+            stmt = stmt.filter(
+                Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(trade_entry::Column::Name)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col(trade_entry::Column::SubType)))
+                            .like(format!("%{}%", q.to_lowercase())),
+                    ),
+            )
         }
-        match &self.tags {
-            Value(tags) => {
-                if !tags.is_empty() {
-                    // Create a condition that matches any of the provided tags
-                    let mut tag_condition = Condition::any();
-                    for tag in tags {
-                        if !tag.trim().is_empty() {
-                            tag_condition = tag_condition.add(
-                                Expr::col(trade_entry::Column::Tags)
-                                    .like(format!("%{}%", tag.trim())),
-                            );
-                        }
+        if let Value(tags) = &self.tags {
+            if !tags.is_empty() {
+                // Create a condition that matches any of the provided tags
+                let mut tag_condition = Condition::any();
+                for tag in tags {
+                    if !tag.trim().is_empty() {
+                        tag_condition = tag_condition.add(
+                            Expr::col(trade_entry::Column::Tags)
+                                .like(format!("%{}%", tag.trim())),
+                        );
                     }
-                    stmt = stmt.filter(tag_condition);
                 }
+                stmt = stmt.filter(tag_condition);
             }
-            _ => {}
         }
-        match &self.group {
-            Value(group) => {
-                stmt = stmt.filter(trade_entry::Column::Group.eq(group.to_owned()));
-            }
-            _ => {}
+        if let Value(group) = &self.group {
+            stmt = stmt.filter(trade_entry::Column::Group.eq(group.to_owned()));
         }
-        match &self.sort_by {
-            Value(sort_by) => {
-                let dir = match &self.sort_direction {
-                    Value(dir) => dir,
-                    _ => &SortDirection::Asc,
-                };
-                let order = match dir {
-                    SortDirection::Asc => Order::Asc,
-                    SortDirection::Desc => Order::Desc,
-                };
-                // Only allow sorting by known columns for safety
-                match sort_by.as_str() {
-                    "name" => stmt = stmt.order_by(trade_entry::Column::Name, order),
-                    "price" => stmt = stmt.order_by(trade_entry::Column::Price, order),
-                    _ => {}
-                }
+        if let Value(sort_by) = &self.sort_by {
+            let dir = match &self.sort_direction {
+                Value(dir) => dir,
+                _ => &SortDirection::Asc,
+            };
+            let order = match dir {
+                SortDirection::Asc => Order::Asc,
+                SortDirection::Desc => Order::Desc,
+            };
+            // Only allow sorting by known columns for safety
+            match sort_by.as_str() {
+                "name" => stmt = stmt.order_by(trade_entry::Column::Name, order),
+                "price" => stmt = stmt.order_by(trade_entry::Column::Price, order),
+                _ => {}
             }
-            _ => {}
         }
         stmt
     }

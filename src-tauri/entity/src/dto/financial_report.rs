@@ -147,7 +147,7 @@ impl From<&Vec<transaction::Model>> for FinancialReport {
             .iter()
             .map(|(name, items)| (name.clone(), items.iter().map(|i| i.quantity).sum()))
             .collect::<Vec<(String, i64)>>();
-        purchase_quantities_by_item.sort_by(|a, b| b.1.cmp(&a.1));
+        purchase_quantities_by_item.sort_by_key(|a| std::cmp::Reverse(a.1));
         let expenses: i64 = purchases.iter().map(|t| t.price).sum();
         let highest_expense = purchases.iter().map(|t| t.price).max().unwrap_or(0) as f64;
         let lowest_expense = purchases.iter().map(|t| t.price).min().unwrap_or(0) as f64;
@@ -160,14 +160,15 @@ impl From<&Vec<transaction::Model>> for FinancialReport {
             .iter()
             .map(|(name, items)| (name.clone(), items.iter().map(|i| i.quantity).sum()))
             .collect::<Vec<(String, i64)>>();
-        sale_quantities_by_item.sort_by(|a, b| b.1.cmp(&a.1));
+        sale_quantities_by_item.sort_by_key(|a| std::cmp::Reverse(a.1));
         let revenue: i64 = sales.iter().map(|t| t.price).sum();
         let highest_revenue = sales.iter().map(|t| t.price).max().unwrap_or(0) as f64;
         let lowest_revenue = sales.iter().map(|t| t.price).min().unwrap_or(0) as f64;
 
         let total_credits: i64 = transactions.iter().map(|t| t.credits).sum();
 
-        let report = FinancialReport::new(
+        
+        FinancialReport::new(
             total_transactions,
             sales.len(),
             highest_revenue,
@@ -182,8 +183,7 @@ impl From<&Vec<transaction::Model>> for FinancialReport {
             "total_credits": total_credits,
             "most_purchased_items": purchase_quantities_by_item.into_iter().take(5).collect::<Vec<(String, i64)>>(),
             "most_sold_items": sale_quantities_by_item.into_iter().take(5).collect::<Vec<(String, i64)>>(),
-        }));
-        report
+        }))
     }
 }
 

@@ -21,7 +21,7 @@ pub async fn alert_get_alerts(
                 get_location!(),
             );
             err.log("alert_get_alerts.log");
-            return Err(err);
+            Err(err)
         }
     }
 }

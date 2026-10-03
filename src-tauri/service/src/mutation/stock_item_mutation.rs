@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use ::entity::{dto::*, enums::*, stock_item::*};
+use ::entity::{enums::*, stock_item::*};
 use sea_orm::*;
-use serde_json::json;
 use utils::*;
 
 use crate::{ErrorFromExt, StockItemQuery};
@@ -17,7 +16,6 @@ impl StockItemMutation {
         form_data: stock_item::Model,
     ) -> Result<stock_item::Model, Error> {
         // Remove any properties that are not allowed
-        let form_data = form_data;
         stock_item::ActiveModel {
             wfm_id: Set(form_data.wfm_id.to_owned()),
             wfm_url: Set(form_data.wfm_url.to_owned()),
@@ -76,10 +74,10 @@ impl StockItemMutation {
         if owned <= 0 {
             match StockItemMutation::delete_by_id(db, id).await {
                 Ok(_) => {
-                    return Ok(("Deleted".to_string(), Some(item)));
+                    Ok(("Deleted".to_string(), Some(item)))
                 }
                 Err(e) => {
-                    return Err(e);
+                    Err(e)
                 }
             }
         } else {
@@ -90,10 +88,10 @@ impl StockItemMutation {
             .await
             {
                 Ok(_) => {
-                    return Ok(("Updated".to_string(), Some(item)));
+                    Ok(("Updated".to_string(), Some(item)))
                 }
                 Err(e) => {
-                    return Err(e);
+                    Err(e)
                 }
             }
         }
@@ -130,7 +128,7 @@ impl StockItemMutation {
         .map_err(|e| e.with_location(get_location!()))?;
         if item.is_none() {
             if stock.owned > 1 {
-                stock.bought = stock.bought / stock.owned;
+                stock.bought /= stock.owned;
             }
             match StockItemMutation::create(db, stock.clone()).await {
                 Ok(insert) => {
@@ -162,10 +160,10 @@ impl StockItemMutation {
         .await
         {
             Ok(up_item) => {
-                return Ok(("Updated".to_string(), up_item));
+                Ok(("Updated".to_string(), up_item))
             }
             Err(e) => {
-                return Err(e);
+                Err(e)
             }
         }
     }

@@ -42,7 +42,7 @@ impl AlertRoute {
             .await
         {
             Ok((ApiResponse::Json(alerts), _, _)) => Ok(alerts),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

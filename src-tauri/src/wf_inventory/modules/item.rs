@@ -4,6 +4,8 @@ use crate::wf_inventory::WFInventoryState;
 
 #[derive(Debug)]
 pub struct ItemModule {
+    // Held for future use by this module's API calls.
+    #[allow(dead_code)]
     client: Weak<WFInventoryState>,
 }
 

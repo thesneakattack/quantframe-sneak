@@ -111,7 +111,7 @@ impl TradeItem {
     ) -> Result<DetectionStatus, Error> {
         // Check if the item is platinum
         let (combine, status, item_type) =
-            detection.is_currency(&line, &prev_line, ignored_combinations);
+            detection.is_currency(line, prev_line, ignored_combinations);
 
         if !status.is_found() {
             return Ok(DetectionStatus::None);
@@ -143,7 +143,7 @@ impl TradeItem {
         ignored_combinations: &[DetectionStatus],
         cache: &CacheState,
     ) -> Result<DetectionStatus, Error> {
-        let (combine, status) = contains_unicode(&line, prev_line, false);
+        let (combine, status) = contains_unicode(line, prev_line, false);
 
         if !status.is_found() {
             return Ok(DetectionStatus::None);
@@ -200,7 +200,7 @@ impl TradeItem {
                 .set_property_value("tags", info.base.tags.clone());
             return Ok(status);
         }
-        return Ok(status);
+        Ok(status)
     }
     pub fn is_relic(
         &mut self,

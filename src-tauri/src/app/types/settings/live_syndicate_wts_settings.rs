@@ -86,7 +86,7 @@ impl Default for LiveSyndicateWtsSettings {
 fn syndicate_not_found(syndicate_id: &str) -> Error {
     Error::new(
         "LiveSyndicateWtsSettings",
-        &format!("Syndicate with ID {syndicate_id} not found"),
+        format!("Syndicate with ID {syndicate_id} not found"),
         get_location!(),
     )
 }

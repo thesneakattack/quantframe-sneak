@@ -23,9 +23,9 @@ pub async fn get_stock_riven_pagination(
 ) -> Result<PaginatedResult<stock_riven::Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match StockRivenQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
@@ -53,14 +53,14 @@ pub async fn stock_riven_create(input: CreateStockRiven) -> Result<stock_riven::
         Ok((operations, updated_item)) => {
             info(
                 "Command::StockRivenCreate",
-                &format!("Operations: {:?}", operations.operations),
+                format!("Operations: {:?}", operations.operations),
                 &utils::LoggerOptions::default(),
             );
             track_event!(
                 EventType::StockRivenCreate,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -70,9 +70,9 @@ pub async fn stock_riven_create(input: CreateStockRiven) -> Result<stock_riven::
                     ("error_type", "create_failed".to_string()),
                 ]
             );
-            return Err(e
+            Err(e
                 .with_location(get_location!())
-                .log("stock_riven_create.log"));
+                .log("stock_riven_create.log"))
         }
     }
 }
@@ -108,7 +108,7 @@ pub async fn stock_riven_sell(
                 EventType::StockRivenSell,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -118,7 +118,7 @@ pub async fn stock_riven_sell(
                     ("error_type", "sell_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()).log("stock_riven_sell.log"));
+            Err(e.with_location(get_location!()).log("stock_riven_sell.log"))
         }
     }
 }
@@ -160,36 +160,32 @@ pub async fn stock_riven_delete(
     }
     let item = item.unwrap();
 
-    match app
+    if let Some(auction) = app
         .wfm_client
         .auction()
         .cache_auctions()
-        .get_by_uuid(&item.uuid)
-    {
-        Some(auction) => {
-            app.wfm_client
-                .auction()
-                .delete(&auction.id)
-                .await
-                .map_err(|e| {
-                    let error_type = e.error_type().to_string();
-                    let err = Error::from_wfm(
-                        "Command::StockRivenDelete",
-                        "Failed to delete auction associated with stock riven",
-                        e,
-                        get_location!(),
-                    );
-                    track_event!(
-                        EventType::StockRivenDelete,
-                        [
-                            ("success", "false".to_string()),
-                            ("error_type", error_type),
-                        ]
-                    );
-                    err
-                })?;
-        }
-        None => {}
+        .get_by_uuid(&item.uuid) {
+        app.wfm_client
+            .auction()
+            .delete(&auction.id)
+            .await
+            .map_err(|e| {
+                let error_type = e.error_type().to_string();
+                let err = Error::from_wfm(
+                    "Command::StockRivenDelete",
+                    "Failed to delete auction associated with stock riven",
+                    e,
+                    get_location!(),
+                );
+                track_event!(
+                    EventType::StockRivenDelete,
+                    [
+                        ("success", "false".to_string()),
+                        ("error_type", error_type),
+                    ]
+                );
+                err
+            })?;
     }
     match StockRivenMutation::delete(conn, id).await {
         Ok(_) => {}
@@ -231,7 +227,7 @@ pub async fn stock_riven_update(input: UpdateStockRiven) -> Result<stock_riven::
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -435,7 +431,7 @@ pub async fn export_stock_riven_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -445,7 +441,7 @@ pub async fn export_stock_riven_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

@@ -41,7 +41,7 @@ impl MarketRoute {
             .await
         {
             Ok((ApiResponse::Json(activity), _, _)) => Ok(activity),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

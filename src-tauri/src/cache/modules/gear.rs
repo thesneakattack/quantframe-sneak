@@ -25,7 +25,7 @@ impl GearModule {
             Ok(mut items) => {
                 let mut lookup = self.lookup.lock().unwrap();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let mut keys = vec![item.base.unique_name.clone(), item.base.name.clone()];
 
                     if let Some(wfm_url) = &item.base.wfm_url {

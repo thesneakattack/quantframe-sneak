@@ -2,7 +2,7 @@ use sea_orm::sea_query::ValueType;
 use sea_orm::{TryGetError, TryGetable, Value, sea_query};
 use serde::{Deserialize, Serialize};
 
-use crate::{LoggerOptions, critical, info};
+use crate::{LoggerOptions, critical};
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 pub struct Properties {
@@ -29,11 +29,10 @@ impl Properties {
     where
         T: Default + serde::de::DeserializeOwned,
     {
-        if let Some(props) = &self.properties {
-            if let Ok(value) = serde_json::from_value(props.clone()) {
+        if let Some(props) = &self.properties
+            && let Ok(value) = serde_json::from_value(props.clone()) {
                 return value;
             }
-        }
         default
     }
 
@@ -42,8 +41,8 @@ impl Properties {
         T: Default + serde::de::DeserializeOwned,
     {
         let key = key.into();
-        if let Some(props) = &self.properties {
-            if let Some(value) = props.get(&key) {
+        if let Some(props) = &self.properties
+            && let Some(value) = props.get(&key) {
                 if let Ok(value) = serde_json::from_value(value.clone()) {
                     return value;
                 } else {
@@ -59,7 +58,6 @@ impl Properties {
                     );
                 }
             }
-        }
         default
     }
     pub fn has_property(&self, key: impl Into<String>) -> bool {
@@ -87,27 +85,24 @@ impl Properties {
     }
     pub fn remove_property_value(&mut self, key: impl Into<String>) {
         let key = key.into();
-        if let Some(props) = &mut self.properties {
-            if let Some(map) = props.as_object_mut() {
+        if let Some(props) = &mut self.properties
+            && let Some(map) = props.as_object_mut() {
                 map.remove(&key);
             }
-        }
     }
     pub fn remove_property_values(&mut self, keys: &[&str]) {
-        if let Some(props) = &mut self.properties {
-            if let Some(map) = props.as_object_mut() {
+        if let Some(props) = &mut self.properties
+            && let Some(map) = props.as_object_mut() {
                 let keys_set: std::collections::HashSet<_> = keys.iter().cloned().collect();
                 map.retain(|k, _| !keys_set.contains(k.as_str()));
             }
-        }
     }
     pub fn keep_property_values(&mut self, keys: &[&str]) {
-        if let Some(props) = &mut self.properties {
-            if let Some(map) = props.as_object_mut() {
+        if let Some(props) = &mut self.properties
+            && let Some(map) = props.as_object_mut() {
                 let keys_set: std::collections::HashSet<_> = keys.iter().cloned().collect();
                 map.retain(|k, _| keys_set.contains(k.as_str()));
             }
-        }
     }
     pub fn update_property<T, F>(&mut self, key: impl Into<String>, mut f: F)
     where
@@ -149,11 +144,10 @@ impl Properties {
     }
     pub fn is_type<T: serde::de::DeserializeOwned>(&self, key: impl Into<String>) -> bool {
         let key = key.into();
-        if let Some(props) = &self.properties {
-            if let Some(value) = props.get(&key) {
+        if let Some(props) = &self.properties
+            && let Some(value) = props.get(&key) {
                 return serde_json::from_value::<T>(value.clone()).is_ok();
             }
-        }
         false
     }
     pub fn nullify_zeroed_properties(&mut self, keys: &[&str]) {
@@ -192,11 +186,10 @@ impl Properties {
         }
     }
     pub fn mask_sensitive_data(&mut self, properties: &[&str]) {
-        if let Some(props) = &mut self.properties {
-            if let Some(map) = props.as_object_mut() {
+        if let Some(props) = &mut self.properties
+            && let Some(map) = props.as_object_mut() {
                 crate::helper::mask_sensitive_data(map, properties);
             }
-        }
     }
 }
 

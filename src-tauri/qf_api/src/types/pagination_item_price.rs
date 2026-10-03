@@ -76,76 +76,28 @@ impl ItemPricePaginationQueryDto {
         let mut query: Vec<String> = Vec::new();
         query.push(format!("page={}", self.pagination.page));
         query.push(format!("limit={}", self.pagination.limit));
-        match &self.query {
-            Value(q) => query.push(format!("query={}", q)),
-            _ => {}
-        }
-        match &self.sort_by {
-            Value(s) => query.push(format!("sort_by={}", s)),
-            _ => {}
-        }
-        match &self.sort_direction {
-            Value(d) => query.push(format!("sort_direction={}", d.to_string())),
-            _ => {}
-        }
-        match &self.volume_gt {
-            Value(v) => query.push(format!("volumeGt={}", v)),
-            _ => {}
-        }
-        match &self.volume_lt {
-            Value(v) => query.push(format!("volumeLt={}", v)),
-            _ => {}
-        }
-        match &self.supply_gt {
-            Value(v) => query.push(format!("supplyGt={}", v)),
-            _ => {}
-        }
-        match &self.supply_lt {
-            Value(v) => query.push(format!("supplyLt={}", v)),
-            _ => {}
-        }
-        match &self.demand_gt {
-            Value(v) => query.push(format!("demandGt={}", v)),
-            _ => {}
-        }
-        match &self.demand_lt {
-            Value(v) => query.push(format!("demandLt={}", v)),
-            _ => {}
-        }
-        match &self.min_price_gt {
-            Value(v) => query.push(format!("minPriceGt={}", v)),
-            _ => {}
-        }
-        match &self.min_price_lt {
-            Value(v) => query.push(format!("minPriceLt={}", v)),
-            _ => {}
-        }
-        match &self.max_price_gt {
-            Value(v) => query.push(format!("maxPriceGt={}", v)),
-            _ => {}
-        }
-        match &self.max_price_lt {
-            Value(v) => query.push(format!("maxPriceLt={}", v)),
-            _ => {}
-        }
-        match &self.wfm_id {
-            Value(v) => query.push(format!("wfm_id={}", v)),
-            _ => {}
-        }
-        match &self.lasted {
-            Value(v) => query.push(format!("lasted={}", v)),
-            _ => {}
-        }
+        if let Value(q) = &self.query { query.push(format!("query={}", q)) }
+        if let Value(s) = &self.sort_by { query.push(format!("sort_by={}", s)) }
+        if let Value(d) = &self.sort_direction { query.push(format!("sort_direction={}", d.to_string())) }
+        if let Value(v) = &self.volume_gt { query.push(format!("volumeGt={}", v)) }
+        if let Value(v) = &self.volume_lt { query.push(format!("volumeLt={}", v)) }
+        if let Value(v) = &self.supply_gt { query.push(format!("supplyGt={}", v)) }
+        if let Value(v) = &self.supply_lt { query.push(format!("supplyLt={}", v)) }
+        if let Value(v) = &self.demand_gt { query.push(format!("demandGt={}", v)) }
+        if let Value(v) = &self.demand_lt { query.push(format!("demandLt={}", v)) }
+        if let Value(v) = &self.min_price_gt { query.push(format!("minPriceGt={}", v)) }
+        if let Value(v) = &self.min_price_lt { query.push(format!("minPriceLt={}", v)) }
+        if let Value(v) = &self.max_price_gt { query.push(format!("maxPriceGt={}", v)) }
+        if let Value(v) = &self.max_price_lt { query.push(format!("maxPriceLt={}", v)) }
+        if let Value(v) = &self.wfm_id { query.push(format!("wfm_id={}", v)) }
+        if let Value(v) = &self.lasted { query.push(format!("lasted={}", v)) }
         query.push(format!("from_date={}", self.from_date));
         query.push(format!("to_date={}", self.to_date));
 
-        match &self.tags {
-            Value(t) => {
-                for tag in t {
-                    query.push(format!("tags={}", tag));
-                }
+        if let Value(t) = &self.tags {
+            for tag in t {
+                query.push(format!("tags={}", tag));
             }
-            _ => {}
         }
         query.join("&")
     }

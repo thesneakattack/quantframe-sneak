@@ -16,3 +16,6 @@ uuid = {version = "1.17.0", features = ["v5"] }
 
 [dependencies.sea-orm]
 version = "0.12.4" # sea-orm version
+
+[lints]
+workspace = true

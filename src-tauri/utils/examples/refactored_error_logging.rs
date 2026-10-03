@@ -180,7 +180,7 @@ fn example_complex_error() {
 }
 
 fn demonstrate_dual_logging(error: &Error, stack_trace: &str) {
-    let mut base_message = format!("{}", error.message);
+    let mut base_message = error.message.to_string();
 
     if !error.cause.is_empty() {
         base_message.push_str(&format!(" | Cause: {}", error.cause));

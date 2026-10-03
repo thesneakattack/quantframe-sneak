@@ -26,7 +26,7 @@ impl StopWatch {
     pub fn pause(&mut self) {
         if !self.paused {
             if let Some(start) = self.start_time {
-                self.accumulated = self.accumulated + (Utc::now() - start);
+                self.accumulated += Utc::now() - start;
             }
             self.start_time = None;
             self.paused = true;
@@ -57,5 +57,11 @@ impl StopWatch {
     pub fn elapsed_hms(&self) -> (i64, i64, i64) {
         let secs = self.elapsed().num_seconds();
         (secs / 3600, (secs % 3600) / 60, secs % 60)
+    }
+}
+
+impl Default for StopWatch {
+    fn default() -> Self {
+        Self::new()
     }
 }

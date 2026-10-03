@@ -94,3 +94,9 @@ impl<V: Clone> MultiKeyMap<V> {
         hash_map
     }
 }
+
+impl<V: Clone> Default for MultiKeyMap<V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

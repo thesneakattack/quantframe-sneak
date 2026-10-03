@@ -27,7 +27,7 @@ async fn print_token() {
         "https://example.com",
         false,
     );
-    match client.authentication().signin(&user, &pass).await {
+    match client.authentication().signin(user, pass).await {
         Ok(_) => {
             // client.print_info();
         }
@@ -91,11 +91,10 @@ async fn test_cache_extract() {
                             if file.is_dir() {
                                 let _ = std::fs::create_dir_all(&output_path);
                             } else {
-                                if let Some(parent) = output_path.parent() {
-                                    if !parent.exists() {
+                                if let Some(parent) = output_path.parent()
+                                    && !parent.exists() {
                                         let _ = std::fs::create_dir_all(parent);
                                     }
-                                }
 
                                 if let Ok(mut output_file) = std::fs::File::create(&output_path) {
                                     total_size += file.size();

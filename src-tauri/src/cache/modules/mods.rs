@@ -29,7 +29,7 @@ impl ModModule {
                 let mut upgrade_entries_lookup = self.upgrade_entries_lookup.lock().unwrap();
                 let mut lookup = self.lookup.lock().unwrap();
                 for item in items.iter_mut() {
-                    item.base.translate(&language);
+                    item.base.translate(language);
                     let mut keys = vec![item.base.unique_name.clone(), item.base.name.clone()];
 
                     if let Some(wfm_url) = &item.base.wfm_url {

@@ -111,7 +111,10 @@ impl Display for ApiError {
                 write!(f, "Unauthorized: {}", req_err.error_sentence())
             }
             ApiError::ParsingError(req_err, parse_err) => {
-                println!("Request error: {:?}", parse_err);
+                // Removed a stray `println!` that wrote the parse error to stdout every
+                // time this error was formatted. Display is called from logging paths,
+                // so it leaked debug output. The detail it printed is already in the
+                // formatted message below.
                 write!(
                     f,
                     "Parsing error: {} - {}",

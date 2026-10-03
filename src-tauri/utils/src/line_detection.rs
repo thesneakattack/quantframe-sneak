@@ -118,11 +118,10 @@ pub fn combine_and_detect_match(
         return (line.to_string(), DetectionStatus::Line);
     }
 
-    if !is_ignored(ignored_combinations, DetectionStatus::PreviousLine) {
-        if contains_match(prev_line, match_pattern, is_exact_match) {
+    if !is_ignored(ignored_combinations, DetectionStatus::PreviousLine)
+        && contains_match(prev_line, match_pattern, is_exact_match) {
             return (prev_line.to_string(), DetectionStatus::PreviousLine);
         }
-    }
 
     if !is_ignored(ignored_combinations, DetectionStatus::LineThenPreviousLine) {
         let line_then_previous = format!("{line}{prev_line}");
@@ -174,11 +173,7 @@ pub fn combine_and_detect_multiple_matches(
 
 pub fn is_start_of_log(line: impl Into<String>) -> bool {
     let re = Regex::new(r"^\d+\.\d+\s").unwrap();
-    if let Some(_) = re.captures(line.into().as_str()) {
-        return true;
-    } else {
-        return false;
-    }
+    re.captures(line.into().as_str()).is_some()
 }
 
 pub fn contains_at_least(haystack: &str, needles: &str, count: usize, exact: bool) -> bool {
@@ -224,8 +219,8 @@ pub fn detect_enclosed_text(
     opening_delimiter: &str,
     closing_delimiter: &str,
 ) -> Option<(String, DetectionStatus)> {
-    let has_open = contains_at_least(&current_line, opening_delimiter, 1, true);
-    let has_close = contains_at_least(&current_line, closing_delimiter, 1, true);
+    let has_open = contains_at_least(current_line, opening_delimiter, 1, true);
+    let has_close = contains_at_least(current_line, closing_delimiter, 1, true);
 
     if has_open && has_close {
         return Some((current_line.to_string(), DetectionStatus::Line));

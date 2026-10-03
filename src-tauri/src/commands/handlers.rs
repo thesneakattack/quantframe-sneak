@@ -1,4 +1,4 @@
-use crate::{commands::item, handlers::*, track_event};
+use crate::{handlers::*, track_event};
 use qf_api::enums::app_events::ApplicationEvent as EventType;
 use utils::{get_location, Error};
 
@@ -7,14 +7,14 @@ pub async fn handles_handle_items(items: Vec<ItemEntity>) -> Result<i32, Error> 
     let mut total = 0;
     let mut processed_items = Vec::new();
     // WishList
-    let mut iter = items.into_iter();
-    while let Some(item) = iter.next() {
+    let iter = items.into_iter();
+    for item in iter {
         let item = item.clone();
         if item.operations.has("WishList") {
             let (o, updated_item) = handle_wish_list_by_entity(
                 item.clone().into(),
                 item.user_name.clone(),
-                item.order_type.clone(),
+                item.order_type,
                 &item.operations,
             )
             .await
@@ -35,7 +35,7 @@ pub async fn handles_handle_items(items: Vec<ItemEntity>) -> Result<i32, Error> 
             let (o, updated_item) = handle_item_by_entity(
                 item.clone().into(),
                 item.user_name.clone(),
-                item.order_type.clone(),
+                item.order_type,
                 &item.operations,
             )
             .await

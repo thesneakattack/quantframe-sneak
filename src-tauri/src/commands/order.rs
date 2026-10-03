@@ -68,72 +68,60 @@ pub fn get_wfm_orders_pagination(
     let app = app.lock()?.clone();
 
     let mut filtered_orders = filters_by(&app.wfm_client.order().cache_orders().to_vec(), |o| {
-        match &query.query {
-            FieldChange::Value(q) => {
-                let q = q.to_lowercase();
-                if !o
-                    .properties
-                    .get_property_value("name", String::new())
-                    .to_lowercase()
-                    .contains(&q)
-                {
-                    return false;
-                }
+        if let FieldChange::Value(q) = &query.query {
+            let q = q.to_lowercase();
+            if !o
+                .properties
+                .get_property_value("name", String::new())
+                .to_lowercase()
+                .contains(&q)
+            {
+                return false;
             }
-            _ => {}
         }
-        match &query.order_type {
-            FieldChange::Value(order_type) => {
-                if o.order_type != *order_type {
-                    return false;
-                }
+        if let FieldChange::Value(order_type) = &query.order_type {
+            if o.order_type != *order_type {
+                return false;
             }
-            _ => {}
         }
-        match &query.operations {
-            FieldChange::Value(raw) => {
-                let operations = OperationSet::from(raw.clone());
-                let order_operations = o
-                    .properties
-                    .get_property_value("operations", OperationSet::default());
-                if !operations.is_subset(&order_operations) {
-                    return false;
-                }
+        if let FieldChange::Value(raw) = &query.operations {
+            let operations = OperationSet::from(raw.clone());
+            let order_operations = o
+                .properties
+                .get_property_value("operations", OperationSet::default());
+            if !operations.is_subset(&order_operations) {
+                return false;
             }
-            _ => {}
         }
 
         true
     });
 
-    match &query.sort_by {
-        FieldChange::Value(sort_by) => {
-            let dir = match &query.sort_direction {
-                FieldChange::Value(dir) => dir,
-                _ => &SortDirection::Asc,
-            };
-            // Only allow sorting by known columns for safety
-            match sort_by.as_str() {
-                "created_at" => filtered_orders.sort_by(|a, b| match dir {
-                    SortDirection::Asc => a.created_at.cmp(&b.created_at),
-                    SortDirection::Desc => b.created_at.cmp(&a.created_at),
-                }),
-                "platinum" => filtered_orders.sort_by(|a, b| match dir {
-                    SortDirection::Asc => a.platinum.cmp(&b.platinum),
-                    SortDirection::Desc => b.platinum.cmp(&a.platinum),
-                }),
-                "updated_at" => filtered_orders.sort_by(|a, b| match dir {
-                    SortDirection::Asc => a.updated_at.cmp(&b.updated_at),
-                    SortDirection::Desc => b.updated_at.cmp(&a.updated_at),
-                }),
-                "order_type" => filtered_orders.sort_by(|a, b| match dir {
-                    SortDirection::Asc => a.order_type.cmp(&b.order_type),
-                    SortDirection::Desc => b.order_type.cmp(&a.order_type),
-                }),
-                _ => {}
-            }
+    if let FieldChange::Value(sort_by) = &query.sort_by {
+        let dir = match &query.sort_direction {
+            FieldChange::Value(dir) => dir,
+            _ => &SortDirection::Asc,
+        };
+        // Only allow sorting by known columns for safety
+        match sort_by.as_str() {
+            "created_at" => filtered_orders.sort_by(|a, b| match dir {
+                SortDirection::Asc => a.created_at.cmp(&b.created_at),
+                SortDirection::Desc => b.created_at.cmp(&a.created_at),
+            }),
+            "platinum" => filtered_orders.sort_by(|a, b| match dir {
+                SortDirection::Asc => a.platinum.cmp(&b.platinum),
+                SortDirection::Desc => b.platinum.cmp(&a.platinum),
+            }),
+            "updated_at" => filtered_orders.sort_by(|a, b| match dir {
+                SortDirection::Asc => a.updated_at.cmp(&b.updated_at),
+                SortDirection::Desc => b.updated_at.cmp(&a.updated_at),
+            }),
+            "order_type" => filtered_orders.sort_by(|a, b| match dir {
+                SortDirection::Asc => a.order_type.cmp(&b.order_type),
+                SortDirection::Desc => b.order_type.cmp(&a.order_type),
+            }),
+            _ => {}
         }
-        _ => {}
     }
     let p = paginate(
         &filtered_orders,
@@ -173,10 +161,10 @@ pub async fn get_wfm_orders_status_counts(
         })
         .collect::<HashMap<_, _>>();
 
-    if grouped.get("buy").is_none() {
+    if !grouped.contains_key("buy") {
         grouped.insert("buy".to_string(), (0, 0, 0.0));
     }
-    if grouped.get("sell").is_none() {
+    if !grouped.contains_key("sell") {
         grouped.insert("sell".to_string(), (0, 0, 0.0));
     }
     Ok(grouped)
@@ -190,7 +178,7 @@ pub async fn order_delete_all(
     cache_state: tauri::State<'_, Mutex<CacheState>>,
 ) -> Result<(), Error> {
     let app = app_state.lock()?.clone();
-    order_refresh(app_state, cache_state).await.map_err(|e| {
+    order_refresh(app_state, cache_state).await.inspect_err(|_e| {
         track_event!(
             EventType::OrderDeleteAll,
             [
@@ -198,7 +186,6 @@ pub async fn order_delete_all(
                 ("error_type", "refresh_failed".to_string()),
             ]
         );
-        e
     })?;
     live_scraper.stop();
 

@@ -27,3 +27,6 @@ governor = { version = "0.10.0", features = ["std"] }
 
 [dev-dependencies]
 dotenv = "0.15"
+
+[lints]
+workspace = true

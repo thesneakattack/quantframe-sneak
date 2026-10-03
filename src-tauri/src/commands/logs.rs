@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use utils::{Error, Properties, ZipOptions};
 
 use crate::{
-    app::{AppState, user},
+    app::AppState,
     helper,
     live_scraper::LiveScraperState,
     log_parser::LogParserState,
@@ -33,7 +33,7 @@ pub async fn log_export(
     let version = info.version.to_string();
     let app_path = helper::get_app_storage_path();
 
-    utils::export_cached_logs(&app_path).map_err(|e| {
+    utils::export_cached_logs(&app_path).inspect_err(|_e| {
         track_event!(
             EventType::LogExport,
             [
@@ -41,7 +41,6 @@ pub async fn log_export(
                 ("error_type", "cache_export_failed".to_string()),
             ]
         );
-        e
     })?;
 
     let zip_path =
@@ -83,8 +82,7 @@ pub async fn log_export(
     let mut wfm_info = Properties::default();
     wfm_info.set_property_value("tracking", app.wfm_client.get_tracking());
     let wfm_user = app.wfm_client.get_user().ok();
-    if wfm_user.is_some() {
-        let user = wfm_user.unwrap();
+    if let Some(user) = wfm_user {
         wfm_info.set_property_value("wfmTier", format!("{:?}", user.tier));
         wfm_info.set_property_value("wfmSubscription", user.subscription);
     }

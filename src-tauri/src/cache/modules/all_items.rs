@@ -52,7 +52,7 @@ impl AllItemsModule {
             insert_item(&CacheItemBase::from(item.base));
         }
         for item in client.archwing().get_all_items()? {
-            insert_item(&CacheItemBase::from(item.base));
+            insert_item(&item.base);
         }
         for item in client.fish().get_all_items()? {
             insert_item(&item.base);
@@ -85,20 +85,20 @@ impl AllItemsModule {
             insert_item(&CacheItemBase::from(item.base));
         }
         for item in client.sentinel().get_all_items()? {
-            insert_item(&CacheItemBase::from(item.base));
+            insert_item(&item.base);
         }
         for item in client.sentinel_weapon().get_all_items()? {
             insert_item(&CacheItemBase::from(item.base));
         }
         for item in client.skin().get_all_items()? {
-            insert_item(&CacheItemBase::from(item.base));
+            insert_item(&item.base);
         }
         for item in client.warframe().get_all_items()? {
-            insert_item(&CacheItemBase::from(item.base));
+            insert_item(&item.base);
         }
         info(
             "Cache:AllItemsModule:load",
-            &format!("Loaded {} items", lookup.len()),
+            format!("Loaded {} items", lookup.len()),
             &LoggerOptions::default(),
         );
         Ok(())
@@ -163,9 +163,9 @@ impl AllItemsModule {
         // } else if tags.iter().any(|tag| tag == "relic") {
         //     name = format!("{}", trade_name);
         // }
-        return Ok(ChatLink::new(
+        Ok(ChatLink::new(
             "NOT IMPLEMENTED".to_string(),
             "NOT IMPLEMENTED".to_string(),
-        ));
+        ))
     }
 }

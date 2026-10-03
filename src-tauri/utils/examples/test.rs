@@ -168,7 +168,7 @@ impl Client {
     }
 
     pub fn order(&self) -> Arc<OrderRoute> {
-        self.order_route.get_or_init(|| OrderRoute::new()).clone()
+        self.order_route.get_or_init(OrderRoute::new).clone()
     }
 
     pub fn set_host(&self, new_host: &str) {
@@ -186,7 +186,7 @@ impl Client {
         let host = self.host.lock().unwrap().clone();
         info(
             "HTTPServer",
-            &format!("🚀 Starting server on http://{}", host),
+            format!("🚀 Starting server on http://{}", host),
             &LoggerOptions::default(),
         );
         *running = true;
@@ -265,9 +265,7 @@ impl OrderRoute {
         self.orders
             .lock()
             .unwrap()
-            .iter()
-            .cloned()
-            .find(|o| o.id == id)
+            .iter().find(|&o| o.id == id).cloned()
     }
 
     fn delete_order(&self, id: &str) -> bool {

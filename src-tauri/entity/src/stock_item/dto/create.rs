@@ -5,7 +5,6 @@ use utils::SubType;
 
 use crate::stock_item::*;
 
-use crate::dto::*;
 use crate::enums::*;
 use crate::transaction::Model as TransactionModel;
 
@@ -82,18 +81,18 @@ impl CreateStockItem {
     }
 
     pub fn to_model(&self) -> Model {
-        let model = Model::new(
+        
+        Model::new(
             self.wfm_id.clone(),
             self.wfm_url.clone(),
             self.item_name.clone(),
             self.item_unique_name.clone(),
             self.sub_type.clone(),
             self.bought.unwrap_or(0),
-            self.quantity.clone(),
+            self.quantity,
             false,
             self.properties.clone(),
-        );
-        model
+        )
     }
     pub fn to_transaction(&self, user_name: impl Into<String>) -> Result<TransactionModel, String> {
         if !self.is_validated {

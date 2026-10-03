@@ -39,8 +39,8 @@ impl LineEntry {
         }
     }
     pub fn clear_newlines(&mut self) {
-        self.line = self.line.replace('\n', "").replace('\r', "");
-        self.prev_line = self.prev_line.replace('\n', "").replace('\r', "");
+        self.line = self.line.replace(['\n', '\r'], "");
+        self.prev_line = self.prev_line.replace(['\n', '\r'], "");
     }
 }
 impl Default for LineEntry {
@@ -98,7 +98,7 @@ impl FileWatcher {
         if !Path::new(&new_path).exists() {
             warning(
                 "FileWatcher",
-                &format!("FileWatcher switched to non-existing file: {}", new_path),
+                format!("FileWatcher switched to non-existing file: {}", new_path),
                 &LoggerOptions::default(),
             );
             return;
@@ -114,7 +114,7 @@ impl FileWatcher {
 
         info(
             "FileWatcher",
-            &format!("FileWatcher switched to file: {}", *path),
+            format!("FileWatcher switched to file: {}", *path),
             &LoggerOptions::default(),
         );
     }
@@ -133,7 +133,7 @@ impl FileWatcher {
                 } else {
                     warning(
                         "FileWatcher",
-                        &format!("Failed to open file: {}, retrying... in 5 seconds", path),
+                        format!("Failed to open file: {}, retrying... in 5 seconds", path),
                         &LoggerOptions::default(),
                     );
                     thread::sleep(Duration::from_secs(5));
@@ -144,7 +144,7 @@ impl FileWatcher {
                 } else {
                     warning(
                         "FileWatcher",
-                        &format!(
+                        format!(
                             "Failed to get metadata for file: {}, retrying... in 5 seconds",
                             path
                         ),
@@ -155,21 +155,25 @@ impl FileWatcher {
                 };
                 let mut pos = self.last_pos.lock().unwrap();
 
-                if (*pos > current_file_size || current_file_size < *pos) && current_file_size != 0
-                {
+                // The file shrank below our saved read offset, so it was truncated or
+                // rotated. (The second operand of the original `||` here was a
+                // transposed copy of the first and therefore always redundant.)
+                if *pos > current_file_size && current_file_size != 0 {
                     let mut prev_line = self.prev_line.lock().unwrap();
                     let mut cache = self.cache.lock().unwrap();
-                    *pos = 0;
-                    *prev_line = None;
-                    cache.clear();
+                    // Logged before the reset: the original logged *pos afterwards and so
+                    // always reported a position of 0.
                     trace(
                         "FileWatcher",
-                        &format!(
-                            "File truncated or rotated. Resetting position for file: {} | Current Position: {} | Current File Size: {}",
+                        format!(
+                            "File truncated or rotated. Resetting position for file: {} | Previous Position: {} | Current File Size: {}",
                             path, *pos, current_file_size
                         ),
                         &LoggerOptions::default(),
                     );
+                    *pos = 0;
+                    *prev_line = None;
+                    cache.clear();
                 }
 
                 file.seek(SeekFrom::Start(*pos))?;
@@ -230,7 +234,7 @@ impl FileWatcher {
             } else {
                 warning(
                     "FileWatcher",
-                    &format!("File not found: {}, retrying... in 5 seconds", path),
+                    format!("File not found: {}, retrying... in 5 seconds", path),
                     &LoggerOptions::default(),
                 );
                 // Sleep longer if file does not exist 5 seconds
@@ -273,7 +277,7 @@ impl FileWatcher {
             Err(e) => {
                 warning(
                     "FileWatcher",
-                    &format!("Error reading file contents: {}", e),
+                    format!("Error reading file contents: {}", e),
                     &LoggerOptions::default(),
                 );
                 return Err(Error::from(e));
@@ -296,7 +300,7 @@ impl FileWatcher {
             } else {
                 trace(
                     "FileWatcher",
-                    &format!("Skipping corrupted line with invalid UTF-8: {}", line),
+                    format!("Skipping corrupted line with invalid UTF-8: {}", line),
                     &LoggerOptions::default(),
                 );
             }
@@ -328,8 +332,8 @@ impl FileWatcher {
                     let mut chunk_lines: Vec<&str> = chunk_str.lines().collect();
 
                     // Check if the chunk ends with a complete line
-                    let ends_with_newline = current_chunk.ends_with(&[b'\n'])
-                        || current_chunk.ends_with(&[b'\r', b'\n']);
+                    let ends_with_newline = current_chunk.ends_with(b"\n")
+                        || current_chunk.ends_with(b"\r\n");
 
                     if !ends_with_newline && !chunk_lines.is_empty() {
                         // Last line is incomplete, save it for next chunk
@@ -352,7 +356,7 @@ impl FileWatcher {
                 Err(e) => {
                     warning(
                         "FileWatcher",
-                        &format!("Error reading file chunk: {}", e),
+                        format!("Error reading file chunk: {}", e),
                         &LoggerOptions::default(),
                     );
                     return Err(Error::from(e));

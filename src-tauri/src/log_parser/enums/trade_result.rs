@@ -9,6 +9,9 @@ pub enum TradeResult {
     Unknown,
 }
 impl TradeResult {
+    // Unused today but part of this type's intended surface; kept rather than
+    // deleted so the capability is not silently lost.
+    #[allow(dead_code)]
     pub fn was_detected(&self) -> bool {
         matches!(
             self,

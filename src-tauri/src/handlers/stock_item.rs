@@ -1,5 +1,4 @@
-use entity::{dto::*, enums::*, stock_item::*, wish_list::CreateWishListItem};
-use serde::{Deserialize, Serialize};
+use entity::{enums::*, stock_item::*};
 use service::StockItemMutation;
 use utils::SubType;
 use utils::{get_location, info, warning, Error, OperationSet};
@@ -29,13 +28,13 @@ fn log(
     match (status, updated_item) {
         ("NotFound", _) => info(
             format!("{component}:{sub_component}"),
-            &format!("Stock item not found for URL: {} | Operations: {:?} | Flags: {:?}", item.wfm_url, operations.operations, flags.operations),
+            format!("Stock item not found for URL: {} | Operations: {:?} | Flags: {:?}", item.wfm_url, operations.operations, flags.operations),
             &log_opts.set_enable(!flags.has("DisableNotFoundLog")),
         ),
 
         (_, Some(updated)) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Sold stock item {} | Owned: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 updated.item_name, updated.owned, status, operations.operations, flags.operations
             ),
@@ -44,7 +43,7 @@ fn log(
 
         ("Deleted", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Deleted stock item {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -53,7 +52,7 @@ fn log(
 
         ("Updated", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Updated stock item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -62,7 +61,7 @@ fn log(
 
         ("Created", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Created stock item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -71,7 +70,7 @@ fn log(
 
         ("Complete", _) => info(
             format!("{component}:{sub_component}"),
-            &format!(
+            format!(
                 "Completed stock item: {} | Quantity: {} | Status: {} | Operations: {:?} | Flags: {:?}",
                 item.item_name, item.quantity, status, operations.operations, flags.operations
             ),
@@ -80,7 +79,7 @@ fn log(
         _ => {
             warning(
                 format!("{component}:{sub_component}"),
-                &format!(
+                format!(
                     "Unhandled status: {} for stock item: {} | Operations: {:?} | Flags: {:?}",
                     status, item.item_name, operations.operations, flags.operations
                 ),
@@ -112,10 +111,9 @@ pub async fn handle_item_by_entity(
     // --------------------------------------------------
     // Validate
     // --------------------------------------------------
-    item.validate().map_err(|e| {
+    item.validate().inspect_err(|e| {
         let err = e.clone();
         err.with_location(get_location!()).log(file);
-        e
     })?;
 
     let mut model = item.to_model();
@@ -140,7 +138,7 @@ pub async fn handle_item_by_entity(
                 &item,
                 &updated_item,
                 &s_operation,
-                &flags,
+                flags,
                 &operations,
             );
 
@@ -156,14 +154,14 @@ pub async fn handle_item_by_entity(
 
             model = created_item;
             operations.add(format!("ItemBuy_{s_operation}"));
-            log(component, &item, &None, &s_operation, &flags, &operations);
+            log(component, &item, &None, &s_operation, flags, &operations);
         }
     }
 
     // --------------------------------------------------
     // WFM sync
     // --------------------------------------------------
-    if should_run_wfm(&flags, &operations) {
+    if should_run_wfm(flags, &operations) {
         let status = handle_wfm_item(
             &item.wfm_id,
             &item.sub_type,
@@ -184,7 +182,7 @@ pub async fn handle_item_by_entity(
     // --------------------------------------------------
     if item.bought.unwrap_or(0) <= 0 {
         operations.add("PriceZeroNoTransaction");
-        log(component, &item, &None, "Complete", &flags, &operations);
+        log(component, &item, &None, "Complete", flags, &operations);
         return Ok((operations, model));
     }
 
@@ -201,10 +199,10 @@ pub async fn handle_item_by_entity(
         tx.transaction_type = TransactionType::Sale;
     }
 
-    handle_transaction(tx, &flags)
+    handle_transaction(tx, flags)
         .await
         .map_err(|e| e.with_location(get_location!()).log(file))?;
-    log(component, &item, &None, "Complete", &flags, &operations);
+    log(component, &item, &None, "Complete", flags, &operations);
     Ok((operations, model))
 }
 

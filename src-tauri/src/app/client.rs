@@ -22,7 +22,7 @@ impl AppState {
             User::default()
         });
         let info = tauri_app.package_info().clone();
-        let is_development = if cfg!(dev) { true } else { false };
+        let is_development = cfg!(dev);
 
         let settings = Settings::load().unwrap_or_else(|e| {
             e.log("app_init.log");
@@ -33,7 +33,7 @@ impl AppState {
         let platform = tauri_plugin_os::platform().to_string();
         let user_agent = format!(
             "Quantframe/{} ({}; +https://quantframe.app)",
-            info.version.to_string(),
+            info.version,
             platform
         );
         let qf_client = QFClient::new(
@@ -110,7 +110,7 @@ impl AppState {
             .with_callback("api:after", |_, data| {
                 info(
                     "WarframeMarket:API",
-                    &format!(
+                    format!(
                         "Method: {} | Route: {} | Took {}ms",
                         data.get_property_value("method", String::new()),
                         data.get_property_value("url", String::new()),
@@ -132,7 +132,7 @@ impl AppState {
                     .to_string();
 
                 if let Some(data) = data.properties.clone() {
-                    log_json(data, &format!("wfm_api_error_{}.json", timestamp)).ok();
+                    log_json(data, format!("wfm_api_error_{}.json", timestamp)).ok();
                 }
             });
         wfm_client

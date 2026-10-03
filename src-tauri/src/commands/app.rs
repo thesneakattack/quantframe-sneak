@@ -14,7 +14,7 @@ use utils::{get_duration_since_start, Error};
 #[tauri::command]
 pub async fn initialized() -> Result<bool, Error> {
     let started = HAS_STARTED.get().cloned().unwrap_or(false);
-    return Ok(started);
+    Ok(started)
 }
 #[tauri::command]
 pub async fn app_get_app_info(app: tauri::State<'_, Mutex<AppState>>) -> Result<Value, Error> {

@@ -7,10 +7,9 @@ use std::{
     vec,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use entity::{
     dto::{add_price_history, PriceHistory},
-    enums::StockStatus,
     stock_item::*,
     syndicate_item::SyndicateItemPaginationQueryDto,
     wish_list::*,
@@ -24,7 +23,7 @@ use wf_market::{
 };
 
 use crate::{
-    app::{AppState, ItemSettings, Settings, SyndicateSettings},
+    app::{AppState, ItemSettings, Settings},
     cache::types::{CacheTradableItem, ItemPriceInfo},
     enums::*,
     live_scraper::*,
@@ -96,7 +95,7 @@ pub fn get_interesting_items(settings: &ItemSettings) -> Vec<ItemPriceInfo> {
     if items.is_empty() {
         info(
             "LiveScraper:Helpers:GetInterestingItems",
-            &format!(
+            format!(
                 "No interesting items found for settings: {}",
                 settings.get_query_id()
             ),
@@ -299,15 +298,14 @@ pub fn get_order_info(
         &SubTypeExt::from_entity(entry.sub_type.clone()),
         order_type,
     );
-    if order.is_none() {
-        (
+    match order {
+        None => (
             String::new(),
             0,
             wf_market::types::Properties::default(),
             OperationSet::from(vec!["Create"]),
-        )
-    } else {
-        let order = order.unwrap();
+        ),
+        Some(order) => {
         let mut properties = order.properties;
         properties.set_property_value("id", order.id.clone());
         properties.set_property_value("old_price", order.platinum);
@@ -318,6 +316,7 @@ pub fn get_order_info(
             properties,
             OperationSet::from(vec!["Update"]),
         )
+        }
     }
 }
 pub fn populate_order_properties(
@@ -476,8 +475,8 @@ async fn handler_wfm_error(
 }
 
 pub fn get_cooldown(new: &Properties) -> CooldownInfo {
-    let current_cooldown = new.get_property_value("cooldown", CooldownInfo::default());
-    current_cooldown
+    
+    new.get_property_value("cooldown", CooldownInfo::default())
 }
 pub fn set_cooldown(current: &mut Properties, new: &Properties) -> (bool, CooldownInfo) {
     let current_cooldown = get_cooldown(current);
@@ -566,8 +565,8 @@ pub async fn progress_order(
             Ok(order) => {
                 info(
                     format!("{}CreateSuccess", component),
-                    &format!("Created order for item {}: {}", name, order.id),
-                    &log_options,
+                    format!("Created order for item {}: {}", name, order.id),
+                    log_options,
                 );
                 send_event!(UIEvent::RefreshWfmOrders, json!({"source": component}));
             }
@@ -620,8 +619,8 @@ pub async fn progress_order(
             Ok(order) => {
                 info(
                     format!("{}UpdateSuccess", component),
-                    &format!("Updated order for item {}: {}", name, order.id),
-                    &log_options,
+                    format!("Updated order for item {}: {}", name, order.id),
+                    log_options,
                 );
                 if original_update_string != update_string {
                     send_event!(UIEvent::RefreshWfmOrders, json!({"source": component}));
@@ -646,8 +645,8 @@ pub async fn progress_order(
             Ok(_) => {
                 info(
                     format!("{}DeleteSuccess", component),
-                    &format!("Deleted order for item {}: {}", name, order_id),
-                    &log_options,
+                    format!("Deleted order for item {}: {}", name, order_id),
+                    log_options,
                 );
                 send_event!(UIEvent::RefreshWfmOrders, json!({"source": component}));
             }
@@ -668,14 +667,14 @@ pub async fn progress_order(
     } else if !can_create_order {
         warning(
             format!("{}Skip", component),
-            &format!("Item {} has reached the order limit. Skipping.", name),
-            &log_options,
+            format!("Item {} has reached the order limit. Skipping.", name),
+            log_options,
         );
     } else {
         warning(
             format!("{}Skip", component),
-            &format!("Item {} has no trade operations. Skipping.", name),
-            &log_options,
+            format!("Item {} has no trade operations. Skipping.", name),
+            log_options,
         );
     }
     Ok(OperationSet::default())
@@ -717,7 +716,7 @@ pub async fn fetch_and_cache_orders(
         .map_err(|e| {
             Error::from_wfm(
                 format!("{}:FetchAndCacheOrders", component),
-                &format!("Failed to get live orders for item {}", item_url),
+                format!("Failed to get live orders for item {}", item_url),
                 e,
                 get_location!(),
             )

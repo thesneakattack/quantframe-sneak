@@ -3,6 +3,7 @@ use crate::enums::TradeMode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct LiveScraperSettings {
     pub general: LiveScraperGeneralSettings,
     pub items: ItemSettings,
@@ -12,15 +13,5 @@ pub struct LiveScraperSettings {
 impl LiveScraperSettings {
     pub fn has_trade_mode(&self, mode: TradeMode) -> bool {
         self.general.trade_modes.contains(&mode)
-    }
-}
-impl Default for LiveScraperSettings {
-    fn default() -> Self {
-        Self {
-            general: LiveScraperGeneralSettings::default(),
-            items: ItemSettings::default(),
-            rivens: RivenSettings::default(),
-            syndicate: SyndicateSettings::default(),
-        }
     }
 }

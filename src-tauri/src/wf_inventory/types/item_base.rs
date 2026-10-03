@@ -68,7 +68,7 @@ impl WFInvItemBase {
         item.id = affiliation.id.clone();
         item.name = syndicate.name.clone();
         item.unique_name = syndicate.unique_name.clone();
-        item.sub_type = Some(SubType::rank(affiliation.rank as i64));
+        item.sub_type = Some(SubType::rank(affiliation.rank));
 
         item.quantity = standing - min_standing;
         item.properties

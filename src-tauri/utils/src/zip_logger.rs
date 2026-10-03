@@ -168,3 +168,9 @@ impl ZipLogger {
         Ok(())
     }
 }
+
+impl Default for ZipLogger {
+    fn default() -> Self {
+        Self::new()
+    }
+}

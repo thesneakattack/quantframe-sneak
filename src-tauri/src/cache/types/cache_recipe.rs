@@ -34,7 +34,7 @@ impl CacheRecipe {
         let required_parts: Vec<&CacheIngredient> = self
             .ingredients
             .iter()
-            .filter(|ingredient| tradeable_only == false || ingredient.base.is_tradeable)
+            .filter(|ingredient| !tradeable_only || ingredient.base.is_tradeable)
             .collect();
         if required_parts.is_empty() {
             return false;

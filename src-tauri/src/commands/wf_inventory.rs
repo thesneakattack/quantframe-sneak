@@ -41,7 +41,7 @@ pub async fn wf_inventory_update(
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
 ) -> Result<(), Error> {
     let wf_inventory = wf_inventory.lock()?.clone();
-    wf_inventory.update().map_err(|e| {
+    wf_inventory.update().inspect_err(|_e| {
         track_event!(
             EventType::WFInventoryUpdate,
             [
@@ -49,7 +49,6 @@ pub async fn wf_inventory_update(
                 ("error_type", "update_failed".to_string()),
             ]
         );
-        e
     })?;
     track_event!(EventType::WFInventoryUpdate, [("success", "true".to_string())]);
     Ok(())

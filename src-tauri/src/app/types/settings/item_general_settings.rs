@@ -6,6 +6,7 @@ use crate::enums::TradeMode;
 use super::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ItemGeneralSettings {
     pub blacklist: Vec<BlackListItemSetting>,
     pub buy_list: Vec<BuyListItemSetting>,
@@ -31,13 +32,5 @@ impl ItemGeneralSettings {
             }
         }
         0
-    }
-}
-impl Default for ItemGeneralSettings {
-    fn default() -> Self {
-        Self {
-            blacklist: Vec::new(),
-            buy_list: Vec::new(),
-        }
     }
 }

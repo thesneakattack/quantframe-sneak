@@ -23,9 +23,9 @@ pub async fn get_stock_item_pagination(
 ) -> Result<PaginatedResult<stock_item::Model>, Error> {
     let conn = DATABASE.get().unwrap();
     match StockItemQuery::get_all(conn, query).await {
-        Ok(data) => return Ok(data),
-        Err(e) => return Err(e.with_location(get_location!())),
-    };
+        Ok(data) => Ok(data),
+        Err(e) => Err(e.with_location(get_location!())),
+    }
 }
 
 #[tauri::command]
@@ -55,7 +55,7 @@ pub async fn stock_item_create(input: CreateStockItem) -> Result<stock_item::Mod
                 EventType::StockItemCreate,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -65,9 +65,9 @@ pub async fn stock_item_create(input: CreateStockItem) -> Result<stock_item::Mod
                     ("error_type", "create_failed".to_string()),
                 ]
             );
-            return Err(e
+            Err(e
                 .with_location(get_location!())
-                .log("stock_item_create.log"));
+                .log("stock_item_create.log"))
         }
     }
 }
@@ -95,7 +95,7 @@ pub async fn stock_item_sell(
                 EventType::StockItemSell,
                 [("success", "true".to_string())]
             );
-            return Ok(updated_item);
+            Ok(updated_item)
         }
         Err(e) => {
             track_event!(
@@ -105,7 +105,7 @@ pub async fn stock_item_sell(
                     ("error_type", "sell_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()).log("stock_item_sell.log"));
+            Err(e.with_location(get_location!()).log("stock_item_sell.log"))
         }
     }
 }
@@ -232,7 +232,7 @@ pub async fn stock_item_update(input: UpdateStockItem) -> Result<stock_item::Mod
                     ("error_type", "update_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }
@@ -401,7 +401,7 @@ pub async fn export_stock_item_json(
                     ("error_type", "cancelled".to_string()),
                 ]
             );
-            return Ok("".to_string());
+            Ok("".to_string())
         }
         Err(e) => {
             track_event!(
@@ -411,7 +411,7 @@ pub async fn export_stock_item_json(
                     ("error_type", "query_failed".to_string()),
                 ]
             );
-            return Err(e.with_location(get_location!()));
+            Err(e.with_location(get_location!()))
         }
     }
 }

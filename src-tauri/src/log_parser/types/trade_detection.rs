@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::OnceLock};
 
-use regex::Regex;
 use utils::{combine_and_detect_match, DetectionStatus};
 
 use crate::{enums::TradeItemType, log_parser::TradeResult};
@@ -132,7 +131,7 @@ impl TradeDetection {
         ignored_combinations: &[DetectionStatus],
     ) -> (String, DetectionStatus) {
         combine_and_detect_match(
-            &line,
+            line,
             prev_line,
             &self.receive_line_first_part,
             ignored_combinations,
@@ -146,7 +145,7 @@ impl TradeDetection {
         ignored_combinations: &[DetectionStatus],
     ) -> (String, DetectionStatus) {
         combine_and_detect_match(
-            &line,
+            line,
             prev_line,
             &self.receive_line_second_part,
             ignored_combinations,
@@ -162,7 +161,7 @@ impl TradeDetection {
     ) -> (String, DetectionStatus, TradeItemType) {
         let detect = |match_text: &str, ty, suffix: &str| {
             let (full_text, status) = combine_and_detect_match(
-                &line,
+                line,
                 prev_line,
                 &format!("{}{}", match_text, suffix),
                 ignored_combinations,
@@ -180,11 +179,11 @@ impl TradeDetection {
                 return (full_text, status, ty);
             }
         }
-        return (
+        (
             line.to_string(),
             DetectionStatus::None,
             TradeItemType::Unknown,
-        );
+        )
     }
     pub fn is_offer_line(
         &self,
@@ -258,7 +257,7 @@ impl TradeDetection {
         ];
         for mach in machs.iter() {
             let (_, status) =
-                combine_and_detect_match(&line, prev_line, mach, ignored_combinations, false);
+                combine_and_detect_match(line, prev_line, mach, ignored_combinations, false);
             if status.is_found() {
                 return status;
             }
@@ -303,7 +302,7 @@ impl TradeDetection {
             return DetectionStatus::None;
         }
         let (_, status) =
-            combine_and_detect_match(&line, prev_line, &self.start, ignored_combinations, false);
+            combine_and_detect_match(line, prev_line, &self.start, ignored_combinations, false);
 
         if is_dialog.is_found() && status.is_found() {
             return status;
@@ -316,13 +315,11 @@ impl TradeDetection {
         prev_line: &str,
         ignored_combinations: &[DetectionStatus],
     ) -> (String, DetectionStatus) {
-        let matches = vec![
-            ", title= leftItem=/Menu/Confirm_Item_Ok, rightItem=/Menu/Confirm_Item_Cancel)",
-            ", leftItem=/Menu/Confirm_Item_Ok, rightItem=/Menu/Confirm_Item_Cancel)",
-        ];
+        let matches = [", title= leftItem=/Menu/Confirm_Item_Ok, rightItem=/Menu/Confirm_Item_Cancel)",
+            ", leftItem=/Menu/Confirm_Item_Ok, rightItem=/Menu/Confirm_Item_Cancel)"];
         for mach in matches.iter() {
             let (full_text, status) =
-                combine_and_detect_match(&line, prev_line, mach, ignored_combinations, false);
+                combine_and_detect_match(line, prev_line, mach, ignored_combinations, false);
             if status.is_found() {
                 // Remove all text after the match to get the full item name
                 let full_text = full_text.split(mach).next().unwrap_or("").to_string();
