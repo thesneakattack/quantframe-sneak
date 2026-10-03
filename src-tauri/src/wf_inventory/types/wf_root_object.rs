@@ -64,6 +64,34 @@ pub struct WarframeRootObject {
     #[serde(rename = "Recipes", default)]
     pub recipes: Vec<WFInvItemRaw>,
 
+    #[serde(rename = "MiscItems", default)]
+    pub misc_items: Vec<WFInvItemRaw>,
+
     #[serde(rename = "Affiliations", default)]
     pub affiliations: Vec<WFInvAffiliation>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WarframeRootObject;
+
+    #[test]
+    fn parses_misc_items() {
+        let json = r#"{"MiscItems":[{"ItemCount":3,"ItemType":"/Part/Barrel"}]}"#;
+        let root: WarframeRootObject = serde_json::from_str(json).expect("should parse");
+        assert_eq!(root.misc_items.len(), 1);
+        assert_eq!(root.misc_items[0].unique_name, "/Part/Barrel");
+        assert_eq!(root.misc_items[0].quantity, 3);
+    }
+
+    /// The Profile source and older AlecaFrame dumps may omit the key
+    /// entirely. It must default to empty rather than failing the whole
+    /// inventory parse and leaving every tab blank.
+    #[test]
+    fn treats_a_missing_misc_items_key_as_empty() {
+        let root: WarframeRootObject =
+            serde_json::from_str(r#"{"PlayerLevel":30}"#).expect("should parse");
+        assert!(root.misc_items.is_empty());
+        assert_eq!(root.mastery_rank, 30);
+    }
 }

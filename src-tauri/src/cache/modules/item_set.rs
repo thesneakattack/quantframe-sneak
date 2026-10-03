@@ -99,4 +99,21 @@ impl ItemSetModule {
         *self.by_member.lock().unwrap() = by_member;
         Ok(())
     }
+
+    /// Every set this unique name is a member of. Normally zero or one, but
+    /// the akimbo prime sets share the single-pistol blueprint, so three
+    /// members belong to two sets each (issue #3).
+    pub fn get_sets_for_member(&self, unique_name: &str) -> Vec<CacheItemSet> {
+        let by_member = self.by_member.lock().unwrap();
+        let sets = self.sets.lock().unwrap();
+        by_member
+            .get(unique_name)
+            .map(|indices| {
+                indices
+                    .iter()
+                    .filter_map(|i| sets.get(*i).cloned())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
 }
