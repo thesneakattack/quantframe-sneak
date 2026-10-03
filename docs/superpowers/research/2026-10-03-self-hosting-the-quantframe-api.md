@@ -74,6 +74,51 @@ sweep once, centrally, instead of in every client.
 | `GET /market/rivens/{id}` | heavy | Same, single riven |
 | `GET /alecaframe/decrypt-keys` | **blocked** | Returns AES `key` and `iv` as byte arrays, used to decrypt AlecaFrame's `lastData.dat`. Reverse-engineered from a third-party tool; must be sourced independently |
 
+### Confirmed empirically (3 October 2026)
+
+The decrypt-keys blocker was predicted from reading the client. It has since been
+observed directly, running the app against the production API with a valid
+session:
+
+```
+[CRITICAL] DecryptLastData:GetKeys  Failed to get decrypt keys:
+  403 Forbidden  GET https://api.quantframe.app/alecaframe/decrypt-keys
+```
+
+The 403 is an **account entitlement, not a client problem**. Tested with the same
+token and headers, varying only the `IsDevelopment` header:
+
+| Request | Result |
+| --- | --- |
+| `/alecaframe/decrypt-keys`, `IsDevelopment: true` | 403 |
+| `/alecaframe/decrypt-keys`, `IsDevelopment: false` | 403 |
+| `/auth/me` (control, same token) | 200 |
+
+The account in question has `permissions: ""` and no `patreon_tier`, so the
+endpoint appears gated behind a supporter tier or an explicit grant. A
+self-hosted server would have to source the AES key and IV independently.
+
+### What the other two sources actually give you
+
+Worth recording, because it is not obvious and it determines whether the blocker
+matters:
+
+- **Profile** (`api.warframe.com/cdn/getProfileViewingData.php`) returns a public
+  *profile*, not an inventory. Of the fields `WarframeRootObject` wants it
+  supplies `PlayerLevel`, all fifteen `DailyAffiliation*` values and
+  `Affiliations`, and omits `PremiumCredits`, `RegularCredits`, `TradesRemaining`,
+  `RawUpgrades`, `Upgrades` and `Recipes`. `Upgrades` is where rivens live, so
+  this source can never populate the WF Inventory panel — it exists to import
+  **syndicate standings and mastery rank**, which is what the syndicate trading
+  pipeline consumes.
+- **File** expects plain JSON in `lastData`/`InventoryJson` format. AlecaFrame's
+  own `lastData.dat` is AES-encrypted on disk, so it cannot be fed to this source
+  without the keys above.
+
+The practical consequence: on an account without the entitlement, the WF Inventory
+panel (which has exactly one tab, Rivens) cannot show data under any of the three
+sources. That is likely why upstream hides the panel outside `vite dev`.
+
 ### The blocker is optional
 
 WF Inventory supports three sources — Warframe profile, AlecaFrame, and a plain
