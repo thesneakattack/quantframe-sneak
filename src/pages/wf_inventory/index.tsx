@@ -4,6 +4,7 @@ import classes from "./WFInventory.module.css";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { RivenPanel } from "./Tabs/Rivens";
 import { PartsPanel } from "./Tabs/Parts";
+import { ModsPanel } from "./Tabs/Mods";
 import { useState } from "react";
 export default function WfInventoryPage() {
   // Translate general
@@ -14,6 +15,7 @@ export default function WfInventoryPage() {
   const tabs = [
     { label: useTranslateTabs("riven.title"), component: (isActive: boolean) => <RivenPanel isActive={isActive} />, id: "riven" },
     { label: useTranslateTabs("parts.title"), component: (isActive: boolean) => <PartsPanel isActive={isActive} />, id: "parts" },
+    { label: useTranslateTabs("mods.title"), component: (isActive: boolean) => <ModsPanel isActive={isActive} />, id: "mods" },
   ];
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   return (

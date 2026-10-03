@@ -2838,6 +2838,24 @@
           "filters": {
             "in_set_only": "Set components only"
           }
+        },
+        "mods": {
+          "title": "Mods",
+          "stock_status": {
+            "found": "Already in stock",
+            "not_found": "Not in stock"
+          },
+          "datatable": {
+            "columns": {
+              "rank": "Rank",
+              "owned": "Owned"
+            }
+          },
+          "filters": {
+            "all": "All",
+            "unranked": "Unranked",
+            "ranked": "Ranked"
+          }
         }
       }
     }
