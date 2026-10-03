@@ -265,7 +265,9 @@ impl OrderRoute {
         self.orders
             .lock()
             .unwrap()
-            .iter().find(|&o| o.id == id).cloned()
+            .iter()
+            .find(|&o| o.id == id)
+            .cloned()
     }
 
     fn delete_order(&self, id: &str) -> bool {

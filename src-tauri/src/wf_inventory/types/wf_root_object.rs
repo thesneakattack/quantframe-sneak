@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::wf_inventory::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WarframeRootObject {
     #[serde(rename = "PlayerLevel", default)]
     pub mastery_rank: i64,

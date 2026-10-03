@@ -73,7 +73,8 @@ impl MatchRivenStruct {
             .attributes
             .clone()
             .unwrap_or_default()
-            .into_iter().filter(|a| a.positive && a.is_required)
+            .into_iter()
+            .filter(|a| a.positive && a.is_required)
             .map(|a| a.url_name.clone())
             .collect::<Vec<_>>();
 
@@ -82,7 +83,8 @@ impl MatchRivenStruct {
             .attributes
             .clone()
             .unwrap_or_default()
-            .into_iter().filter(|a| !a.positive && a.is_required)
+            .into_iter()
+            .filter(|a| !a.positive && a.is_required)
             .map(|a| a.url_name.clone())
             .collect::<Vec<_>>();
 

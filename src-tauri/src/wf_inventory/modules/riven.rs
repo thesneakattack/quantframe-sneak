@@ -86,17 +86,13 @@ impl RivenModule {
                         .base
                         .properties
                         .get_property_value("disposition", 0.0f64)
-                        .partial_cmp(
-                            &b.base.properties.get_property_value("disposition", 0.0f64),
-                        )
+                        .partial_cmp(&b.base.properties.get_property_value("disposition", 0.0f64))
                         .unwrap_or(std::cmp::Ordering::Equal),
                     SortDirection::Desc => b
                         .base
                         .properties
                         .get_property_value("disposition", 0.0f64)
-                        .partial_cmp(
-                            &a.base.properties.get_property_value("disposition", 0.0f64),
-                        )
+                        .partial_cmp(&a.base.properties.get_property_value("disposition", 0.0f64))
                         .unwrap_or(std::cmp::Ordering::Equal),
                 }),
                 "endo" => rivens.sort_by(|a, b| match dir {

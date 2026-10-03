@@ -147,9 +147,7 @@ impl AuthenticationRoute {
                 *user_lock = Some(user.clone());
                 Ok(user)
             }
-            Err(e) => {
-                Err(e)
-            }
+            Err(e) => Err(e),
             _ => Err(ApiError::Unknown("Unexpected response format".to_string())),
         }
     }

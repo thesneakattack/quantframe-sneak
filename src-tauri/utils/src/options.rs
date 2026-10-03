@@ -185,9 +185,10 @@ pub fn set_filter_components(components: Vec<impl Into<String>>) {
 pub fn add_filter_component(component: impl Into<String>) {
     let new_component = component.into();
     if let Ok(mut components) = FILTER_COMPONENTS.write()
-        && !components.contains(&new_component) {
-            components.push(new_component);
-        }
+        && !components.contains(&new_component)
+    {
+        components.push(new_component);
+    }
 }
 
 /// Get the current component filters, returns empty vector if no filters are set

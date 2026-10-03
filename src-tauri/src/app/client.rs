@@ -33,8 +33,7 @@ impl AppState {
         let platform = tauri_plugin_os::platform().to_string();
         let user_agent = format!(
             "Quantframe/{} ({}; +https://quantframe.app)",
-            info.version,
-            platform
+            info.version, platform
         );
         let qf_client = QFClient::new(
             &user.qf_token,

@@ -74,12 +74,24 @@ impl TransactionPaginationQueryDto {
                     ),
             )
         }
-        if let Value(q) = &self.transaction_type { stmt = stmt.filter(transaction::Column::TransactionType.eq(q.to_string())) }
-        if let Value(q) = &self.item_type { stmt = stmt.filter(transaction::Column::ItemType.eq(q.to_string())) }
-        if let Value(from_date) = &self.from_date { stmt = stmt.filter(transaction::Column::CreatedAt.gte(*from_date)) }
-        if let Value(to_date) = &self.to_date { stmt = stmt.filter(transaction::Column::CreatedAt.lte(*to_date)) }
-        if let Value(wfm_id) = &self.wfm_id { stmt = stmt.filter(transaction::Column::WfmId.eq(wfm_id)) }
-        if let Value(wfm_url) = &self.wfm_url { stmt = stmt.filter(transaction::Column::WfmUrl.eq(wfm_url)) }
+        if let Value(q) = &self.transaction_type {
+            stmt = stmt.filter(transaction::Column::TransactionType.eq(q.to_string()))
+        }
+        if let Value(q) = &self.item_type {
+            stmt = stmt.filter(transaction::Column::ItemType.eq(q.to_string()))
+        }
+        if let Value(from_date) = &self.from_date {
+            stmt = stmt.filter(transaction::Column::CreatedAt.gte(*from_date))
+        }
+        if let Value(to_date) = &self.to_date {
+            stmt = stmt.filter(transaction::Column::CreatedAt.lte(*to_date))
+        }
+        if let Value(wfm_id) = &self.wfm_id {
+            stmt = stmt.filter(transaction::Column::WfmId.eq(wfm_id))
+        }
+        if let Value(wfm_url) = &self.wfm_url {
+            stmt = stmt.filter(transaction::Column::WfmUrl.eq(wfm_url))
+        }
         if let Value(unique_name) = &self.unique_name {
             stmt = stmt.filter(transaction::Column::ItemUniqueName.eq(unique_name))
         }
@@ -93,8 +105,7 @@ impl TransactionPaginationQueryDto {
                 for tag in tags {
                     if !tag.trim().is_empty() {
                         tag_condition = tag_condition.add(
-                            Expr::col(transaction::Column::Tags)
-                                .like(format!("%{}%", tag.trim())),
+                            Expr::col(transaction::Column::Tags).like(format!("%{}%", tag.trim())),
                         );
                     }
                 }

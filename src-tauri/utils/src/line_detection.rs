@@ -119,9 +119,10 @@ pub fn combine_and_detect_match(
     }
 
     if !is_ignored(ignored_combinations, DetectionStatus::PreviousLine)
-        && contains_match(prev_line, match_pattern, is_exact_match) {
-            return (prev_line.to_string(), DetectionStatus::PreviousLine);
-        }
+        && contains_match(prev_line, match_pattern, is_exact_match)
+    {
+        return (prev_line.to_string(), DetectionStatus::PreviousLine);
+    }
 
     if !is_ignored(ignored_combinations, DetectionStatus::LineThenPreviousLine) {
         let line_then_previous = format!("{line}{prev_line}");

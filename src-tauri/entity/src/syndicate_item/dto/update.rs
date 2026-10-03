@@ -43,16 +43,26 @@ impl UpdateSyndicateItem {
             Null => item.list_price = Set(None),
             _ => {}
         }
-        if let Value(v) = self.status { item.status = Set(v) }
-        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
+        if let Value(v) = self.status {
+            item.status = Set(v)
+        }
+        if let Value(v) = self.price_history {
+            item.price_history = Set(PriceHistoryVec(v))
+        }
         match self.sub_type {
             Value(v) => item.sub_type = Set(v),
             Null => item.sub_type = Set(None),
             _ => {}
         }
-        if let Value(v) = self.syndicate_name { item.syndicate_name = Set(v) }
-        if let Value(v) = self.syndicate_unique_name { item.syndicate_unique_name = Set(v) }
-        if let Value(v) = self.standing_cost { item.standing_cost = Set(v) }
+        if let Value(v) = self.syndicate_name {
+            item.syndicate_name = Set(v)
+        }
+        if let Value(v) = self.syndicate_unique_name {
+            item.syndicate_unique_name = Set(v)
+        }
+        if let Value(v) = self.standing_cost {
+            item.standing_cost = Set(v)
+        }
         if let Value(mut v) = self.properties {
             v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
             v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);

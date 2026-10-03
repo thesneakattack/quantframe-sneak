@@ -59,8 +59,8 @@ impl TradeEntryMutation {
                 let mut updated_model = form_data.to_owned();
                 updated_model.id = existing.id;
                 return TradeEntryMutation::update_by_id(db, updated_model.to_update())
-                        .await
-                        .map_err(|e| e.with_location(get_location!()));
+                    .await
+                    .map_err(|e| e.with_location(get_location!()));
             }
         }
         TradeEntryMutation::create(db, form_data)

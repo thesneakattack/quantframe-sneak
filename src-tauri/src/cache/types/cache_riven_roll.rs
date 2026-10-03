@@ -47,10 +47,7 @@ impl CacheRivenRoll {
             }
         }
     }
-    pub fn get_graded_riven(
-        &self,
-        grades: &[(bool, RivenAttributeGrade, String)],
-    ) -> RivenGrade {
+    pub fn get_graded_riven(&self, grades: &[(bool, RivenAttributeGrade, String)]) -> RivenGrade {
         let buffs_tags: HashSet<String> = grades
             .iter()
             .filter(|(positive, _, _)| *positive)
@@ -173,8 +170,16 @@ impl CacheRivenRoll {
         // Good rolls
         for roll in self.good_rolls.iter() {
             let roll_summary = RollCriteria {
-                required: roll.required.iter().map(|r| resolve_attr(r, true)).collect(),
-                optional: roll.optional.iter().map(|o| resolve_attr(o, true)).collect(),
+                required: roll
+                    .required
+                    .iter()
+                    .map(|r| resolve_attr(r, true))
+                    .collect(),
+                optional: roll
+                    .optional
+                    .iter()
+                    .map(|o| resolve_attr(o, true))
+                    .collect(),
             };
 
             summary.add_valid_roll(roll_summary);

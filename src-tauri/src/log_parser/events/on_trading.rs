@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::Mutex,
-};
+use std::{collections::HashMap, sync::Mutex};
 
 use crate::{
     app::Settings,
@@ -112,10 +109,8 @@ impl OnTradeEvent {
         let raw_logs = self
             .watcher
             .get_cached_lines_between(log_start.index.saturating_sub(5), log_end.index + 5);
-        self.logger.create_file(
-            "RawEELogs.txt",
-            format!("{}", json!(raw_logs)).as_bytes(),
-        );
+        self.logger
+            .create_file("RawEELogs.txt", format!("{}", json!(raw_logs)).as_bytes());
         self.logger.finalize(format!("{}_TRADE.zip", timestamp))?;
         Ok(())
     }

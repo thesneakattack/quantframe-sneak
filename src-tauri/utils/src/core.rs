@@ -117,9 +117,10 @@ pub fn dolog(
 
     // Filter by global minimum log level if set
     if let Some(min_level) = crate::options::get_min_log_level()
-        && level.priority() < min_level.priority() {
-            return; // Skip logging if level is below minimum
-        }
+        && level.priority() < min_level.priority()
+    {
+        return; // Skip logging if level is below minimum
+    }
 
     // UTC time format: %Y-%m-%d %H:%M:%S
     let now = Local::now()
@@ -455,24 +456,26 @@ pub fn clear_logs(days: i64) -> Result<(), Error> {
         let path = entry.path();
 
         if path.is_dir()
-            && let Some(dir_name) = path.file_name().and_then(|name| name.to_str()) {
-                // Check if directory name is a date in YYYY-MM-DD format
-                if dir_name.len() == 10
-                    && dir_name.chars().nth(4) == Some('-')
-                    && dir_name.chars().nth(7) == Some('-')
-                    && dir_name < cutoff_date_str.as_str() {
-                        println!("Removing old log directory: {}", dir_name);
-                        fs::remove_dir_all(&path).map_err(|e| {
-                            Error::from_io(
-                                component,
-                                &path,
-                                "removing old log directory",
-                                e,
-                                get_location!(),
-                            )
-                        })?;
-                    }
+            && let Some(dir_name) = path.file_name().and_then(|name| name.to_str())
+        {
+            // Check if directory name is a date in YYYY-MM-DD format
+            if dir_name.len() == 10
+                && dir_name.chars().nth(4) == Some('-')
+                && dir_name.chars().nth(7) == Some('-')
+                && dir_name < cutoff_date_str.as_str()
+            {
+                println!("Removing old log directory: {}", dir_name);
+                fs::remove_dir_all(&path).map_err(|e| {
+                    Error::from_io(
+                        component,
+                        &path,
+                        "removing old log directory",
+                        e,
+                        get_location!(),
+                    )
+                })?;
             }
+        }
     }
 
     Ok(())

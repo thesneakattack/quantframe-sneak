@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ItemId {
     #[serde(
         rename = "$oid",
@@ -10,4 +9,3 @@ pub struct ItemId {
     )]
     pub id: Option<String>,
 }
-

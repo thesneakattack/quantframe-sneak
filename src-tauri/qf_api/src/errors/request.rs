@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{errors::ResponseError, utils::mask_sensitive_data};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct RequestError {
     pub status_code: u16,
     pub method: String,
@@ -62,9 +61,10 @@ impl RequestError {
      */
     pub fn mask_sensitive_data(&mut self, properties: &[&str]) {
         if let Some(obj) = self.payload.as_mut()
-            && obj.is_object() {
-                mask_sensitive_data(obj.as_object_mut().unwrap(), properties);
-            }
+            && obj.is_object()
+        {
+            mask_sensitive_data(obj.as_object_mut().unwrap(), properties);
+        }
 
         for (key, value) in self.headers.iter_mut() {
             let lower_key = key.to_lowercase();
@@ -118,7 +118,6 @@ impl RequestError {
         parts.join(", ")
     }
 }
-
 
 impl Display for RequestError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

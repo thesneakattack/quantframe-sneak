@@ -1,6 +1,6 @@
-use utils::*;
 use std::fs::OpenOptions;
 use std::io::Write;
+use utils::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Simplified Folder Management Demo ===");

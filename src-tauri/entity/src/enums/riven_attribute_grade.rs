@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, sea_orm::EnumIter, sea_orm::DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "String(Some(50))")]
-#[derive(Eq)]
-#[derive(Default)]
+#[derive(Eq, Default)]
 pub enum RivenAttributeGrade {
     #[sea_orm(string_value = "Decisive")]
     Decisive,

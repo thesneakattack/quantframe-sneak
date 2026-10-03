@@ -216,12 +216,14 @@ pub async fn handle_riven_by_model(
     // --------------------------------------------------
     match operation {
         OrderType::Sell => {
-            let status = handle_stock_riven_delete(conn, &model, &mut operations, component).await?;
+            let status =
+                handle_stock_riven_delete(conn, &model, &mut operations, component).await?;
             log(component, &model, &None, &status, flags, &operations);
         }
 
         OrderType::Buy => {
-            model = handle_stock_riven_create(conn, model, &mut operations, component, file).await?;
+            model =
+                handle_stock_riven_create(conn, model, &mut operations, component, file).await?;
             log(component, &model, &None, "Created", flags, &operations);
         }
     }
@@ -307,9 +309,7 @@ pub async fn handle_riven_by_name(
     let mut model = model.unwrap();
     model.bought = bought;
     match handle_riven_by_model(model, user_name, operation, flags).await {
-        Ok((operations, model)) => {
-            Ok((operations, Some(model)))
-        }
+        Ok((operations, model)) => Ok((operations, Some(model))),
         Err(e) => Err(e.with_location(get_location!()).log(file)),
     }
 }

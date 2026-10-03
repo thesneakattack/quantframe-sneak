@@ -146,9 +146,9 @@ impl<'a> ZipOptions<'a> {
                             if let Some(file_ext) = path.extension()
                                 && file_ext.to_string_lossy().to_lowercase()
                                     == extension.to_lowercase()
-                                {
-                                    return true;
-                                }
+                            {
+                                return true;
+                            }
                         }
                         // Wildcard at the end
                         else if let Some(prefix) = pattern.strip_suffix('*') {
@@ -158,9 +158,10 @@ impl<'a> ZipOptions<'a> {
                         }
                         // Wildcard at the beginning
                         else if let Some(suffix) = pattern.strip_prefix('*')
-                            && name.ends_with(suffix) {
-                                return true;
-                            }
+                            && name.ends_with(suffix)
+                        {
+                            return true;
+                        }
                     }
                     // Check for exact name match
                     else if name == *pattern {

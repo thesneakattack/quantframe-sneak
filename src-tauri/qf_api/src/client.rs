@@ -384,10 +384,7 @@ impl Client {
                         match resp.bytes().await {
                             Ok(bytes) => Ok((ApiResponse::Bytes(bytes.to_vec()), headers, error)),
                             Err(e) => {
-                                Err(ApiError::Unknown(format!(
-                                    "Failed to read bytes: {}",
-                                    e
-                                )))
+                                Err(ApiError::Unknown(format!("Failed to read bytes: {}", e)))
                             }
                         }
                     }
@@ -585,11 +582,12 @@ impl Client {
      */
     pub fn emit(&self, event: &str, data: &Value) {
         if let Ok(callbacks) = self.callbacks.lock()
-            && let Some(event_callbacks) = callbacks.get(event) {
-                for callback in event_callbacks {
-                    callback(event, data);
-                }
+            && let Some(event_callbacks) = callbacks.get(event)
+        {
+            for callback in event_callbacks {
+                callback(event, data);
             }
+        }
     }
 
     /**

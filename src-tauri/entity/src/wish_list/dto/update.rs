@@ -38,15 +38,23 @@ impl UpdateWishList {
     pub fn apply_to(self, mut item: wish_list::ActiveModel) -> wish_list::ActiveModel {
         use FieldChange::*;
 
-        if let Value(v) = self.quantity { item.quantity = Set(v) }
+        if let Value(v) = self.quantity {
+            item.quantity = Set(v)
+        }
         match self.list_price {
             Value(v) => item.list_price = Set(Some(v)),
             Null => item.list_price = Set(None),
             _ => {}
         }
-        if let Value(v) = self.is_hidden { item.is_hidden = Set(v) }
-        if let Value(v) = self.status { item.status = Set(v) }
-        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
+        if let Value(v) = self.is_hidden {
+            item.is_hidden = Set(v)
+        }
+        if let Value(v) = self.status {
+            item.status = Set(v)
+        }
+        if let Value(v) = self.price_history {
+            item.price_history = Set(PriceHistoryVec(v))
+        }
         match self.sub_type {
             Value(v) => item.sub_type = Set(v),
             Null => item.sub_type = Set(None),

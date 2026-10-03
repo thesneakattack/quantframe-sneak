@@ -51,15 +51,33 @@ impl SyndicateItemPricePaginationQueryDto {
         let mut query: Vec<String> = Vec::new();
         query.push(format!("page={}", self.pagination.page));
         query.push(format!("limit={}", self.pagination.limit));
-        if let Value(q) = &self.query { query.push(format!("query={}", q)) }
-        if let Value(s) = &self.sort_by { query.push(format!("sort_by={}", s)) }
-        if let Value(d) = &self.sort_direction { query.push(format!("sort_direction={}", d.to_string())) }
-        if let Value(v) = &self.volume_gt { query.push(format!("volumeGt={}", v)) }
-        if let Value(v) = &self.volume_lt { query.push(format!("volumeLt={}", v)) }
-        if let Value(v) = &self.min_price_gt { query.push(format!("minPriceGt={}", v)) }
-        if let Value(v) = &self.min_price_lt { query.push(format!("minPriceLt={}", v)) }
-        if let Value(v) = &self.standing_cost_gt { query.push(format!("standingCostGt={}", v)) }
-        if let Value(v) = &self.standing_cost_lt { query.push(format!("standingCostLt={}", v)) }
+        if let Value(q) = &self.query {
+            query.push(format!("query={}", q))
+        }
+        if let Value(s) = &self.sort_by {
+            query.push(format!("sort_by={}", s))
+        }
+        if let Value(d) = &self.sort_direction {
+            query.push(format!("sort_direction={}", d.to_string()))
+        }
+        if let Value(v) = &self.volume_gt {
+            query.push(format!("volumeGt={}", v))
+        }
+        if let Value(v) = &self.volume_lt {
+            query.push(format!("volumeLt={}", v))
+        }
+        if let Value(v) = &self.min_price_gt {
+            query.push(format!("minPriceGt={}", v))
+        }
+        if let Value(v) = &self.min_price_lt {
+            query.push(format!("minPriceLt={}", v))
+        }
+        if let Value(v) = &self.standing_cost_gt {
+            query.push(format!("standingCostGt={}", v))
+        }
+        if let Value(v) = &self.standing_cost_lt {
+            query.push(format!("standingCostLt={}", v))
+        }
         if let Value(s) = &self.syndicates {
             for syndicate in s {
                 query.push(format!("syndicates={}", syndicate));

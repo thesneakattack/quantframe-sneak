@@ -18,9 +18,15 @@ impl UpdateTradeEntry {
     pub fn apply_to(self, mut item: trade_entry::ActiveModel) -> trade_entry::ActiveModel {
         use FieldChange::*;
 
-        if let Value(v) = self.price { item.price = Set(v) }
-        if let Value(v) = self.tags { item.tags = Set(v.join(",")) }
-        if let Value(v) = self.sub_type { item.sub_type = Set(v) }
+        if let Value(v) = self.price {
+            item.price = Set(v)
+        }
+        if let Value(v) = self.tags {
+            item.tags = Set(v.join(","))
+        }
+        if let Value(v) = self.sub_type {
+            item.sub_type = Set(v)
+        }
         item
     }
     pub fn new(id: i64) -> Self {

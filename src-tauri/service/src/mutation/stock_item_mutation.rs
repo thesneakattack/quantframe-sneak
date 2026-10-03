@@ -73,12 +73,8 @@ impl StockItemMutation {
         let owned = item.owned - quantity;
         if owned <= 0 {
             match StockItemMutation::delete_by_id(db, id).await {
-                Ok(_) => {
-                    Ok(("Deleted".to_string(), Some(item)))
-                }
-                Err(e) => {
-                    Err(e)
-                }
+                Ok(_) => Ok(("Deleted".to_string(), Some(item))),
+                Err(e) => Err(e),
             }
         } else {
             match StockItemMutation::update_by_id(
@@ -87,12 +83,8 @@ impl StockItemMutation {
             )
             .await
             {
-                Ok(_) => {
-                    Ok(("Updated".to_string(), Some(item)))
-                }
-                Err(e) => {
-                    Err(e)
-                }
+                Ok(_) => Ok(("Updated".to_string(), Some(item))),
+                Err(e) => Err(e),
             }
         }
     }
@@ -159,12 +151,8 @@ impl StockItemMutation {
         )
         .await
         {
-            Ok(up_item) => {
-                Ok(("Updated".to_string(), up_item))
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(up_item) => Ok(("Updated".to_string(), up_item)),
+            Err(e) => Err(e),
         }
     }
 

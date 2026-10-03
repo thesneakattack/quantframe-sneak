@@ -5,8 +5,7 @@ use crate::enums::TradeMode;
 
 use super::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ItemGeneralSettings {
     pub blacklist: Vec<BlackListItemSetting>,
     pub buy_list: Vec<BuyListItemSetting>,

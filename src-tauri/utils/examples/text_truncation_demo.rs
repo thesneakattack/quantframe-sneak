@@ -120,9 +120,11 @@ fn example_practical_usage() {
     let large_payload = format!("Large payload: {}", "data".repeat(1000));
     let debug_info = format!("Massive debug info: {}", "debug".repeat(2000));
 
-    let log_messages = ["User login successful",
+    let log_messages = [
+        "User login successful",
         large_payload.as_str(),
-        debug_info.as_str()];
+        debug_info.as_str(),
+    ];
 
     for (i, message) in log_messages.iter().enumerate() {
         println!("    Message {}: {} chars", i + 1, message.len());

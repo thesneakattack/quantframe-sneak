@@ -50,7 +50,7 @@ pub fn fill_missing_date_keys<T>(
             Some(GroupByDate::Month) => {
                 let year = cursor.year();
                 let month = cursor.month();
-                
+
                 if month == 12 {
                     NaiveDateTime::new(
                         chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1).unwrap(),
@@ -63,13 +63,10 @@ pub fn fill_missing_date_keys<T>(
                     )
                 }
             }
-            Some(GroupByDate::Year) => {
-                
-                NaiveDateTime::new(
-                    chrono::NaiveDate::from_ymd_opt(cursor.year() + 1, 1, 1).unwrap(),
-                    chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
-                )
-            }
+            Some(GroupByDate::Year) => NaiveDateTime::new(
+                chrono::NaiveDate::from_ymd_opt(cursor.year() + 1, 1, 1).unwrap(),
+                chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+            ),
             None => break,
         };
     }

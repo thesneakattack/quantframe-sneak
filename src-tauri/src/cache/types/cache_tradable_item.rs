@@ -50,8 +50,7 @@ impl CacheTradableItem {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct SubType {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "maxRank")]

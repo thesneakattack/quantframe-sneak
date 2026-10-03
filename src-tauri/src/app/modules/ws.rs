@@ -4,20 +4,20 @@ use std::sync::Mutex;
 
 use serde_json::json;
 use tauri::Manager;
-use utils::{
-    get_location, info, Error, LogLevel, LoggerOptions, OperationSet,
-};
+use utils::{get_location, info, Error, LogLevel, LoggerOptions, OperationSet};
 use wf_market::client::Authenticated as WFAuthenticated;
 use wf_market::enums::ApiVersion;
 use wf_market::types::websocket::{WsClient, WsMessage};
 use wf_market::types::{Chat, ChatMessage};
 use wf_market::Client as WFClient;
 
-use crate::app::AppState;
 use crate::app::types::app_state::get_active_chat_id;
+use crate::app::AppState;
 use crate::utils::modules::states;
 use crate::utils::ErrorFromExt;
-use crate::{clear_error, emit_error, emit_update_user, send_event, types::UIEvent, APP, HAS_STARTED};
+use crate::{
+    clear_error, emit_error, emit_update_user, send_event, types::UIEvent, APP, HAS_STARTED,
+};
 
 fn send_ws_state(key: impl Into<String>, data: &WsMessage) {
     let key = key.into();
@@ -143,40 +143,40 @@ fn handle_new_message(wfm_client: &WFClient<WFAuthenticated>, msg: &WsMessage) {
         .handle_chat_message(&chat_message, &active_chat_id);
     match chat {
         None => {
-        tauri::async_runtime::spawn(async move {
-            match binding.get_chats().await {
-                Ok(mut messages) => {
-                    let chat = messages.get_by_id(&chat_message.chat_id, true);
-                    if let Some(chat) = chat {
-                        handle_notify(
-                            &chat,
-                            &chat_message,
-                            &active_chat_id,
-                            true,
-                            binding.cache_chats().total_unread_count(),
+            tauri::async_runtime::spawn(async move {
+                match binding.get_chats().await {
+                    Ok(mut messages) => {
+                        let chat = messages.get_by_id(&chat_message.chat_id, true);
+                        if let Some(chat) = chat {
+                            handle_notify(
+                                &chat,
+                                &chat_message,
+                                &active_chat_id,
+                                true,
+                                binding.cache_chats().total_unread_count(),
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        let err = Error::from_wfm(
+                            "ChatMessage:FetchChat",
+                            "Failed to fetch chats after receiving new message",
+                            e,
+                            get_location!(),
                         );
+                        err.log("websocket_info.log");
                     }
                 }
-                Err(e) => {
-                    let err = Error::from_wfm(
-                        "ChatMessage:FetchChat",
-                        "Failed to fetch chats after receiving new message",
-                        e,
-                        get_location!(),
-                    );
-                    err.log("websocket_info.log");
-                }
-            }
-        });
+            });
         }
         Some(chat) => {
-        handle_notify(
-            &chat,
-            &chat_message,
-            &active_chat_id,
-            false,
-            binding.cache_chats().total_unread_count(),
-        );
+            handle_notify(
+                &chat,
+                &chat_message,
+                &active_chat_id,
+                false,
+                binding.cache_chats().total_unread_count(),
+            );
         }
     }
 }
@@ -228,12 +228,14 @@ pub async fn setup_socket(
         .register_callback("event/reports/online", move |_, _, _| Ok(()))
         .unwrap()
         .register_callback("cmd/status/set:ok", move |msg, _, _| {
-            if let Some(payload) = msg.payload.as_ref() { update_user_status(
-                payload["status"]
-                    .as_str()
-                    .unwrap_or("invisible")
-                    .to_string(),
-            ) }
+            if let Some(payload) = msg.payload.as_ref() {
+                update_user_status(
+                    payload["status"]
+                        .as_str()
+                        .unwrap_or("invisible")
+                        .to_string(),
+                )
+            }
             Ok(())
         })
         .unwrap()
@@ -241,12 +243,14 @@ pub async fn setup_socket(
             if !HAS_STARTED.get().cloned().unwrap_or(false) {
                 return Ok(());
             }
-            if let Some(payload) = msg.payload.as_ref() { update_user_status(
-                payload["status"]
-                    .as_str()
-                    .unwrap_or("invisible")
-                    .to_string(),
-            ) }
+            if let Some(payload) = msg.payload.as_ref() {
+                update_user_status(
+                    payload["status"]
+                        .as_str()
+                        .unwrap_or("invisible")
+                        .to_string(),
+                )
+            }
             Ok(())
         })
         .unwrap()

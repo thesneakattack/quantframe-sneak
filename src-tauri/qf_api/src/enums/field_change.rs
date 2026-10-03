@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub enum FieldChange<T> {
     #[default]
-    Ignore,   // don’t touch this field
+    Ignore, // don’t touch this field
     Value(T), // set to a new value
     Null,     // explicitly clear (if nullable)
 }

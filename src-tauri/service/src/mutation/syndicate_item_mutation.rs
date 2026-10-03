@@ -75,12 +75,8 @@ impl SyndicateItemMutation {
         )
         .await
         {
-            Ok(up_item) => {
-                Ok(("Updated".to_string(), up_item))
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(up_item) => Ok(("Updated".to_string(), up_item)),
+            Err(e) => Err(e),
         }
     }
 

@@ -52,7 +52,9 @@ impl StockItemPaginationQueryDto {
                     ),
             )
         }
-        if let Value(ref q) = self.status { stmt = stmt.filter(stock_item::Column::Status.eq(q)) }
+        if let Value(ref q) = self.status {
+            stmt = stmt.filter(stock_item::Column::Status.eq(q))
+        }
         if let Value(sort_by) = &self.sort_by {
             let dir = match &self.sort_direction {
                 Value(dir) => dir,

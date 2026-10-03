@@ -33,8 +33,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_logger();
 
     println!("Starting FileWatcher...");
-    let paths = ["C:/Users/Kenya/AppData/Local/Warframe/EE.log",
-        "C:/Users/Kenya/Desktop/Andet/Coding/Warframe/warframe-data/_cache/WFLogSimulation/EE.log"];
+    let paths = [
+        "C:/Users/Kenya/AppData/Local/Warframe/EE.log",
+        "C:/Users/Kenya/Desktop/Andet/Coding/Warframe/warframe-data/_cache/WFLogSimulation/EE.log",
+    ];
     let index = 1;
     // C:\Users\Kenya\Desktop\Andet\Coding\Warframe\warframe-data\_cache\WFLogSimulation\EE.log
     // C:\Users\Kenya\AppData\Local\Warframe\EE.log

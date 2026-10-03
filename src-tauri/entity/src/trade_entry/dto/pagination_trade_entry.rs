@@ -58,8 +58,7 @@ impl TradeEntryPaginationQueryDto {
                 for tag in tags {
                     if !tag.trim().is_empty() {
                         tag_condition = tag_condition.add(
-                            Expr::col(trade_entry::Column::Tags)
-                                .like(format!("%{}%", tag.trim())),
+                            Expr::col(trade_entry::Column::Tags).like(format!("%{}%", tag.trim())),
                         );
                     }
                 }

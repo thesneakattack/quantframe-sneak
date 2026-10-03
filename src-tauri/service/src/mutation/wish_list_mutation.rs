@@ -65,12 +65,8 @@ impl WishListMutation {
         )
         .await
         {
-            Ok(up_item) => {
-                Ok(("Updated".to_string(), up_item))
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(up_item) => Ok(("Updated".to_string(), up_item)),
+            Err(e) => Err(e),
         }
     }
 
@@ -118,12 +114,8 @@ impl WishListMutation {
         item.quantity -= quantity;
         if item.quantity <= 0 {
             match WishListMutation::delete_by_id(db, id).await {
-                Ok(_) => {
-                    Ok(("Deleted".to_string(), Some(item)))
-                }
-                Err(e) => {
-                    Err(e)
-                }
+                Ok(_) => Ok(("Deleted".to_string(), Some(item))),
+                Err(e) => Err(e),
             }
         } else {
             match WishListMutation::update_by_id(
@@ -132,12 +124,8 @@ impl WishListMutation {
             )
             .await
             {
-                Ok(_) => {
-                    Ok(("Updated".to_string(), Some(item)))
-                }
-                Err(e) => {
-                    Err(e)
-                }
+                Ok(_) => Ok(("Updated".to_string(), Some(item))),
+                Err(e) => Err(e),
             }
         }
     }

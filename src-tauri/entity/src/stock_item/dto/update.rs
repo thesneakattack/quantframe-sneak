@@ -38,16 +38,26 @@ impl UpdateStockItem {
     pub fn apply_to(self, mut item: stock_item::ActiveModel) -> stock_item::ActiveModel {
         use FieldChange::*;
 
-        if let Value(v) = self.owned { item.owned = Set(v) }
-        if let Value(v) = self.bought { item.bought = Set(v) }
+        if let Value(v) = self.owned {
+            item.owned = Set(v)
+        }
+        if let Value(v) = self.bought {
+            item.bought = Set(v)
+        }
         match self.list_price {
             Value(v) => item.list_price = Set(Some(v)),
             Null => item.list_price = Set(None),
             _ => {}
         }
-        if let Value(v) = self.is_hidden { item.is_hidden = Set(v) }
-        if let Value(v) = self.status { item.status = Set(v) }
-        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
+        if let Value(v) = self.is_hidden {
+            item.is_hidden = Set(v)
+        }
+        if let Value(v) = self.status {
+            item.status = Set(v)
+        }
+        if let Value(v) = self.price_history {
+            item.price_history = Set(PriceHistoryVec(v))
+        }
         match self.sub_type {
             Value(v) => item.sub_type = Set(v),
             Null => item.sub_type = Set(None),

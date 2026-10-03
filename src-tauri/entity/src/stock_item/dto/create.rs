@@ -81,7 +81,6 @@ impl CreateStockItem {
     }
 
     pub fn to_model(&self) -> Model {
-        
         Model::new(
             self.wfm_id.clone(),
             self.wfm_url.clone(),

@@ -167,7 +167,6 @@ impl From<&Vec<transaction::Model>> for FinancialReport {
 
         let total_credits: i64 = transactions.iter().map(|t| t.credits).sum();
 
-        
         FinancialReport::new(
             total_transactions,
             sales.len(),

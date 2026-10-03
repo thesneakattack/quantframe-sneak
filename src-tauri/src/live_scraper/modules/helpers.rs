@@ -306,16 +306,17 @@ pub fn get_order_info(
             OperationSet::from(vec!["Create"]),
         ),
         Some(order) => {
-        let mut properties = order.properties;
-        properties.set_property_value("id", order.id.clone());
-        properties.set_property_value("old_price", order.platinum);
-        properties.set_property_value("original_update_string", format!("p:{}", order.platinum));
-        (
-            order.id.clone(),
-            i64::from(order.platinum),
-            properties,
-            OperationSet::from(vec!["Update"]),
-        )
+            let mut properties = order.properties;
+            properties.set_property_value("id", order.id.clone());
+            properties.set_property_value("old_price", order.platinum);
+            properties
+                .set_property_value("original_update_string", format!("p:{}", order.platinum));
+            (
+                order.id.clone(),
+                i64::from(order.platinum),
+                properties,
+                OperationSet::from(vec!["Update"]),
+            )
         }
     }
 }
@@ -475,7 +476,6 @@ async fn handler_wfm_error(
 }
 
 pub fn get_cooldown(new: &Properties) -> CooldownInfo {
-    
     new.get_property_value("cooldown", CooldownInfo::default())
 }
 pub fn set_cooldown(current: &mut Properties, new: &Properties) -> (bool, CooldownInfo) {

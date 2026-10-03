@@ -83,7 +83,10 @@ pub async fn handles_handle_items(items: Vec<ItemEntity>) -> Result<i32, Error> 
     }
     track_event!(
         EventType::HandledItems,
-        [("success", "true".to_string()), ("count", total.to_string())]
+        [
+            ("success", "true".to_string()),
+            ("count", total.to_string())
+        ]
     );
     Ok(total)
 }

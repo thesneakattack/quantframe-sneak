@@ -2,9 +2,9 @@
 #[macro_export]
 macro_rules! emit_event {
     ($event_name:expr, $payload:expr, $log_context:expr) => {{
-        use $crate::APP;
         use ::utils::*;
-        use tauri::Emitter; // Bring the trait with `emit` into scope
+        use tauri::Emitter;
+        use $crate::APP; // Bring the trait with `emit` into scope
         let app = APP.get().expect("App not initialized");
         match app.emit($event_name, $payload) {
             Ok(_) => {
@@ -109,8 +109,8 @@ macro_rules! notify_gui {
 #[macro_export]
 macro_rules! send_system_notification {
     ($title:expr, $body:expr, $icon:expr, $sound:expr) => {{
-        use $crate::APP;
         use tauri_plugin_notification::NotificationExt;
+        use $crate::APP;
         let app = APP.get().expect("App not initialized");
         app.notification()
             .builder()

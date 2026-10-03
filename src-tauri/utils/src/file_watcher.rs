@@ -332,8 +332,8 @@ impl FileWatcher {
                     let mut chunk_lines: Vec<&str> = chunk_str.lines().collect();
 
                     // Check if the chunk ends with a complete line
-                    let ends_with_newline = current_chunk.ends_with(b"\n")
-                        || current_chunk.ends_with(b"\r\n");
+                    let ends_with_newline =
+                        current_chunk.ends_with(b"\n") || current_chunk.ends_with(b"\r\n");
 
                     if !ends_with_newline && !chunk_lines.is_empty() {
                         // Last line is incomplete, save it for next chunk

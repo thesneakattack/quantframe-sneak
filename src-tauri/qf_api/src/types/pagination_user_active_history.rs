@@ -41,7 +41,9 @@ impl Display for UserActiveHistoryQueryDto {
         write!(
             f,
             "From Date: {}, To Date: {}, Group By: {}",
-            self.from_date, self.to_date, self.group_by.to_string()
+            self.from_date,
+            self.to_date,
+            self.group_by.to_string()
         )
     }
 }

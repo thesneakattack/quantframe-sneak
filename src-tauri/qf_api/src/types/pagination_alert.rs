@@ -32,10 +32,18 @@ impl AlertPaginationQueryDto {
         let mut query: Vec<String> = Vec::new();
         query.push(format!("page={}", self.pagination.page));
         query.push(format!("limit={}", self.pagination.limit));
-        if let Value(q) = &self.query { query.push(format!("query={}", q)) }
-        if let Value(s) = &self.sort_by { query.push(format!("sort_by={}", s)) }
-        if let Value(d) = &self.sort_direction { query.push(format!("sort_direction={}", d.to_string())) }
-        if let Value(e) = &self.enabled { query.push(format!("enabled={}", e)) }
+        if let Value(q) = &self.query {
+            query.push(format!("query={}", q))
+        }
+        if let Value(s) = &self.sort_by {
+            query.push(format!("sort_by={}", s))
+        }
+        if let Value(d) = &self.sort_direction {
+            query.push(format!("sort_direction={}", d.to_string()))
+        }
+        if let Value(e) = &self.enabled {
+            query.push(format!("enabled={}", e))
+        }
         query.join("&")
     }
     pub fn set_pagination(mut self, pagination: PaginationQueryDto) -> Self {

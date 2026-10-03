@@ -46,9 +46,7 @@ impl HttpServer {
             .clone()
     }
     pub fn wish_list(&self) -> Arc<WishListRoute> {
-        self.wish_list_route
-            .get_or_init(WishListRoute::new)
-            .clone()
+        self.wish_list_route.get_or_init(WishListRoute::new).clone()
     }
     pub fn set_host(&self, new_host: impl Into<String>, port: u16) -> String {
         let new_host = format!("{}:{}", new_host.into(), port);

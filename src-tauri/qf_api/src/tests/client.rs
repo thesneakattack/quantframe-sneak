@@ -92,9 +92,10 @@ async fn test_cache_extract() {
                                 let _ = std::fs::create_dir_all(&output_path);
                             } else {
                                 if let Some(parent) = output_path.parent()
-                                    && !parent.exists() {
-                                        let _ = std::fs::create_dir_all(parent);
-                                    }
+                                    && !parent.exists()
+                                {
+                                    let _ = std::fs::create_dir_all(parent);
+                                }
 
                                 if let Ok(mut output_file) = std::fs::File::create(&output_path) {
                                     total_size += file.size();

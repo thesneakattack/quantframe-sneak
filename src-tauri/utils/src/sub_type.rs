@@ -2,8 +2,7 @@ use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult, Default)]
 pub struct SubType {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "rank", alias = "Rank")]

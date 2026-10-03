@@ -42,10 +42,7 @@ pub async fn order_refresh(
             );
             track_event!(
                 EventType::OrderRefresh,
-                [
-                    ("success", "false".to_string()),
-                    ("error_type", error_type),
-                ]
+                [("success", "false".to_string()), ("error_type", error_type),]
             );
             err.log("order_refresh.log");
             err
@@ -178,15 +175,17 @@ pub async fn order_delete_all(
     cache_state: tauri::State<'_, Mutex<CacheState>>,
 ) -> Result<(), Error> {
     let app = app_state.lock()?.clone();
-    order_refresh(app_state, cache_state).await.inspect_err(|_e| {
-        track_event!(
-            EventType::OrderDeleteAll,
-            [
-                ("success", "false".to_string()),
-                ("error_type", "refresh_failed".to_string()),
-            ]
-        );
-    })?;
+    order_refresh(app_state, cache_state)
+        .await
+        .inspect_err(|_e| {
+            track_event!(
+                EventType::OrderDeleteAll,
+                [
+                    ("success", "false".to_string()),
+                    ("error_type", "refresh_failed".to_string()),
+                ]
+            );
+        })?;
     live_scraper.stop();
 
     let orders = match order_type {
@@ -206,10 +205,7 @@ pub async fn order_delete_all(
             );
             track_event!(
                 EventType::OrderDeleteAll,
-                [
-                    ("success", "false".to_string()),
-                    ("error_type", error_type),
-                ]
+                [("success", "false".to_string()), ("error_type", error_type),]
             );
             err.log("order_delete_all.log");
             return Err(err);
@@ -265,17 +261,17 @@ pub async fn order_delete_by_id(
             );
             track_event!(
                 EventType::OrderDeleteById,
-                [
-                    ("success", "false".to_string()),
-                    ("error_type", error_type),
-                ]
+                [("success", "false".to_string()), ("error_type", error_type),]
             );
             err.log("order_delete_by_id.log");
             return Err(err);
         }
     }
 
-    track_event!(EventType::OrderDeleteById, [("success", "true".to_string())]);
+    track_event!(
+        EventType::OrderDeleteById,
+        [("success", "true".to_string())]
+    );
     Ok(())
 }
 #[tauri::command]

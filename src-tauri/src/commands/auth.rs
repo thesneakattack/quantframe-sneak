@@ -179,7 +179,8 @@ pub async fn auth_has_permission(
 
     if app_state
         .user
-        .has_permission(PermissionsFlags::from_str(&flag)).is_err()
+        .has_permission(PermissionsFlags::from_str(&flag))
+        .is_err()
     {
         warning(
             "Commands:AuthHasPermission",

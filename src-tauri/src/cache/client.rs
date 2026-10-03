@@ -587,9 +587,7 @@ impl CacheState {
             .clone()
     }
     pub fn weapon(&self) -> Arc<WeaponModule> {
-        self.weapon_module
-            .get_or_init(WeaponModule::new)
-            .clone()
+        self.weapon_module.get_or_init(WeaponModule::new).clone()
     }
     pub fn recipe(&self) -> Arc<RecipeModule> {
         self.recipe_module

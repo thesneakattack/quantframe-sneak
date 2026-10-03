@@ -21,8 +21,7 @@ pub struct RollCriteria {
     pub optional: Vec<AttributeMatch>,
 }
 
-#[derive(Debug, Serialize, Clone)]
-#[derive(Default)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct RivenRollEvaluation {
     pub valid_rolls: Vec<RollCriteria>,
     pub tolerated_negative_attributes: Vec<AttributeMatch>,

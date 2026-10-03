@@ -16,9 +16,7 @@ pub async fn cache_get_tradable_items(
 ) -> Result<Vec<CacheTradableItem>, Error> {
     let cache = cache.lock()?;
     match cache.tradable_item().get_items() {
-        Ok(items) => {
-            Ok(items)
-        }
+        Ok(items) => Ok(items),
         Err(e) => {
             e.log("cache_get_tradable_items.log");
             Err(e)
@@ -31,9 +29,7 @@ pub async fn cache_get_syndicates(
 ) -> Result<Vec<CacheSyndicate>, Error> {
     let cache = cache.lock()?;
     match cache.syndicate().get_items() {
-        Ok(items) => {
-            Ok(items)
-        }
+        Ok(items) => Ok(items),
         Err(e) => {
             e.log("cache_get_syndicates.log");
             Err(e)
@@ -46,9 +42,7 @@ pub async fn cache_get_riven_attributes(
 ) -> Result<Vec<CacheAttribute>, Error> {
     let cache = cache.lock()?;
     match cache.attribute().get_items() {
-        Ok(items) => {
-            Ok(items)
-        }
+        Ok(items) => Ok(items),
         Err(e) => {
             e.log("cache_get_riven_attributes.log");
             Err(e)
@@ -80,9 +74,7 @@ pub async fn cache_get_chat_icons(
 ) -> Result<Vec<CacheChatIcon>, Error> {
     let cache = cache.lock()?;
     match cache.chat_icon().get_items() {
-        Ok(items) => {
-            Ok(items)
-        }
+        Ok(items) => Ok(items),
         Err(e) => {
             e.log("cache_get_chat_icons.log");
             Err(e)
@@ -95,9 +87,7 @@ pub async fn cache_get_theme_presets(
 ) -> Result<Vec<CacheTheme>, Error> {
     let cache = cache.lock()?;
     match cache.theme().get_items() {
-        Ok(items) => {
-            Ok(items)
-        }
+        Ok(items) => Ok(items),
         Err(e) => {
             e.log("cache_get_theme_presets.log");
             Err(e)

@@ -171,7 +171,10 @@ pub async fn sound_add_custom_sound(
         track_failure("settings_save_error");
     })?;
 
-    track_event!(EventType::SoundAddCustomSound, [("success", "true".to_string())]);
+    track_event!(
+        EventType::SoundAddCustomSound,
+        [("success", "true".to_string())]
+    );
     Ok(app.settings.notifications.custom_sounds.clone())
 }
 

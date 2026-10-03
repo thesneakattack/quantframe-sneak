@@ -232,7 +232,7 @@ impl LiveScraperState {
 
     pub fn elapsed(&self) -> u64 {
         let started_at = self.started_at.lock().map(|g| *g).unwrap_or(None);
-        
+
         match started_at {
             Some(start) => start.elapsed().as_secs(),
             None => 0,

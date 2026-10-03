@@ -42,18 +42,32 @@ pub struct UpdateStockRiven {
 impl UpdateStockRiven {
     pub fn apply_to(self, mut item: stock_riven::ActiveModel) -> stock_riven::ActiveModel {
         use FieldChange::*;
-        if let Value(v) = self.bought { item.bought = Set(v) }
+        if let Value(v) = self.bought {
+            item.bought = Set(v)
+        }
         match self.list_price {
             Value(v) => item.list_price = Set(Some(v)),
             Null => item.list_price = Set(None),
             _ => {}
         }
-        if let Value(v) = self.is_hidden { item.is_hidden = Set(v) }
-        if let Value(v) = self.status { item.status = Set(v) }
-        if let Value(v) = self.filter { item.filter = Set(v) }
-        if let Value(v) = self.mastery_rank { item.mastery_rank = Set(v) }
-        if let Value(v) = self.re_rolls { item.re_rolls = Set(v) }
-        if let Value(v) = self.price_history { item.price_history = Set(PriceHistoryVec(v)) }
+        if let Value(v) = self.is_hidden {
+            item.is_hidden = Set(v)
+        }
+        if let Value(v) = self.status {
+            item.status = Set(v)
+        }
+        if let Value(v) = self.filter {
+            item.filter = Set(v)
+        }
+        if let Value(v) = self.mastery_rank {
+            item.mastery_rank = Set(v)
+        }
+        if let Value(v) = self.re_rolls {
+            item.re_rolls = Set(v)
+        }
+        if let Value(v) = self.price_history {
+            item.price_history = Set(PriceHistoryVec(v))
+        }
         if let Value(mut v) = self.properties {
             v.keep_property_values(ALLOWED_PROPERTIES_FIELDS);
             v.nullify_zeroed_properties(ALLOWED_PROPERTIES_FIELDS);

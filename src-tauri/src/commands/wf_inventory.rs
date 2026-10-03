@@ -50,6 +50,9 @@ pub async fn wf_inventory_update(
             ]
         );
     })?;
-    track_event!(EventType::WFInventoryUpdate, [("success", "true".to_string())]);
+    track_event!(
+        EventType::WFInventoryUpdate,
+        [("success", "true".to_string())]
+    );
     Ok(())
 }

@@ -161,7 +161,8 @@ impl WFInvItemRiven {
         let grade = cache
             .riven_good_roll()
             .get_by(&weapon.unique_name)
-            .ok().map(|god_roll| grade_riven(&god_roll, &self.base.attributes, "tag").0)
+            .ok()
+            .map(|god_roll| grade_riven(&god_roll, &self.base.attributes, "tag").0)
             .unwrap_or(RivenGrade::Unknown);
         self.base.properties.set_property_value("grade", grade);
         self.base.polarity = normalize_polarity(fingerprint.polarity.clone());

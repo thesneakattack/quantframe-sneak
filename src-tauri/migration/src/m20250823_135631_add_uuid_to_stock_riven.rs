@@ -1,9 +1,6 @@
 use crate::m20240406_135307_create_stock_riven_table::StockRiven;
 
-use sea_orm_migration::{
-    prelude::*,
-    sea_orm::Statement,
-};
+use sea_orm_migration::{prelude::*, sea_orm::Statement};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
