@@ -28,6 +28,19 @@ original work. This list is maintained as changes are made.
 | API endpoint | The Quantframe API base URL is resolved at runtime — `QF_API_URL`, then `advanced_settings.qf_api_url`, then the compiled default — instead of being fixed at compile time by `cfg!(dev)` | Upstream required editing `qf_api/src/client.rs` and rebuilding to change endpoint, which blocked both running a dev build against the real API and pointing at a self-hosted server. Defaults are unchanged, so behaviour without configuration matches upstream. |
 | Build environment | Added `.ddev/` — a containerised Rust + Node toolchain for reproducible builds and checks | New; does not alter program behaviour. |
 
+## Defect fixes
+
+Bugs found and fixed here that are present upstream. Listed separately from the
+table above because they restore intended behaviour rather than diverge from it.
+
+| Defect | Effect |
+| --- | --- |
+| `rename_all = "snake_case"` split the acronyms in four `ApplicationEvent` variants, emitting `w_f_inventory_update` and `w_f_m_auction_*` where the API accepts `wf_inventory_update` and `wfm_auction_*` | Those events were rejected with HTTP 400. Because a failed flush re-queues its batch, a single one became a poison pill that stalled the whole analytics queue and retried every 10 seconds indefinitely. Now covered by regression tests |
+| `utils::file_watcher` tested `*pos > size \|\| size < *pos` — the same comparison transposed | Dead operand; separately, the truncation trace logged the position after zeroing it, so every rotation reported `Current Position: 0` |
+| `qf_api` `Display for ApiError` called `println!` | Debug output leaked to stdout whenever a parsing error was formatted, including from logging paths |
+| A stray `debugger;` in the item-details save handler | Halted the app for anyone with devtools open |
+| `WFInvItemRaw::is_riven` had a branch chain that returned `true` from every path | The trailing `false` was unreachable; the function only ever tested its path prefix. Collapsed without changing behaviour, but the dead branches suggest unimplemented intent |
+
 ## Unchanged
 
 The following remain pointed at upstream-operated infrastructure, because the
