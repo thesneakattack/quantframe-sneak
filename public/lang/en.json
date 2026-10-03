@@ -569,6 +569,9 @@
           },
           "quantity": {
             "label": "Quantity"
+          },
+          "rank": {
+            "label": "Rank"
           }
         }
       },
@@ -597,6 +600,9 @@
             "label": "Name"
           }
         }
+      },
+      "stock_set_conflict": {
+        "message": "{{sets}} is already in stock. Listing this part on its own may undercut that set."
       }
     },
     "sort_by": {

@@ -1,5 +1,5 @@
 import { DynamicForm, DynamicFormItem } from "@components/Forms/DynamicForm";
-import { Container, FocusTrap } from "@mantine/core";
+import { Alert, Container, FocusTrap } from "@mantine/core";
 import { ContextModalProps } from "@mantine/modals";
 import i18next from "i18next";
 import { useMemo } from "react";
@@ -39,6 +39,8 @@ export type PromptModalProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   height?: string;
+  /** Shown as a warning above the fields. Advisory only; it does not block submit. */
+  message?: string;
   fields: PromptField[];
   onConfirm: (data: any) => void;
   onCancel: (id: string) => void;
@@ -102,13 +104,18 @@ const FormatField = (field: PromptField): DynamicFormItem<Record<string, any>> |
 };
 
 export function PromptModal({ context, id, innerProps }: ContextModalProps<PromptModalProps>) {
-  const { height, confirmLabel, cancelLabel, fields, onConfirm, onCancel } = innerProps;
+  const { height, confirmLabel, cancelLabel, fields, message, onConfirm, onCancel } = innerProps;
 
   const formValues = useMemo<{ [key: string]: any }>(() => BuildFormValues(fields), [fields]);
   const items = useMemo(() => fields.map(FormatField).filter((item): item is DynamicFormItem<Record<string, any>> => item !== null), [fields]);
 
   return (
     <Container size="auto" h={height} pt={25}>
+      {message && (
+        <Alert color="yellow.7" mb="md">
+          {message}
+        </Alert>
+      )}
       <FocusTrap active={true}>
         <DynamicForm
           value={formValues}
