@@ -83,6 +83,47 @@ ddev exec import -window root /var/www/html/screenshot.png   # capture it
 or plain Linux, so delete `.ddev/docker-compose.wslg.yaml` there or `ddev start`
 will fail trying to bind-mount them.
 
+### Starting from your existing Quantframe data
+
+The rebrand gave this build its own bundle identifier, which is what lets it sit
+alongside official Quantframe without touching its database. The cost is that it
+starts empty — no login, no settings, no history.
+
+`scripts/seed-from-upstream.sh` copies that state across on Windows (run it from
+WSL):
+
+```bash
+scripts/seed-from-upstream.sh --dry-run   # show what would be copied
+scripts/seed-from-upstream.sh             # apply
+```
+
+It brings over `quantframeV2.sqlite`, `settings.json`, `auth.json` and the item
+cache, and deliberately leaves behind the WebView2 profile and the other install's
+logs. It refuses to overwrite a non-empty target unless given `--force`, so it
+cannot silently clobber state once this build has its own.
+
+> **Do not run both builds with the live scraper enabled at the same time.** They
+> manage the same warframe.market orders and will fight — each independently
+> creating, repricing and deleting the other's listings.
+
+### `tauri dev` talks to localhost, not production
+
+A dev build sets `is_development = true`, so `qf_api` targets `DEVELOPMENT_URL`
+(`http://localhost:6969`) rather than `https://api.quantframe.app`. With no server
+there, the app boots and renders but immediately shows
+`Error in QFClient:AlertGetAlerts component`. That is expected, not a regression.
+
+Two ways forward:
+
+- To use the real backend while developing, copy `PRODUCTION_URL` over
+  `DEVELOPMENT_URL` in `src-tauri/qf_api/src/client.rs`. Upstream's README
+  recommends exactly this. Do not commit it.
+- To work on a self-hosted API, `localhost:6969` is already the address the client
+  expects — see the [self-hosting research](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md).
+  The `#[ignore]`d `qf_api` tests target the same port.
+
+Release builds are unaffected and use the production URL.
+
 ### Producing a Windows build
 
 Cross-compiling Tauri from Linux to Windows is not a supported path, so Windows
