@@ -32,3 +32,6 @@ __trace/
 
 build/
 .pnpm-store
+
+# Machine-specific DDEV overrides (Windows paths, personal data dirs)
+.ddev/docker-compose.local.yaml
