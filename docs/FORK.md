@@ -139,6 +139,72 @@ If no server answers, the app still boots and renders but shows
 `Error in QFClient:AlertGetAlerts component`. That is the endpoint being
 unreachable, not a crash.
 
+### Getting WF Inventory to work
+
+The WF Inventory panel (one tab: Rivens) reads the `Upgrades` field of your
+Warframe inventory. None of the three sources supplies it out of the box on an
+account without the AlecaFrame entitlement:
+
+- **Profile** returns Warframe's public profile, which has no inventory fields at
+  all. It is for syndicate standings and mastery rank.
+- **AlecaFrame** reads `lastData.dat`, but asks `api.quantframe.app` for the AES
+  key, and that endpoint answers **403** without the entitlement.
+- **File** wants plain JSON, and `lastData.dat` is encrypted.
+
+The key and IV are static AES-128-CBC values, not per-account secrets. They are
+**not stored in this repository** — it is public, and the values originate in a
+Commons-Clause project, so republishing them here would add nothing and muddy the
+licensing. Obtain them yourself; they are compile-time constants in AlecaFrame and
+appear in [Sainan/warframe-api-helper](https://github.com/Sainan/warframe-api-helper).
+
+Two ways to use them.
+
+**Let the app decrypt (recommended).** Set both values, 32 hex characters each,
+and the AlecaFrame source stops calling the API entirely:
+
+```jsonc
+// settings.json
+"advanced_settings": {
+  "wf_decrypt_key": "...32 hex chars...",
+  "wf_decrypt_iv":  "...32 hex chars..."
+}
+```
+
+or, taking precedence over those, `QF_WF_DECRYPT_KEY` and `QF_WF_DECRYPT_IV`.
+
+Both must be set and valid; one alone is ignored with a warning, because a
+half-configured pair is almost always a typo and silently falling back to the API
+would surface as the same 403 it was meant to avoid. This keeps the file watcher,
+so the inventory follows AlecaFrame's updates with no further work.
+
+**Or decrypt externally** into the File source:
+
+```bash
+WF_DECRYPT_KEY=... WF_DECRYPT_IV=... scripts/decrypt-alecaframe.sh
+```
+
+That writes `inventory.json` beside `lastData.dat` and validates the result
+rather than leaving a wrong key to produce a file the app silently ignores. Point
+WF Inventory at it with the **File** source. The trade-off is that the JSON is a
+snapshot: re-run the script whenever AlecaFrame refreshes.
+
+The script reads `.env.local` (gitignored) if present, so the keys need not be on
+the command line.
+
+#### A note on warframe-api-helper
+
+That tool pulls a fresh inventory straight from `mobile.warframe.com` and writes
+both `inventory.json` and an AlecaFrame-compatible `lastData.dat`, which makes it
+an alternative to running AlecaFrame at all. It works by scraping
+`?accountId=...&nonce=...` out of the running game's memory, and requires finding
+three identical copies of that string. The nonce advances as the game makes its
+own API calls, so a long-running session accumulates stale nonces and the scan
+starts failing with "Failed to gruzzle the crumbs". Restarting Warframe and
+running the tool promptly is the usual remedy.
+
+Its licence is MIT **plus Commons Clause**, which is not an open-source licence
+and is incompatible with GPL-3.0, so none of its code can be vendored here.
+
 ### Producing a Windows build
 
 Cross-compiling Tauri from Linux to Windows is not a supported path, so Windows

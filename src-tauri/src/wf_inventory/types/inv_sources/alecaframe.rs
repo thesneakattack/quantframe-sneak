@@ -198,36 +198,107 @@ fn read_file(path: &Path) -> Result<Vec<u8>, Error> {
     Ok(buf)
 }
 
+/// Environment overrides for the AlecaFrame decryption key and IV, each 32 hex
+/// characters. These outrank the persisted settings so a build can be pointed at
+/// different keys without editing anyone's settings file.
+pub const DECRYPT_KEY_ENV: &str = "QF_WF_DECRYPT_KEY";
+pub const DECRYPT_IV_ENV: &str = "QF_WF_DECRYPT_IV";
+
+fn parse_hex16(value: &str) -> Option<[u8; 16]> {
+    let value = value.trim();
+    if value.len() != 32 {
+        return None;
+    }
+    let mut out = [0u8; 16];
+    for (index, byte) in out.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(value.get(index * 2..index * 2 + 2)?, 16).ok()?;
+    }
+    Some(out)
+}
+
+fn env_or_setting(env: &str, setting: &str) -> Option<[u8; 16]> {
+    std::env::var(env)
+        .ok()
+        .as_deref()
+        .and_then(parse_hex16)
+        .or_else(|| parse_hex16(setting))
+}
+
+/// Key and IV from local configuration, or None to fall back to the API.
+///
+/// Returns None unless BOTH are configured and valid - a half-configured pair is
+/// almost certainly a typo, and silently falling back would make that look like
+/// the 403 it was meant to avoid.
+fn local_decrypt_keys(
+    settings: &crate::app::types::settings::Settings,
+) -> Option<([u8; 16], [u8; 16])> {
+    let advanced = &settings.advanced_settings;
+    let key = env_or_setting(DECRYPT_KEY_ENV, &advanced.wf_decrypt_key);
+    let iv = env_or_setting(DECRYPT_IV_ENV, &advanced.wf_decrypt_iv);
+    match (key, iv) {
+        (Some(key), Some(iv)) => Some((key, iv)),
+        (None, None) => None,
+        _ => {
+            warning(
+                "DecryptLastData:LocalKeys",
+                "Only one of the decryption key and IV is set (or one is not 32 hex \
+                 characters); ignoring both and falling back to the API",
+                &LoggerOptions::default(),
+            );
+            None
+        }
+    }
+}
+
 async fn decrypt_lastdata(data: &[u8]) -> Result<String, Error> {
     let af_api = states::app_state()?;
 
-    let keys = match af_api.qf_client.alecaframe().get_decrypt_keys().await {
-        Ok(keys) => keys,
-        Err(err) => {
-            return Err(Error::new(
-                "DecryptLastData:GetKeys",
-                format!("Failed to get decrypt keys: {err:?}"),
-                get_location!(),
-            ))
+    // Prefer locally configured keys. The API endpoint is entitlement-gated and
+    // answers 403 for accounts without it, so for those this is the only route.
+    let (key, iv) = match local_decrypt_keys(&af_api.settings) {
+        Some(pair) => {
+            info(
+                "DecryptLastData:LocalKeys",
+                "Using locally configured decryption key",
+                &LoggerOptions::default(),
+            );
+            pair
+        }
+        None => {
+            let keys = match af_api.qf_client.alecaframe().get_decrypt_keys().await {
+                Ok(keys) => keys,
+                Err(err) => {
+                    return Err(Error::new(
+                        "DecryptLastData:GetKeys",
+                        format!(
+                            "Failed to get decrypt keys: {err:?}. A 403 here means the \
+                             account lacks the entitlement - set advanced_settings.\
+                             wf_decrypt_key and wf_decrypt_iv to decrypt locally instead \
+                             (see docs/FORK.md)."
+                        ),
+                        get_location!(),
+                    ))
+                }
+            };
+            let key: [u8; 16] = keys.key.as_slice().try_into().map_err(|_| {
+                Error::new(
+                    "DecryptLastData:KeySize",
+                    "Key must be 16 bytes",
+                    get_location!(),
+                )
+            })?;
+            let iv: [u8; 16] = keys.iv.as_slice().try_into().map_err(|_| {
+                Error::new(
+                    "DecryptLastData:IvSize",
+                    "IV must be 16 bytes",
+                    get_location!(),
+                )
+            })?;
+            (key, iv)
         }
     };
 
-    let key: &[u8; 16] = keys.key.as_slice().try_into().map_err(|_| {
-        Error::new(
-            "DecryptLastData:KeySize",
-            "Key must be 16 bytes",
-            get_location!(),
-        )
-    })?;
-    let iv: &[u8; 16] = keys.iv.as_slice().try_into().map_err(|_| {
-        Error::new(
-            "DecryptLastData:IvSize",
-            "IV must be 16 bytes",
-            get_location!(),
-        )
-    })?;
-
-    let decrypted = DecryptThingy::new(key.into(), iv.into())
+    let decrypted = DecryptThingy::new(&key.into(), &iv.into())
         .decrypt_padded_vec_mut::<NoPadding>(data)
         .map_err(|e| {
             Error::new(
@@ -244,4 +315,45 @@ async fn decrypt_lastdata(data: &[u8]) -> Result<String, Error> {
             get_location!(),
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_hex16;
+
+    #[test]
+    fn parses_32_hex_characters() {
+        let parsed = parse_hex16("000102030405060708090a0b0c0d0e0f").expect("should parse");
+        assert_eq!(
+            parsed,
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
+    }
+
+    #[test]
+    fn accepts_surrounding_whitespace_and_uppercase() {
+        let lower = parse_hex16("0a1b2c3d4e5f60718293a4b5c6d7e8f9");
+        let upper = parse_hex16("  0A1B2C3D4E5F60718293A4B5C6D7E8F9\n");
+        assert!(lower.is_some());
+        assert_eq!(lower, upper);
+    }
+
+    /// A wrong-length or non-hex value must be rejected rather than silently
+    /// padded or truncated: a bad key would decrypt to garbage, which the parser
+    /// downstream would report as malformed inventory rather than a bad key.
+    #[test]
+    fn rejects_anything_that_is_not_exactly_16_bytes_of_hex() {
+        for bad in [
+            "",                                   // unset
+            "0a1b2c3d",                           // too short
+            "000102030405060708090a0b0c0d0e0f00", // too long
+            "0a1b2c3d4e5f60718293a4b5c6d7e8fg",   // 'g' is not hex
+            "0a1b2c3d4e5f60718293a4b5c6d7e8f ",   // 31 hex + space
+        ] {
+            assert!(
+                parse_hex16(bad).is_none(),
+                "{bad:?} should have been rejected"
+            );
+        }
+    }
 }

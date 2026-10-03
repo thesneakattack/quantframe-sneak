@@ -35,3 +35,6 @@ build/
 
 # Machine-specific DDEV overrides (Windows paths, personal data dirs)
 .ddev/docker-compose.local.yaml
+
+# Local key material and machine-specific settings, never committed
+.env.local

@@ -26,6 +26,7 @@ original work. This list is maintained as changes are made.
 | Links | Release and Discord-avatar URLs repointed at this repository | Upstream URLs would serve official artifacts. |
 | Licensing metadata | `src-tauri/Cargo.toml`: `license` set to `GPL-3.0-only` (upstream left it empty), `authors` and `repository` updated | The upstream manifest did not declare the license its `LICENSE` file grants. |
 | API endpoint | The Quantframe API base URL is resolved at runtime — `QF_API_URL`, then `advanced_settings.qf_api_url`, then the compiled default — instead of being fixed at compile time by `cfg!(dev)` | Upstream required editing `qf_api/src/client.rs` and rebuilding to change endpoint, which blocked both running a dev build against the real API and pointing at a self-hosted server. Defaults are unchanged, so behaviour without configuration matches upstream. |
+| AlecaFrame decryption | The AES key and IV may be supplied locally, via `advanced_settings.wf_decrypt_key`/`wf_decrypt_iv` or `QF_WF_DECRYPT_KEY`/`QF_WF_DECRYPT_IV`, instead of only from `/alecaframe/decrypt-keys` | That endpoint returns 403 on accounts without the entitlement, making the AlecaFrame inventory source unusable for them. The keys are static rather than per-account, and are not shipped here. The API remains the default when nothing is configured. |
 | Build environment | Added `.ddev/` — a containerised Rust + Node toolchain for reproducible builds and checks | New; does not alter program behaviour. |
 
 ## Defect fixes
