@@ -2856,6 +2856,24 @@
             "unranked": "Unranked",
             "ranked": "Ranked"
           }
+        },
+        "sets": {
+          "title": "Sets",
+          "copies": "{{count}} complete",
+          "missing": "Missing {{count}}",
+          "stock_status": {
+            "found": "Already in stock",
+            "not_found": "Not in stock"
+          },
+          "datatable": {
+            "columns": {
+              "owned_members": "Components",
+              "complete": "Status"
+            }
+          },
+          "filters": {
+            "complete_only": "Complete sets only"
+          }
         }
       }
     }

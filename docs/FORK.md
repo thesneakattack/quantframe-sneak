@@ -174,9 +174,35 @@ scripts/sync-local-data.sh
 script to refresh. Everything in `local/` is account data, including the in-game
 names of everyone you have traded or chatted with, so it must never be committed.
 
+### Inventory tabs
+
+Rivens, Parts, Mods and Sets. Each row lists to Stock through the normal
+`stock_item_create`, taking a bought price (0 for anything acquired in-game), a
+quantity, and a rank for mods and arcanes. The rank prefills from the inventory
+row, not from the item's maximum, so an unranked copy does not list as a maxed
+one.
+
+Parts come from the `Recipes` and `MiscItems` buckets. Presence in
+`TradableItems.json` is the filter: resources, fish and gems are absent from
+that cache and drop out without any path matching. Mods come from
+`RawUpgrades` (unranked stacks) and `Upgrades` (individually ranked instances,
+grouped by rank); arcanes live in `RawUpgrades` alongside them.
+
+Sets are derived by joining items tagged `set` in `TradableItems.json` to their
+blueprint recipe in `Recipes.json` by `resultType`, which resolves for all 234
+of them. Which unique name counts as a member depends on the ingredient:
+Warframe parts are owned as blueprints and carry a `fromRecipe`, weapon parts
+are owned as built components and do not. Only complete sets can be listed;
+incomplete ones are shown so you can see which component to buy next, ordered
+by how few are missing.
+
+Listing a part whose set is already in stock shows a warning but is not
+blocked. A blueprint shared between two sets — the three akimbo primes — counts
+toward both (issue #3).
+
 ### Getting WF Inventory to work
 
-The WF Inventory panel (one tab: Rivens) reads the `Upgrades` field of your
+The WF Inventory panel reads the `Upgrades` field of your
 Warframe inventory. None of the three sources supplies it out of the box on an
 account without the AlecaFrame entitlement:
 
