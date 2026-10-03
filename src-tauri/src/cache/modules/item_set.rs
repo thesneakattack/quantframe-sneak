@@ -64,9 +64,23 @@ impl ItemSetModule {
                 if !ingredient.base.is_tradeable {
                     continue;
                 }
+                let key = member_key(ingredient);
+                // Recipe ingredients carry no display name of their own, only
+                // a uniqueName, so resolve it the way the Parts tab does.
+                let name = client
+                    .tradable_item()
+                    .get_by(&key)
+                    .map(|item| item.name)
+                    .unwrap_or_else(|_| {
+                        if ingredient.base.name.is_empty() {
+                            key.rsplit('/').next().unwrap_or(&key).to_string()
+                        } else {
+                            ingredient.base.name.clone()
+                        }
+                    });
                 members.push(CacheItemSetMember {
-                    unique_name: member_key(ingredient),
-                    name: ingredient.base.name.clone(),
+                    unique_name: key,
+                    name,
                     required: ingredient.base.quantity,
                     is_main_blueprint: false,
                 });

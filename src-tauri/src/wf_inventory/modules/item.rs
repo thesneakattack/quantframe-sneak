@@ -192,10 +192,17 @@ impl ItemModule {
                 unique_name,
                 wfm_url: tradable.wfm_url.clone(),
                 quantity,
-                sub_type: Some(SubType {
-                    rank: Some(rank),
-                    ..Default::default()
-                }),
+                // Unranked rows carry no sub_type at all, matching how stock
+                // represents an unranked item. Some(rank: 0) would make
+                // ItemName render a bare "Rank " with no number after it.
+                sub_type: if rank > 0 {
+                    Some(SubType {
+                        rank: Some(rank),
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                },
                 ..Default::default()
             };
             item.properties

@@ -2847,7 +2847,6 @@
           },
           "datatable": {
             "columns": {
-              "rank": "Rank",
               "owned": "Owned"
             }
           },

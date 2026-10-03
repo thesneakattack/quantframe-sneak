@@ -5,7 +5,7 @@ import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { SegmentedControl, Text } from "@mantine/core";
+import { SegmentedControl } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -92,18 +92,6 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
             title: useTranslateCommon("item_name.title"),
             sortable: true,
             render: (row) => <ItemName color="gray.4" size="md" value={row} hideQuantity />,
-          },
-          {
-            accessor: "rank",
-            title: useTranslateDataGridColumns("rank"),
-            sortable: true,
-            width: 110,
-            render: (row) => (
-              <Text c="dimmed">
-                {row.sub_type?.rank ?? 0}
-                {row.properties?.max_rank != null ? ` / ${row.properties.max_rank}` : ""}
-              </Text>
-            ),
           },
           {
             accessor: "quantity",
