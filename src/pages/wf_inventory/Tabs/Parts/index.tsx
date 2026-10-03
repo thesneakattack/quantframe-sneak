@@ -2,6 +2,7 @@ import { TauriTypes } from "$types";
 import { useAppContext } from "@contexts/app.context";
 import { ItemName } from "@components/DataDisplay/ItemName";
 import { SearchField } from "@components/Forms/SearchField";
+import { SortPriority } from "@components/Forms/SortPriority";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -48,6 +49,7 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
   const settingMinProfit = settings?.live_scraper.items.wts.min_profit ?? 0;
   const storedMinPrice = (queryData.properties as { min_price?: number } | undefined)?.min_price;
   const minPrice = Number(storedMinPrice ?? Math.max(settingMinProfit, 0));
+  const sorts = queryData.sorts ?? [];
   // The stored query may not carry the threshold yet, so send the effective one.
   const effectiveQuery = {
     ...queryData,
@@ -73,6 +75,11 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
         onChange={(value) => setQueryData((prev) => ({ ...prev, page: 1, query: value }))}
         filter={
           <Group gap="md" align="flex-end">
+            <SortPriority
+              columns={[{ value: "name", label: useTranslateCommon("item_name.title") }, { value: "quantity", label: useTranslateDataGridColumns("owned") }, { value: "price", label: useTranslateCommon("datatable_columns.price") }]}
+              value={sorts}
+              onChange={(next) => setQueryData((prev) => ({ ...prev, page: 1, sorts: next }))}
+            />
             <Switch
               label={useTranslate("filters.in_set_only")}
               checked={inSetOnly}
@@ -115,12 +122,18 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
         recordsPerPageOptions={[5, 10, 15, 20, 25, 50, 100]}
         onRecordsPerPageChange={(limit) => setQueryData((prev) => ({ ...prev, page: 1, limit }))}
         sortStatus={{
-          columnAccessor: queryData.sort_by || "name",
-          direction: queryData.sort_direction || "asc",
+          columnAccessor: sorts[0]?.by || "name",
+          direction: sorts[0]?.direction || "asc",
         }}
         onSortStatusChange={(sort) => {
           if (!sort || !sort.columnAccessor) return;
-          setQueryData((prev) => ({ ...prev, sort_by: sort.columnAccessor as string, sort_direction: sort.direction }));
+          // A header click is the quick path: it replaces the priority list
+          // with that one column. The filter panel edits the full list.
+          setQueryData((prev) => ({
+            ...prev,
+            page: 1,
+            sorts: [{ by: sort.columnAccessor as string, direction: sort.direction }],
+          }));
         }}
         columns={[
           {

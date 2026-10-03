@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use entity::{dto::PaginatedResult, enums::FieldChange};
-use utils::{Error, SortDirection, SubType};
+use utils::{Error, SubType};
 
 use crate::{
     cache::{
@@ -116,53 +116,13 @@ pub fn meets_min_price(price: Option<f64>, min_price: Option<f64>) -> bool {
     }
 }
 
-/// Order rows by a requested column, following the allow-list shape the rest
-/// of the app uses for in-memory pagination (see `commands/order.rs`,
-/// `commands/chat.rs`, `modules/riven.rs`).
-///
-/// `utils::sort_data` is not usable here: its `get_sort_key` ignores the `by`
-/// argument and clones the whole item, so it can only sort by `Ord`.
-///
-/// Anything unrecognised falls back to name ascending, so a row set is never
-/// handed to the UI in arbitrary HashMap order.
-pub fn sort_rows(
-    rows: &mut [WFInvItemBase],
-    sort_by: &FieldChange<String>,
-    sort_direction: &FieldChange<SortDirection>,
-) {
-    let dir = match sort_direction {
-        FieldChange::Value(dir) => dir,
-        _ => &SortDirection::Asc,
-    };
-    let column = match sort_by {
-        FieldChange::Value(column) => column.as_str(),
-        _ => "name",
-    };
-    let rank = |item: &WFInvItemBase| item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0);
-    // Unpriced rows sort as 0 so they gather at one end rather than
-    // interleaving unpredictably.
-    let price = |item: &WFInvItemBase| item.properties.get_property_value("price", 0.0f64);
+/// A Parts or Mods row's value for a sortable column.
+fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
     match column {
-        "price" => rows.sort_by(|a, b| {
-            let (left, right) = match dir {
-                SortDirection::Asc => (price(a), price(b)),
-                SortDirection::Desc => (price(b), price(a)),
-            };
-            left.partial_cmp(&right)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        }),
-        "quantity" => rows.sort_by(|a, b| match dir {
-            SortDirection::Asc => a.quantity.cmp(&b.quantity),
-            SortDirection::Desc => b.quantity.cmp(&a.quantity),
-        }),
-        "rank" => rows.sort_by(|a, b| match dir {
-            SortDirection::Asc => rank(a).cmp(&rank(b)),
-            SortDirection::Desc => rank(b).cmp(&rank(a)),
-        }),
-        _ => rows.sort_by(|a, b| match dir {
-            SortDirection::Desc => b.name.cmp(&a.name),
-            _ => a.name.cmp(&b.name),
-        }),
+        "quantity" => SortValue::Num(item.quantity as f64),
+        "rank" => SortValue::Num(item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0) as f64),
+        "price" => SortValue::MaybeNum(item.properties.get_property_value("price", None)),
+        _ => SortValue::Text(item.name.clone()),
     }
 }
 
@@ -264,7 +224,7 @@ impl ItemModule {
             )
         });
 
-        sort_rows(&mut items, &query.sort_by, &query.sort_direction);
+        sort_by_fields(&mut items, &query.sort_fields(), row_value);
         Ok(paginate(
             &items,
             query.pagination.page,
@@ -369,7 +329,7 @@ impl ItemModule {
             )
         });
 
-        sort_rows(&mut items, &query.sort_by, &query.sort_direction);
+        sort_by_fields(&mut items, &query.sort_fields(), row_value);
         Ok(paginate(
             &items,
             query.pagination.page,
@@ -614,13 +574,12 @@ mod tests {
 
 #[cfg(test)]
 mod sort_tests {
-    use super::sort_rows;
-    use crate::wf_inventory::item_base::WFInvItemBase;
-    use entity::enums::FieldChange;
+    use super::row_value;
+    use crate::wf_inventory::{item_base::WFInvItemBase, sort_by_fields, SortField};
     use utils::{SortDirection, SubType};
 
-    fn row(name: &str, quantity: i64, rank: i64) -> WFInvItemBase {
-        WFInvItemBase {
+    fn row(name: &str, quantity: i64, rank: i64, price: Option<f64>) -> WFInvItemBase {
+        let mut item = WFInvItemBase {
             name: name.to_string(),
             quantity,
             sub_type: Some(SubType {
@@ -628,54 +587,78 @@ mod sort_tests {
                 ..Default::default()
             }),
             ..Default::default()
-        }
+        };
+        item.properties.set_property_value("price", price);
+        item
     }
 
     fn names(rows: &[WFInvItemBase]) -> Vec<&str> {
         rows.iter().map(|r| r.name.as_str()).collect()
     }
 
-    /// With no sort requested the rows come back alphabetical, so the tab is
-    /// never in arbitrary HashMap order.
-    #[test]
-    fn defaults_to_name_ascending() {
-        let mut rows = vec![row("Vitality", 1, 0), row("Ammo Drum", 1, 0)];
-        sort_rows(&mut rows, &FieldChange::Ignore, &FieldChange::Ignore);
-        assert_eq!(names(&rows), vec!["Ammo Drum", "Vitality"]);
+    fn field(by: &str, direction: SortDirection) -> SortField {
+        SortField {
+            by: by.to_string(),
+            direction,
+        }
     }
 
+    /// Each column name the table offers has to reach the right field of the
+    /// row, or the header sorts by something else entirely.
     #[test]
-    fn sorts_by_quantity_descending_when_asked() {
-        let mut rows = vec![row("A", 2, 0), row("B", 9, 0), row("C", 5, 0)];
-        sort_rows(
+    fn every_sortable_column_maps_to_its_own_field() {
+        let mut rows = vec![
+            row("Bravo", 1, 10, Some(5.0)),
+            row("Alpha", 9, 0, Some(50.0)),
+        ];
+
+        sort_by_fields(
             &mut rows,
-            &FieldChange::Value("quantity".to_string()),
-            &FieldChange::Value(SortDirection::Desc),
+            &[field("quantity", SortDirection::Desc)],
+            row_value,
         );
-        assert_eq!(names(&rows), vec!["B", "C", "A"]);
+        assert_eq!(names(&rows), vec!["Alpha", "Bravo"]);
+
+        sort_by_fields(&mut rows, &[field("rank", SortDirection::Desc)], row_value);
+        assert_eq!(names(&rows), vec!["Bravo", "Alpha"]);
+
+        sort_by_fields(&mut rows, &[field("price", SortDirection::Desc)], row_value);
+        assert_eq!(names(&rows), vec!["Alpha", "Bravo"]);
+
+        sort_by_fields(&mut rows, &[field("name", SortDirection::Asc)], row_value);
+        assert_eq!(names(&rows), vec!["Alpha", "Bravo"]);
     }
 
+    /// Nearly every mod is owned once, so a sort on "owned" ties constantly.
+    /// Those ties must settle by name rather than by projection order.
     #[test]
-    fn sorts_by_rank() {
-        let mut rows = vec![row("A", 1, 10), row("B", 1, 0), row("C", 1, 5)];
-        sort_rows(
+    fn rows_tied_on_the_sorted_column_fall_back_to_the_name() {
+        let mut rows = vec![
+            row("Zephyr", 1, 0, None),
+            row("Ash", 1, 0, None),
+            row("Mag", 1, 0, None),
+        ];
+        sort_by_fields(
             &mut rows,
-            &FieldChange::Value("rank".to_string()),
-            &FieldChange::Value(SortDirection::Asc),
+            &[field("quantity", SortDirection::Asc)],
+            row_value,
         );
-        assert_eq!(names(&rows), vec!["B", "C", "A"]);
+        assert_eq!(names(&rows), vec!["Ash", "Mag", "Zephyr"]);
     }
 
-    /// An unknown column must not silently leave HashMap order behind; it
-    /// falls back to the name sort the user would expect.
+    /// An unresolved price sorts last either way, so "dearest first" does not
+    /// open with a screen of unknowns.
     #[test]
-    fn falls_back_to_name_for_an_unknown_column() {
-        let mut rows = vec![row("Vitality", 1, 0), row("Ammo Drum", 1, 0)];
-        sort_rows(
-            &mut rows,
-            &FieldChange::Value("nonsense".to_string()),
-            &FieldChange::Value(SortDirection::Asc),
-        );
-        assert_eq!(names(&rows), vec!["Ammo Drum", "Vitality"]);
+    fn an_unresolved_price_sorts_last_in_both_directions() {
+        let mut rows = vec![
+            row("Unknown", 1, 0, None),
+            row("Cheap", 1, 0, Some(2.0)),
+            row("Dear", 1, 0, Some(90.0)),
+        ];
+        sort_by_fields(&mut rows, &[field("price", SortDirection::Desc)], row_value);
+        assert_eq!(names(&rows), vec!["Dear", "Cheap", "Unknown"]);
+
+        sort_by_fields(&mut rows, &[field("price", SortDirection::Asc)], row_value);
+        assert_eq!(names(&rows), vec!["Cheap", "Dear", "Unknown"]);
     }
 }

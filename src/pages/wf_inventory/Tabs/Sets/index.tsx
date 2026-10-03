@@ -2,6 +2,7 @@ import { TauriTypes } from "$types";
 import { useAppContext } from "@contexts/app.context";
 import { ItemName } from "@components/DataDisplay/ItemName";
 import { SearchField } from "@components/Forms/SearchField";
+import { SortPriority } from "@components/Forms/SortPriority";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
@@ -47,6 +48,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
   const settingMinProfit = settings?.live_scraper.items.wts.min_profit ?? 0;
   const storedMinPrice = (queryData.properties as { min_price?: number } | undefined)?.min_price;
   const minPrice = Number(storedMinPrice ?? Math.max(settingMinProfit, 0));
+  const sorts = queryData.sorts ?? [];
   // The stored query may not carry the threshold yet, so send the effective one.
   const effectiveQuery = {
     ...queryData,
@@ -72,6 +74,11 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
         onChange={(value) => setQueryData((prev) => ({ ...prev, page: 1, query: value }))}
         filter={
           <Group gap="md" align="flex-end">
+            <SortPriority
+              columns={[{ value: "name", label: useTranslateCommon("item_name.title") }, { value: "complete_copies", label: useTranslateDataGridColumns("complete") }, { value: "owned_members", label: useTranslateDataGridColumns("owned_members") }, { value: "price", label: useTranslateCommon("datatable_columns.price") }]}
+              value={sorts}
+              onChange={(next) => setQueryData((prev) => ({ ...prev, page: 1, sorts: next }))}
+            />
             <Switch
               label={useTranslate("filters.complete_only")}
               checked={completeOnly}
@@ -113,6 +120,18 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
         recordsPerPage={queryData.limit || 25}
         recordsPerPageOptions={[5, 10, 15, 20, 25, 50, 100]}
         onRecordsPerPageChange={(limit) => setQueryData((prev) => ({ ...prev, page: 1, limit }))}
+        sortStatus={{
+          columnAccessor: sorts[0]?.by || "name",
+          direction: sorts[0]?.direction || "asc",
+        }}
+        onSortStatusChange={(sort) => {
+          if (!sort || !sort.columnAccessor) return;
+          setQueryData((prev) => ({
+            ...prev,
+            page: 1,
+            sorts: [{ by: sort.columnAccessor as string, direction: sort.direction }],
+          }));
+        }}
         rowExpansion={{
           content: ({ record }) => (
             <Stack gap={2} p="sm">
@@ -131,11 +150,13 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
           {
             accessor: "name",
             title: useTranslateCommon("item_name.title"),
+            sortable: true,
             render: (row) => <ItemName color="gray.4" size="md" value={row} hideQuantity />,
           },
           {
             accessor: "owned_members",
             title: useTranslateDataGridColumns("owned_members"),
+            sortable: true,
             width: 130,
             render: (row) => (
               <Text c={row.owned_members === row.total_members ? undefined : "dimmed"}>
@@ -146,6 +167,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
           {
             accessor: "complete_copies",
             title: useTranslateDataGridColumns("complete"),
+            sortable: true,
             width: 150,
             render: (row) =>
               row.complete_copies > 0 ? (

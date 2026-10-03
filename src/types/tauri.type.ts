@@ -964,6 +964,8 @@ export namespace TauriTypes {
     query?: string;
     properties?: T;
     item_types?: string[];
+    /** Several columns in priority order; takes precedence over sort_by. */
+    sorts?: SortField[];
   }
   export type WFInvRivenControllerGetListData = PaginatedDto & {
     results?: ItemRiven<{
@@ -985,6 +987,10 @@ export namespace TauriTypes {
       total: number;
     }>[];
   };
+  export interface SortField {
+    by: string;
+    direction: "asc" | "desc";
+  }
   export interface MarketPriceKey {
     wfm_url: string;
     rank: number | null;

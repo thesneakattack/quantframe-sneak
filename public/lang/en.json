@@ -2151,6 +2151,15 @@
       "labels": {
         "price_history": "Price History"
       }
+    },
+    "sort_priority": {
+      "label": "Sort by, in order",
+      "add": "Add a sort",
+      "remove": "Remove",
+      "direction": {
+        "ascending": "Ascending",
+        "descending": "Descending"
+      }
     }
   },
   "pages": {
