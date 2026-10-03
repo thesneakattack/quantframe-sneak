@@ -4,7 +4,13 @@
 **Type:** Spike (feasibility investigation). No code was written.
 **Question:** Can `api.quantframe.app` realistically be self-hosted, and what is the
 minimum viable server that makes this client fully functional?
-**Verdict:** Feasible, incrementally, with one optional blocker.
+**Verdict:** Feasible, incrementally. No hard blockers.
+
+> **Corrected 3 October 2026.** This document originally called
+> `/alecaframe/decrypt-keys` the one hard blocker to self-hosting. That was
+> wrong. The endpoint returns a *static* AES key and IV, not per-account
+> secrets, so a self-hosted server can simply serve them. See
+> [Correction](#correction-the-decrypt-keys-are-not-a-blocker).
 
 > Status: this is research, not a commitment. `api.quantframe.app` remains the
 > configured backend and nothing in the client has been repointed. See
@@ -17,8 +23,9 @@ data. The desktop client talks to warframe.market directly for all actual tradin
 The QF API is an account system plus a caching and aggregation convenience layer
 over public data sources. That makes it reimplementable.
 
-The single genuine blocker — AlecaFrame decryption keys — is optional, because WF
-Inventory supports two other sources.
+There is no blocker. The one endpoint that looked like one,
+`/alecaframe/decrypt-keys`, returns static values that a replacement can serve
+directly.
 
 ## What the API actually is
 
@@ -72,7 +79,7 @@ sweep once, centrally, instead of in every client.
 | `GET /market/syndicate?…` | moderate | Syndicate metadata (`syndicate`, `standingCost`, `syndicateUniqueName`) joined with WFM prices |
 | `GET /market/rivens?…` | heavy | Aggregate WFM riven auctions. Only 6 fields (`volume`, `min_price`, `max_price`, `avg_price`, `median_price`, `datetime`) but the auction aggregation is real work |
 | `GET /market/rivens/{id}` | heavy | Same, single riven |
-| `GET /alecaframe/decrypt-keys` | **blocked** | Returns AES `key` and `iv` as byte arrays, used to decrypt AlecaFrame's `lastData.dat`. Reverse-engineered from a third-party tool; must be sourced independently |
+| `GET /alecaframe/decrypt-keys` | trivial | Returns a fixed AES-128-CBC `key` and `iv` as byte arrays, used to decrypt AlecaFrame's `lastData.dat`. The values are static, not per-account, so a replacement returns two constants. Obtaining them is a one-off; see the correction below |
 
 ### Confirmed empirically (3 October 2026)
 
@@ -119,11 +126,39 @@ The practical consequence: on an account without the entitlement, the WF Invento
 panel (which has exactly one tab, Rivens) cannot show data under any of the three
 sources. That is likely why upstream hides the panel outside `vite dev`.
 
-### The blocker is optional
+### Correction: the decrypt keys are not a blocker
 
-WF Inventory supports three sources — Warframe profile, AlecaFrame, and a plain
-JSON file. Only the AlecaFrame path needs those keys. Choosing Profile or File in
-Settings → Advanced sidesteps it entirely.
+The original assessment inferred from `DecryptKeys { key: Vec<u8>, iv: Vec<u8> }`
+that the endpoint dispensed something secret. It does not. The key and IV are
+**fixed AES-128-CBC constants** compiled into AlecaFrame, identical for every
+user, and they appear in public third-party code.
+
+Verified by decrypting a real `lastData.dat` with them outside the application:
+1,138,768 encrypted bytes produced 194 top-level JSON fields including
+`Upgrades` (811 entries), `RawUpgrades`, `Recipes`, `PremiumCredits` and
+`TradesRemaining` — every field `WarframeRootObject` reads.
+
+Two consequences:
+
+- **For self-hosting**, this endpoint is among the easiest to replace: return two
+  constants. It should have been in the trivial tier from the start.
+- **For this fork**, no server is needed at all. The keys can be configured
+  locally — `advanced_settings.wf_decrypt_key`/`wf_decrypt_iv`, or
+  `QF_WF_DECRYPT_KEY`/`QF_WF_DECRYPT_IV` — and the app decrypts in-process. That
+  is implemented, and the WF Inventory panel renders rivens from it with no call
+  to the gated endpoint. See `docs/FORK.md`.
+
+The 403 remains real, and the account-entitlement finding above still stands. It
+is simply no longer load-bearing: the entitlement gates an endpoint whose output
+is a known constant.
+
+### Avoiding the keys entirely
+
+A better long-term option sidesteps AlecaFrame altogether. Warframe's own
+`mobile.warframe.com/api/inventory.php?accountId=…&nonce=…` returns the full
+inventory as plain JSON, with the authorisation pair readable from the running
+game's memory. That removes AlecaFrame, `lastData.dat` and the keys from the
+picture in one move. Tracked as a separate piece of work.
 
 ## Operational notes
 
@@ -162,7 +197,8 @@ Incremental. Each tier leaves a working application.
    schedule.
 4. **Rivens** — only if riven trading matters to you.
 
-Skip the AlecaFrame keys and use the Profile or File inventory source.
+The AlecaFrame keys are not part of this sequence: they are two constants, and
+the fork already resolves them locally without a server.
 
 ## Consequence for the test suite
 
