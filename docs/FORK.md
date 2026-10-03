@@ -105,6 +105,12 @@ The endpoint in `tauri.conf.json` already points at this repository's
 `releases/latest/download/latest.json`, which `tauri-action` produces once
 updater artifacts are enabled. No code changes are needed.
 
+## Research
+
+- [Self-hosting the Quantframe API](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md)
+  — feasibility study of replacing `api.quantframe.app`. Concludes it is doable
+  incrementally; explains why the two "broken" `qf_api` tests should be kept.
+
 ## Inherited problems
 
 These are all pre-existing in the upstream tree, not caused by the fork. They are
