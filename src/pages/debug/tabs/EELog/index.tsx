@@ -11,8 +11,7 @@ import { getSafePage } from "@utils/helper";
 import { useMutations } from "./mutations";
 import { ActionWithTooltip } from "../../../../components/Shared/ActionWithTooltip";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
-interface EELogPanelProps {}
-export const EELogPanel = ({}: EELogPanelProps) => {
+export const EELogPanel = () => {
   // Translate general
   const useTranslateTabLogging = (key: string, context?: { [key: string]: any }, i18Key?: boolean) =>
     useTranslatePages(`debug.tabs.ee_log.${key}`, { ...context }, i18Key);

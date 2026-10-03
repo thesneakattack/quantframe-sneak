@@ -71,7 +71,7 @@ export function GenericItemList<T>({
   }, [items, searchValue, searchFilter, filter, sortStatus]);
 
   const rows = useMemo(() => {
-    let result = SortItems<T>(filteredItems, { field: sortStatus.columnAccessor as string, direction: sortStatus.direction });
+    const result = SortItems<T>(filteredItems, { field: sortStatus.columnAccessor as string, direction: sortStatus.direction });
     return paginate(result, page, pageSize);
   }, [filteredItems, page, pageSize, sortStatus]);
 

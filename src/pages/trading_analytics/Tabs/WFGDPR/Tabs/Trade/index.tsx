@@ -63,7 +63,7 @@ export const TradePanel = ({ value }: TradePanelProps) => {
     useTranslate(`buttons.${key}`, { ...context }, i18Key);
 
   const GenerateFilter = (): ComplexFilter => {
-    let filter: ComplexFilter = { AND: [], OR: [] };
+    const filter: ComplexFilter = { AND: [], OR: [] };
     if (queryData.type) filter.AND?.push({ type: { [Operator.EQUALS]: queryData.type } });
     if (queryData.query) filter.OR?.push({ "properties.names": { isCaseSensitive: false, [Operator.MATCHES]: queryData.query } });
     if (queryData.tags && queryData.tags.length > 0)
@@ -73,8 +73,8 @@ export const TradePanel = ({ value }: TradePanelProps) => {
 
   useEffect(() => {
     if (!showReport) return;
-    let filteredTrades = ApplyFilter(value?.trades || [], GenerateFilter());
-    let report = GenerateReport(filteredTrades, settings?.summary_settings);
+    const filteredTrades = ApplyFilter(value?.trades || [], GenerateFilter());
+    const report = GenerateReport(filteredTrades, settings?.summary_settings);
     setFinancialReport(report);
     setFinancialReportYears(GenerateYearlyReport(filteredTrades));
   }, [showReport]);

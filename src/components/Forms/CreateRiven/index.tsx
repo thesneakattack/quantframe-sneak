@@ -94,7 +94,7 @@ export function CreateRiven({ value, onSubmit }: CreateRivenProps) {
     function generatePermutations(inputArray: string[]): string[][] {
       let currentIndex: string, swapIndex: number;
       const arrayLength = inputArray.length;
-      let permutations = [inputArray.slice()];
+      const permutations = [inputArray.slice()];
       const counters = new Array(arrayLength).fill(0);
 
       for (let index = 1; index < arrayLength; ) {
@@ -117,9 +117,9 @@ export function CreateRiven({ value, onSubmit }: CreateRivenProps) {
 
       return permutations;
     }
-    let selectedIds = generatePermutations(filteredArray.map((item) => item.wfmUrl));
+    const selectedIds = generatePermutations(filteredArray.map((item) => item.wfmUrl));
 
-    let modNames: string[] = [];
+    const modNames: string[] = [];
     selectedIds.forEach((item) => {
       if (2 === item.length) {
         modNames.push(`${rivenIds[item[0]].prefix}${rivenIds[item[1]].suffix.toLowerCase()}`);

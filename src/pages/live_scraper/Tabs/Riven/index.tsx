@@ -164,7 +164,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps = {}) => {
               iconProps={{ size: "xs" }}
               actionProps={{ size: "sm", disabled: selectedRecords.length === 0 }}
               onClick={async () => {
-                let filteredRecords = selectedRecords.filter((r) => r.list_price && r.list_price > 0);
+                const filteredRecords = selectedRecords.filter((r) => r.list_price && r.list_price > 0);
                 OpenWTSModal({
                   prefix: "WTS ",
                   suffix: " :heart:",
@@ -212,8 +212,8 @@ export const RivenPanel = ({ isActive }: RivenPanelProps = {}) => {
         }}
         onCellClick={({ record, column }) => {
           switch (column.accessor) {
-            case "weapon_name":
-              let name = record.weapon_name + " " + record.mod_name;
+            case "weapon_name": {
+              const name = record.weapon_name + " " + record.mod_name;
               navigator.clipboard.writeText(name);
               notifications.show({
                 title: useTranslateCommon("notifications.copy_to_clipboard.title"),
@@ -221,6 +221,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps = {}) => {
                 color: "green.7",
               });
               break;
+            }
           }
         }}
         selectedRecords={selectedRecords}

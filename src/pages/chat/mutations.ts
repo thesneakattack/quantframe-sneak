@@ -38,7 +38,7 @@ const createGenericMutation = <TData, TVariables>(
         }
       : undefined,
     onSuccess: (data: TData, variables: TVariables) => {
-      let refetchStatusString = ["delete_chat"];
+      const refetchStatusString = ["delete_chat"];
       hooks.refetchQueries(refetchStatusString.includes(config.successKey));
       notifications.show({
         title: useTranslateCommon(`notifications.${config.successKey}.success.title`),

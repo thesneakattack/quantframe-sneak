@@ -11,8 +11,7 @@ import { Badge, Box, Checkbox, Group, Tooltip } from "@mantine/core";
 import { useState } from "react";
 import { DataTable } from "mantine-datatable";
 import classes from "../../Debug.module.css";
-interface DebuggingPanelProps {}
-export const DebuggingPanel = ({}: DebuggingPanelProps) => {
+export const DebuggingPanel = () => {
   // Context
   const { settings } = useAppContext();
 
@@ -34,7 +33,7 @@ export const DebuggingPanel = ({}: DebuggingPanelProps) => {
           onCancel={() => setEditingEntry(null)}
           onSubmit={async (values) => {
             if (!settings) return;
-            let items = [...(settings?.debugging.live_scraper.entries || [])];
+            const items = [...(settings?.debugging.live_scraper.entries || [])];
             if (editingEntry) {
               const index = items.findIndex((e) => e.wfm_url === editingEntry.wfm_url);
               if (index !== -1) items[index] = values;
@@ -120,7 +119,7 @@ export const DebuggingPanel = ({}: DebuggingPanelProps) => {
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (!settings) return;
-                    let items = settings?.debugging.live_scraper.entries.filter((item) => item.wfm_url !== row.wfm_url);
+                    const items = settings?.debugging.live_scraper.entries.filter((item) => item.wfm_url !== row.wfm_url);
                     await api.app.updateSettings({
                       ...settings,
                       debugging: { ...settings.debugging, live_scraper: { ...settings.debugging.live_scraper, entries: items } },

@@ -82,7 +82,9 @@ export const camelToKebab = (str: string): string => {
  */
 export const generateCSSVariables = (other: Record<string, any>) => {
   const variables: Record<string, string> = {};
-  let cssRoot = "";
+  // Built up below but currently never read - the only consumer is commented out
+  // at the end of this function. Underscore-prefixed to mark that as intentional.
+  let _cssRoot = "";
 
   Object.entries(other).forEach(([key, value]) => {
     // Skip non-object values and chartStyles
@@ -93,20 +95,20 @@ export const generateCSSVariables = (other: Record<string, any>) => {
     // Handle object values like userStatus, transactionType, etc.
     if (typeof value === "object" && value !== null) {
       Object.entries(value).forEach(([subKey, subValue]) => {
-        let varKey = `--qf-${kebabKey}-${subKey}`;
+        const varKey = `--qf-${kebabKey}-${subKey}`;
         variables[varKey] = String(subValue);
-        cssRoot += `[data-${kebabKey}="${subKey}"] {
+        _cssRoot += `[data-${kebabKey}="${subKey}"] {
                       --color: var(${varKey});
                     }`;
       });
     } else if (typeof value === "string") {
-      let varKey = `--qf-${kebabKey}`;
+      const varKey = `--qf-${kebabKey}`;
       variables[varKey] = String(value);
-      cssRoot += `[data-${kebabKey}] {
+      _cssRoot += `[data-${kebabKey}] {
                     --color: var(${varKey});
                   }`;
     }
   });
-  // console.log(cssRoot);
+  // console.log(_cssRoot);
   return variables;
 };

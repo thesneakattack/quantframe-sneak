@@ -6,7 +6,7 @@ export type LoadingProps = {
 };
 export function Loading({ text, noAnimationText }: LoadingProps) {
   const charters = [];
-  for (var i = 0; i < (text || "").length; i++) charters.push(text?.[i]);
+  for (let i = 0; i < (text || "").length; i++) charters.push(text?.[i]);
   return (
     <LoadingOverlay
       visible

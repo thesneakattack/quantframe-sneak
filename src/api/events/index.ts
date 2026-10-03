@@ -13,7 +13,7 @@ export class EventModule {
 
     if (!this.client._logging.includes(event) && !this.client._logging.includes("*")) return;
     // Enhanced console theming
-    let groupStyleBackground = "#257bebff";
+    const groupStyleBackground = "#257bebff";
 
     const groupStyle = `color: #ffffff; background: ${groupStyleBackground}; padding: 2px 8px; border-radius: 3px; font-weight: bold;`;
     const dataStyle = "color: #059669; font-weight: 600;";

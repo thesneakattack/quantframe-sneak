@@ -241,8 +241,8 @@ export const SyndicatePanel = ({ isActive }: SyndicatePanelProps = {}) => {
         }}
         onCellClick={({ record, column }) => {
           switch (column.accessor) {
-            case "item_name":
-              let name = record.item_name;
+            case "item_name": {
+              const name = record.item_name;
               navigator.clipboard.writeText(name);
               notifications.show({
                 title: useTranslateCommon("notifications.copy_to_clipboard.title"),
@@ -250,6 +250,7 @@ export const SyndicatePanel = ({ isActive }: SyndicatePanelProps = {}) => {
                 color: "green.7",
               });
               break;
+            }
           }
         }}
         selectedRecords={selectedRecords}

@@ -10,7 +10,7 @@ export type ThemePanelProps = {
   value: TauriTypes.Settings;
   onSubmit: (value: TauriTypes.Settings) => void;
 };
-export const ThemePanel = ({}: ThemePanelProps) => {
+export const ThemePanel = (_props: ThemePanelProps) => {
   const { switchTheme } = useTheme();
 
   const useTranslateEditor = (key: string, context?: { [key: string]: any }, i18Key?: boolean) =>

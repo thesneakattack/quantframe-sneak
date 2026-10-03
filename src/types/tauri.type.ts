@@ -865,7 +865,7 @@ export namespace TauriTypes {
     created_at: string;
     properties: Record<string, any>;
   }
-  export interface TradeEntryDetails extends TradeEntry {}
+  export type TradeEntryDetails = TradeEntry;
   export interface CreateTradeEntry {
     raw: string;
     override_existing?: boolean;

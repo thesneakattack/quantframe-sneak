@@ -230,7 +230,7 @@ export const GetChatLinkName = async (
 ): Promise<Record<string, DisplaySettings>> => {
   if (!value) return { link: { value: "<Unknown Item>" } };
 
-  let item =
+  const item =
     ("wfm_id" in value && value.wfm_id && (await api.cache.getTradableItemById(value.wfm_id))) ||
     ("wfm_weapon_id" in value && value.wfm_weapon_id && (await api.cache.getRivenWeaponsById(value.wfm_weapon_id))) ||
     ("wfm_id" in value && value.wfm_id && (await api.cache.getRivenWeaponsById(value.wfm_id)));
@@ -264,8 +264,8 @@ export const GetChatLinkNameMultiple = async (
   value: ItemWithMeta[],
   settings?: Record<string, DisplaySettings>,
 ): Promise<Record<string, DisplaySettings>[]> => {
-  let results: Record<string, DisplaySettings>[] = [];
-  for (let item of value) results.push(await GetChatLinkName(item, settings));
+  const results: Record<string, DisplaySettings>[] = [];
+  for (const item of value) results.push(await GetChatLinkName(item, settings));
   return results;
 };
 export const GetItemDisplay = (

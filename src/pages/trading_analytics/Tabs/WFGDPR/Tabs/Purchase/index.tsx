@@ -53,7 +53,7 @@ export const PurchasePanel = ({ value }: PurchasePanelProps) => {
     useTranslate(`buttons.${key}`, { ...context }, i18Key);
 
   const GenerateFilter = (): ComplexFilter => {
-    let filter: ComplexFilter = { AND: [], OR: [] };
+    const filter: ComplexFilter = { AND: [], OR: [] };
     if (queryData.query) filter.OR?.push({ "properties.names": { isCaseSensitive: false, [Operator.MATCHES]: queryData.query } });
 
     return filter;
@@ -61,8 +61,8 @@ export const PurchasePanel = ({ value }: PurchasePanelProps) => {
 
   useEffect(() => {
     if (!showReport) return;
-    let filteredTrades = ApplyFilter(value?.purchases || [], GenerateFilter());
-    let report = GenerateReport(filteredTrades);
+    const filteredTrades = ApplyFilter(value?.purchases || [], GenerateFilter());
+    const report = GenerateReport(filteredTrades);
     setFinancialReport(report);
     setFinancialReportYears(GenerateYearlyReport(filteredTrades));
   }, [showReport]);

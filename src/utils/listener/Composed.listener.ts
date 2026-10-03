@@ -73,13 +73,13 @@ export class ComposedListener {
   };
 
   public getInfo = (): Array<{ event: string; count: number }> => {
-    let items = [];
+    const items = [];
     for (const [event, listener] of Object.entries(this.listeners)) items.push({ event, count: listener.getSize() });
     return items;
   };
   public getActions = (event: string): ListenerAction[] => {
     const entry = this.listeners[event];
-    let listeners = entry ? entry.getListeners() : [];
+    const listeners = entry ? entry.getListeners() : [];
     return listeners;
   };
 }

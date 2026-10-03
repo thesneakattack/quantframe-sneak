@@ -7,8 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@api/index";
 import { useEffect, useState } from "react";
 import { DataTable } from "mantine-datatable";
-interface StatesPanelProps {}
-export const StatesPanel = ({}: StatesPanelProps) => {
+export const StatesPanel = () => {
   const { app_info, app_error, alerts, settings } = useAppContext();
   const { user } = useAuthContext();
 

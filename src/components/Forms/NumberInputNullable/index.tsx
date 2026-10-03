@@ -9,7 +9,7 @@ export function NumberInputNullable(props: NumberInputNullableProps) {
     <NumberInput
       {...props}
       onChange={(value) => {
-        let numValue = Number(value) || 0;
+        const numValue = Number(value) || 0;
         if (props.onChange) {
           if (value === null || value === undefined || numValue <= 0) props.onChange(undefined);
           else props.onChange(numValue);

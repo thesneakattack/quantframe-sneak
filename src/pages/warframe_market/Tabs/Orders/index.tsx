@@ -195,7 +195,7 @@ export const OrderPanel = ({ isActive }: OrderPanelProps) => {
                 fw: 700,
                 color: "white",
                 onClick: () => {
-                  let name = order?.properties?.name || "Unknown Item";
+                  const name = order?.properties?.name || "Unknown Item";
                   navigator.clipboard.writeText(name);
                   notifications.show({
                     title: useTranslateCommon("notifications.copy_to_clipboard.title"),
@@ -290,7 +290,7 @@ export const OrderPanel = ({ isActive }: OrderPanelProps) => {
                     iconProps={{ size: "xs" }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      let temp = { ...order };
+                      const temp = { ...order };
                       temp.quantity = 1;
                       switch (temp.type) {
                         case WFMarketTypes.OrderType.Buy:

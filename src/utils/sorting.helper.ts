@@ -43,8 +43,8 @@ const SortValue = (valueA: any, valueB: any, direction: "asc" | "desc"): number 
 export const SortItems = <T>(items: T[], sort: Sort): T[] => {
   if (!sort) return items;
   return items.sort((a, b) => {
-    let valueA = GetNestedValue(a, sort.field);
-    let valueB = GetNestedValue(b, sort.field);
+    const valueA = GetNestedValue(a, sort.field);
+    const valueB = GetNestedValue(b, sort.field);
     return SortValue(valueA, valueB, sort.direction);
   });
 };

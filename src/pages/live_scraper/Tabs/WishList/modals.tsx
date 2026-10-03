@@ -59,7 +59,7 @@ export const useStockModals = ({ updateMutation, deleteMutation, boughtMutation,
   };
 
   const OpenUpdateMultipleModal = (ids: number[]) => {
-    let id = modals.open({
+    const id = modals.open({
       size: "100%",
       withCloseButton: false,
       children: (

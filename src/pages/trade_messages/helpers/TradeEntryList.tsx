@@ -188,7 +188,7 @@ export const TradeEntryList = ({
               iconProps={{ size: "xs" }}
               actionProps={{ size: "sm" }}
               onClick={async () => {
-                let filteredRecords = selectedRecords.length > 0 ? selectedRecords : paginationQuery.data?.results || [];
+                const filteredRecords = selectedRecords.length > 0 ? selectedRecords : paginationQuery.data?.results || [];
                 OpenGenerateTradeMessageModal({
                   ...generatedSettings,
                   items: filteredRecords,

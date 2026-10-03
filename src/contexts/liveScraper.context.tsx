@@ -30,7 +30,7 @@ export function LiveScraperContextProvider({ children }: LiveScraperContextProvi
   const handleMessage = (message: { i18nKey: string; values: Record<string, any> } | undefined) => {
     if (message && message.i18nKey.endsWith("rate_limited")) {
       let seconds = parseInt(message.values.seconds, 0);
-      let intervalId = setInterval(() => {
+      const intervalId = setInterval(() => {
         setMessage({ ...message, values: { ...message.values, seconds: seconds-- } });
         if (seconds <= 1) clearInterval(intervalId);
       }, 1000);

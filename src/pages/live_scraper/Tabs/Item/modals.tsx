@@ -43,7 +43,7 @@ export const useModals = ({ updateMutation, updateMultipleMutation, sellStockMut
         ],
         onConfirm: async (data: { min_price: number | undefined }) => {
           if (!id) return;
-          let { min_price } = data;
+          const { min_price } = data;
           await updateMutation.mutateAsync({ id, properties: { min_price } });
         },
         onCancel: (id: string) => modals.close(id),
@@ -111,7 +111,7 @@ export const useModals = ({ updateMutation, updateMultipleMutation, sellStockMut
   };
 
   const OpenUpdateMultipleModal = (ids: number[]) => {
-    let id = modals.open({
+    const id = modals.open({
       size: "100%",
       withCloseButton: false,
       children: (

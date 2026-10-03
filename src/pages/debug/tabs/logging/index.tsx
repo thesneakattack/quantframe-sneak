@@ -10,8 +10,7 @@ import { useTranslatePages } from "@hooks/useTranslate.hook";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import classes from "../../Debug.module.css";
 import { modals } from "@mantine/modals";
-interface LoggingPanelProps {}
-export const LoggingPanel = ({}: LoggingPanelProps) => {
+export const LoggingPanel = () => {
   const [search, setSearch] = useState("");
   const { data, refetch } = useQuery({
     queryKey: ["getLogging", search],

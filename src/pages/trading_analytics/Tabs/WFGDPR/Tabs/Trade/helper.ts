@@ -30,24 +30,24 @@ export const GenerateCategoryReport = (
   return reports;
 };
 export const GenerateFinancialReport = (items: TauriTypes.PlayerTrade[]): TauriTypes.FinancialReport => {
-  let purchases = items.filter((i) => i.type === "purchase");
-  let purchases_items = purchases.flatMap((p) => p.receivedItems || []).filter((i) => i.item_type !== "Credits" && i.item_type !== "Platinum");
-  let expenses = purchases.reduce((acc, p) => acc + (p.platinum || 0), 0);
-  let highest_expense = Math.max(...purchases.map((t) => t.platinum || 0));
-  let lowest_expense = Math.min(...purchases.map((t) => t.platinum || 0));
+  const purchases = items.filter((i) => i.type === "purchase");
+  const purchases_items = purchases.flatMap((p) => p.receivedItems || []).filter((i) => i.item_type !== "Credits" && i.item_type !== "Platinum");
+  const expenses = purchases.reduce((acc, p) => acc + (p.platinum || 0), 0);
+  const highest_expense = Math.max(...purchases.map((t) => t.platinum || 0));
+  const lowest_expense = Math.min(...purchases.map((t) => t.platinum || 0));
 
-  let purchase_quantities_by_item = Object.entries(GroupByKey("properties.item_name", purchases_items)).map(([name, items]) => ({
+  const purchase_quantities_by_item = Object.entries(GroupByKey("properties.item_name", purchases_items)).map(([name, items]) => ({
     name,
     quantity: (items as any[]).reduce((acc, i) => acc + (i.quantity || 0), 0),
   }));
 
-  let sales = items.filter((i) => i.type === "sale");
-  let sales_items = sales.flatMap((s) => s.offeredItems || []).filter((i) => i.item_type !== "Credits" && i.item_type !== "Platinum");
-  let revenue = sales.reduce((acc, s) => acc + (s.platinum || 0), 0);
-  let highest_revenue = Math.max(...sales.map((t) => t.platinum || 0));
-  let lowest_revenue = Math.min(...sales.map((t) => t.platinum || 0));
+  const sales = items.filter((i) => i.type === "sale");
+  const sales_items = sales.flatMap((s) => s.offeredItems || []).filter((i) => i.item_type !== "Credits" && i.item_type !== "Platinum");
+  const revenue = sales.reduce((acc, s) => acc + (s.platinum || 0), 0);
+  const highest_revenue = Math.max(...sales.map((t) => t.platinum || 0));
+  const lowest_revenue = Math.min(...sales.map((t) => t.platinum || 0));
 
-  let sale_quantities_by_item = Object.entries(GroupByKey("properties.item_name", sales_items)).map(([name, items]) => ({
+  const sale_quantities_by_item = Object.entries(GroupByKey("properties.item_name", sales_items)).map(([name, items]) => ({
     name,
     quantity: (items as any[]).reduce((acc, i) => acc + (i.quantity || 0), 0),
   }));
@@ -86,8 +86,8 @@ export const GenerateFinancialReport = (items: TauriTypes.PlayerTrade[]): TauriT
 };
 
 export const GenerateReport = (items: TauriTypes.PlayerTrade[], settings: TauriTypes.SummarySettings | undefined): TauriTypes.FinancialReport => {
-  let report = GenerateFinancialReport(items);
-  let category_report = GenerateCategoryReport(items, settings);
+  const report = GenerateFinancialReport(items);
+  const category_report = GenerateCategoryReport(items, settings);
   if (report.properties) report.properties["categories"] = category_report;
   // Here you can modify the report based on settings if needed
   return report;

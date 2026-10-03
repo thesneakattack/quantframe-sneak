@@ -3,14 +3,14 @@ import { GroupByKey } from "@utils/helper";
 
 export const GenerateFinancialReport = (purchases: TauriTypes.WFGDPRPurchase[]): TauriTypes.FinancialReport => {
   // Get the prices of all items received in purchases
-  let purchases_items = purchases.flatMap((p) => p.items_received.map((i) => ({ ...i, price: p.price })));
-  let expenses = purchases.reduce((acc, p) => acc + (p.price || 0), 0);
+  const purchases_items = purchases.flatMap((p) => p.items_received.map((i) => ({ ...i, price: p.price })));
+  const expenses = purchases.reduce((acc, p) => acc + (p.price || 0), 0);
   // Can y Get the item with the highest price and lowest price
-  let highest_expense = Math.max(...purchases.map((t) => t.price || 0));
-  let lowest_expense = Math.min(...purchases.map((t) => t.price || 0));
-  let purchase_quantities_by_item = Object.entries(GroupByKey("name", purchases_items)).map(([name, items]) => {
-    let quantity = (items as any[]).reduce((acc, i) => acc + (i.quantity || 0), 0);
-    let price = (items as any[]).reduce((acc, i) => acc + (i.price || 0), 0); // Average price per item
+  const highest_expense = Math.max(...purchases.map((t) => t.price || 0));
+  const lowest_expense = Math.min(...purchases.map((t) => t.price || 0));
+  const purchase_quantities_by_item = Object.entries(GroupByKey("name", purchases_items)).map(([name, items]) => {
+    const quantity = (items as any[]).reduce((acc, i) => acc + (i.quantity || 0), 0);
+    const price = (items as any[]).reduce((acc, i) => acc + (i.price || 0), 0); // Average price per item
     return { name, quantity, price };
   });
 
@@ -45,7 +45,7 @@ export const GenerateFinancialReport = (purchases: TauriTypes.WFGDPRPurchase[]):
 };
 
 export const GenerateReport = (items: TauriTypes.WFGDPRPurchase[]): TauriTypes.FinancialReport => {
-  let report = GenerateFinancialReport(items);
+  const report = GenerateFinancialReport(items);
   // Here you can modify the report based on settings if needed
   return report;
 };

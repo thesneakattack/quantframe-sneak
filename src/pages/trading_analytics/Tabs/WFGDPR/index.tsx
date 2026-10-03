@@ -19,7 +19,7 @@ enum View {
 interface WarframeGDPRParserProps {
   isActive?: boolean;
 }
-export const WarframeGDPRParser = ({}: WarframeGDPRParserProps = {}) => {
+export const WarframeGDPRParser = (_props: WarframeGDPRParserProps = {}) => {
   // Translate general
   const useTranslate = (key: string, context?: { [key: string]: any }, i18Key?: boolean) =>
     useTranslatePages(`trading_analytics.${key}`, { ...context }, i18Key);

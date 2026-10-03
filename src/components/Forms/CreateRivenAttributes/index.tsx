@@ -43,7 +43,7 @@ export function CreateRivenAttributes({ maxPositive, maxNegative, attributes, on
 
     const formAttributes = currentAttributes.map((item) => item.wfmUrl);
 
-    let avAttributes = attributes.filter((item) => !formAttributes?.includes(item.wfmUrl));
+    const avAttributes = attributes.filter((item) => !formAttributes?.includes(item.wfmUrl));
 
     if (currentAttribute) {
       const attr = attributes.find((item) => item.wfmUrl == currentAttribute.wfmUrl);

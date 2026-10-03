@@ -159,7 +159,7 @@ export const TransactionPanel = ({ isActive }: TransactionPanelProps = {}) => {
                 valueFormat="YYYY MMM DD"
                 value={[queryData.from_date ? new Date(queryData.from_date) : null, queryData.to_date ? new Date(queryData.to_date) : null]}
                 onChange={(value) => {
-                  let [start, end] = value || [undefined, undefined];
+                  const [start, end] = value || [undefined, undefined];
                   setQueryData((prev) => ({ ...prev, from_date: start || undefined, to_date: end || undefined }));
                 }}
               />

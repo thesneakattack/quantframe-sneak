@@ -9,17 +9,18 @@ export interface TimerStampProps {
 
 export const TimerStamp = (props: TimerStampProps) => {
   const useTranslateSearch = (key: string, context?: { [key: string]: any }) => useTranslateComponent(`timer_stamp.${key}`, { ...context });
-  let { text, date, color } = props;
+  const { text, color } = props;
+  let { date } = props;
   let tooText = "";
   const now = new Date();
   if (typeof date === "string") date = new Date(date);
   const difference = now.getTime() - date.getTime();
-  let years = Math.floor(difference / 1000 / 60 / 60 / 24 / 365);
-  let months = Math.floor(difference / 1000 / 60 / 60 / 24 / 31);
-  let days = Math.floor(difference / (1000 * 60 * 60 * 24));
-  let hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-  let minutes = Math.floor((difference / 1000 / 60) % 60);
-  let seconds = Math.floor((difference / 1000) % 60);
+  const years = Math.floor(difference / 1000 / 60 / 60 / 24 / 365);
+  const months = Math.floor(difference / 1000 / 60 / 60 / 24 / 31);
+  const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((difference / 1000 / 60) % 60);
+  const seconds = Math.floor((difference / 1000) % 60);
   if (years > 0) tooText = useTranslateSearch("years", { years });
   else if (months > 0) tooText = useTranslateSearch("months", { months });
   else if (days > 0) tooText = useTranslateSearch("days", { days });

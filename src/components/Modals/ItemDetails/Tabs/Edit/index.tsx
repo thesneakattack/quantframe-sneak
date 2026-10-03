@@ -45,7 +45,7 @@ export function EditTab({ lookup, value, onSave }: EditTabProps) {
   const formValue = { ...(value as any), ...(value.properties ?? {}) } as EditFormValues;
 
   const canUseBulk = (lookupKeys: string[]) => {
-    let bulkTradable = GetProperty("bulk_tradable") ?? false;
+    const bulkTradable = GetProperty("bulk_tradable") ?? false;
     return lookupKeys.some((key) => key === lookup) && bulkTradable ? "block" : "none";
   };
 
@@ -119,7 +119,6 @@ export function EditTab({ lookup, value, onSave }: EditTabProps) {
   ];
 
   const handleSave = (values: EditFormValues) => {
-    debugger;
     const properties: Record<string, any> = { ...(value.properties ?? {}) };
 
     for (const key of PropertyFields) {

@@ -80,12 +80,13 @@ export function UpdateAvailableModal({ is_manual, download_url, updater, new_ver
                   setContentLength(event.data.contentLength || 0);
                   contentLength = event.data.contentLength;
                   break;
-                case "Progress":
+                case "Progress": {
                   downloaded += event.data.chunkLength;
                   const progress = contentLength ? Math.round((downloaded / contentLength) * 100) : 0;
                   setDownloadProgress(progress);
                   setDownloaded(downloaded);
                   break;
+                }
                 case "Finished":
                   setDownloadProgress(100);
                   setIsDownloading(false);

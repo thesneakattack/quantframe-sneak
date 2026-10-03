@@ -36,7 +36,7 @@ export const createGenericMutation = <TData, TVariables>(
         }
       : undefined,
     onSuccess: (data: TData, variables: TVariables) => {
-      let refetchStatusString = hooks.refetchStatusString ?? ["create_stock_item"];
+      const refetchStatusString = hooks.refetchStatusString ?? ["create_stock_item"];
       hooks.refetchQueries(refetchStatusString.includes(config.successKey));
       const isMultiple = config.isMultiple ? config.isMultiple(variables) : false;
       notifications.show({

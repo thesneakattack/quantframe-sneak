@@ -9,7 +9,7 @@ import { QuantframeApiTypes } from "$types";
 
 export type HeaderProps = {};
 
-export function Header({}: HeaderProps) {
+export function Header(_props: HeaderProps) {
   const theme = useMantineTheme();
   const { alerts } = useAppContext();
   const handleAlertClick = (alert: QuantframeApiTypes.AlertDto) => {

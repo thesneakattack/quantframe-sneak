@@ -85,7 +85,7 @@ export function ProcessTradePopup() {
   };
 
   const CreateItems = async () => {
-    let items = currentTradeForm.values?.items.map((item) => ({
+    const items = currentTradeForm.values?.items.map((item) => ({
       ...item,
       user_name: currentTradeForm.values?.playerName,
       wfm_url: item.properties?.wfm_url,

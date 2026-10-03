@@ -169,7 +169,7 @@ export const ItemPanel = ({ isActive }: ItemPanelProps = {}) => {
               iconProps={{ size: "xs" }}
               actionProps={{ size: "sm", disabled: selectedRecords.length === 0 }}
               onClick={async () => {
-                let filteredRecords = selectedRecords.filter((r) => r.list_price && r.list_price > 0);
+                const filteredRecords = selectedRecords.filter((r) => r.list_price && r.list_price > 0);
                 OpenWTSModal({
                   prefix: "WTS ",
                   suffix: " :heart:",
@@ -217,8 +217,8 @@ export const ItemPanel = ({ isActive }: ItemPanelProps = {}) => {
         }}
         onCellClick={({ record, column }) => {
           switch (column.accessor) {
-            case "item_name":
-              let name = record.item_name;
+            case "item_name": {
+              const name = record.item_name;
               navigator.clipboard.writeText(name);
               notifications.show({
                 title: useTranslateCommon("notifications.copy_to_clipboard.title"),
@@ -226,6 +226,7 @@ export const ItemPanel = ({ isActive }: ItemPanelProps = {}) => {
                 color: "green.7",
               });
               break;
+            }
           }
         }}
         selectedRecords={selectedRecords}

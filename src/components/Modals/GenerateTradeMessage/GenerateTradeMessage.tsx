@@ -61,34 +61,34 @@ export function GenerateTradeMessageModal({ prefix, template, suffix, displaySet
   const [selectedTemplate, setSelectedTemplate] = useState<TauriTypes.SaveTemplateSetting | null>(null);
 
   const ValidateLength = (candidate: string, message: string) => {
-    let totalLength = candidate.length + message.length;
+    const totalLength = candidate.length + message.length;
     return totalLength <= MAX_LENGTH;
   };
 
   useEffect(() => {
     const generateMessages = async () => {
-      let template = form.values.template;
+      const template = form.values.template;
       const displaySettings = form.values.displaySettings;
       const newItems = await GetChatLinkNameMultiple(items, displaySettings);
       let keys: string[] = [];
-      for (let val of newItems) keys = [...keys, ...Object.keys(val)];
+      for (const val of newItems) keys = [...keys, ...Object.keys(val)];
       setAvailableKeys(Array.from(new Set(keys)));
 
       let message = form.values.prefix;
       if (form.values.groupByKey) {
-        let groupByKey = form.values.groupByKey;
-        let groupedItems = GroupByKey(`${groupByKey}.value`, newItems);
-        for (let [, items] of Object.entries(groupedItems)) {
+        const groupByKey = form.values.groupByKey;
+        const groupedItems = GroupByKey(`${groupByKey}.value`, newItems);
+        for (const [, items] of Object.entries(groupedItems)) {
           for (let i = 0; i < items.length; i++) {
             if (i != items.length - 1) delete items[i][groupByKey];
-            let candidate = ApplyTemplate(template, items[i]);
+            const candidate = ApplyTemplate(template, items[i]);
             if (!ValidateLength(candidate, message)) return;
             message += candidate;
           }
         }
       } else
         newItems.forEach((data) => {
-          let candidate = ApplyTemplate(template, data);
+          const candidate = ApplyTemplate(template, data);
           if (!ValidateLength(candidate, message)) return;
           message += candidate;
         });
@@ -261,7 +261,7 @@ export function GenerateTradeMessageModal({ prefix, template, suffix, displaySet
                             actionProps={{ size: "sm" }}
                             onClick={async (e) => {
                               e.stopPropagation();
-                              let currentSettings = { ...form.values.displaySettings };
+                              const currentSettings = { ...form.values.displaySettings };
                               delete currentSettings[row.key];
                               form.setFieldValue("displaySettings", currentSettings);
                             }}

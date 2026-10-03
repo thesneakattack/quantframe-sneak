@@ -26,7 +26,7 @@ export class CacheModule {
     return items;
   }
   async getTradableItemById(id: string): Promise<TauriTypes.CacheTradableItem | undefined> {
-    let items = await this.getTradableItems();
+    const items = await this.getTradableItems();
     return items.find((i) => i.wfmId === id);
   }
   getThemePresets() {
@@ -65,11 +65,11 @@ export class CacheModule {
     return items;
   }
   async getRivenWeaponsById(id: string): Promise<TauriTypes.CacheRivenWeapon | undefined> {
-    let items = await this.getRivenWeapons();
+    const items = await this.getRivenWeapons();
     return items.find((i) => i.wfmId === id);
   }
   async getWeaponByUrl(id: string): Promise<TauriTypes.CacheRivenWeapon | undefined> {
-    let items = await this.getRivenWeapons();
+    const items = await this.getRivenWeapons();
     return items.find((i) => i.wfmRivenUrl === id);
   }
   async get_chat_link(unique_name: string): Promise<TauriTypes.ChatLink> {

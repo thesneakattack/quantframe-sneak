@@ -34,7 +34,7 @@ export const RivenPanel = ({ isActive }: RivenPanelProps = {}) => {
       isActive={isActive}
       group="riven"
       onFindInteresting={async ({ createMultipleMutation }) => {
-        let date = dayjs().subtract(1, "hours").startOf("hour").utc().toISOString();
+        const date = dayjs().subtract(1, "hours").startOf("hour").utc().toISOString();
 
         let items: any = [];
         if (await HasPermission(TauriTypes.PermissionsFlags.FIND_INTERESTING_RIVENS))

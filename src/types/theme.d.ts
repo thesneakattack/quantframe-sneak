@@ -1,4 +1,3 @@
-import { MantineColorsTuple } from "@mantine/core";
 import { UserStatus, TauriTypes } from "$types";
 
 declare module "@mantine/core" {

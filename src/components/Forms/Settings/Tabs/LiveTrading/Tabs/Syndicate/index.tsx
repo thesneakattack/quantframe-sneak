@@ -68,10 +68,10 @@ export const SyndicatePanel = ({ form, setHideTab, setHideButtons }: SyndicatePa
   };
 
   const handleImport = async () => {
-    let items = await api.wf_inventory.getSyndicatesPagination({ page: 1, limit: -1, properties: { can_select: true } });
-    let syndicates = [...(form.values.live_scraper.syndicate.wts.syndicates || [])];
-    for (let item of items.results || []) {
-      let index = syndicates.findIndex((s) => s.unique_name === item.unique_name);
+    const items = await api.wf_inventory.getSyndicatesPagination({ page: 1, limit: -1, properties: { can_select: true } });
+    const syndicates = [...(form.values.live_scraper.syndicate.wts.syndicates || [])];
+    for (const item of items.results || []) {
+      const index = syndicates.findIndex((s) => s.unique_name === item.unique_name);
       const syndicateInfo = data?.find((s) => s.uniqueName === item.unique_name);
       if (index !== -1) syndicates[index] = { ...syndicates[index], standing: item.quantity || 0 };
       else
@@ -86,13 +86,13 @@ export const SyndicatePanel = ({ form, setHideTab, setHideButtons }: SyndicatePa
   };
 
   const handleDelete = (unique_name: string) => {
-    let syndicates = form.values.live_scraper.syndicate.wts.syndicates?.filter((item) => item.unique_name !== unique_name) ?? [];
+    const syndicates = form.values.live_scraper.syndicate.wts.syndicates?.filter((item) => item.unique_name !== unique_name) ?? [];
     form.setFieldValue("live_scraper.syndicate.wts.syndicates", syndicates);
   };
   const handleAdd = (unique_name: string, standing: number) => {
     if (!unique_name || unique_name.trim() === "" || standing < 0) return;
-    let syndicates = [...(form.values.live_scraper.syndicate.wts.syndicates || [])];
-    let index = syndicates.findIndex((s) => s.unique_name === unique_name);
+    const syndicates = [...(form.values.live_scraper.syndicate.wts.syndicates || [])];
+    const index = syndicates.findIndex((s) => s.unique_name === unique_name);
     const syndicateInfo = data?.find((s) => s.uniqueName === unique_name);
     if (index !== -1) syndicates[index] = { ...syndicates[index], standing: standing };
     else syndicates.push({ name: syndicateInfo?.name || unique_name, standing: standing, unique_name: unique_name, ignore_standing: false });
@@ -275,7 +275,7 @@ export const SyndicatePanel = ({ form, setHideTab, setHideButtons }: SyndicatePa
                       actionProps={{ size: "sm" }}
                       iconProps={{ size: "xs" }}
                       onClick={() => {
-                        let syndicates =
+                        const syndicates =
                           form.values.live_scraper.syndicate.wts.syndicates?.map((s) => {
                             if (s.unique_name === item.unique_name) return { ...s, ignore_standing: !s.ignore_standing };
                             return s;

@@ -70,7 +70,7 @@ export const ChatRome = ({ chat, goBack, disableChat }: ChatRomeProps) => {
   const handleOnMessage = (newMessage: WFMarketTypes.ChatMessage) => {
     if (newMessage.chat_id != chat.id) return;
     setMessages((msgs) => {
-      let newMsgs = [...msgs];
+      const newMsgs = [...msgs];
       newMsgs.unshift(newMessage);
       return newMsgs;
     });

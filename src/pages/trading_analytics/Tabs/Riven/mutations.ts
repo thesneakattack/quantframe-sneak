@@ -24,7 +24,7 @@ const createGenericMutation = <TData, TVariables>(
     onMutate: config.getLoadingId ? () => {} : undefined,
     onSettled: config.getLoadingId ? (_data: TData | undefined, _error: any) => {} : undefined,
     onSuccess: (data: TData, variables: TVariables) => {
-      let refetchStatusString = ["update_transaction", "delete_bulk_transaction"];
+      const refetchStatusString = ["update_transaction", "delete_bulk_transaction"];
       hooks.refetchQueries(refetchStatusString.includes(config.successKey));
       notifications.show({
         title: useTranslateCommon(`notifications.${config.successKey}.success.title`),
