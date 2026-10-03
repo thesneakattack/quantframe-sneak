@@ -140,13 +140,9 @@ impl PlayerTrade {
             Err(_) => return,
         };
 
-        let get_buildable_set = |recipe_only| cache.recipe().can_craft(&items, true, recipe_only);
-
-        // strict pass first, then relaxed fallback
-        let mut recipes = get_buildable_set(false).unwrap_or_default();
-        if recipes.is_empty() {
-            recipes = get_buildable_set(true).unwrap_or_default();
-        }
+        // One pass: can_craft now resolves each ingredient's key individually,
+        // so the strict/relaxed fallback that used to be needed here is gone.
+        let recipes = cache.recipe().can_craft(&items, true).unwrap_or_default();
 
         if recipes.is_empty() {
             return;

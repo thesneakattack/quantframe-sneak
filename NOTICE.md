@@ -41,6 +41,7 @@ table above because they restore intended behaviour rather than diverge from it.
 | `qf_api` `Display for ApiError` called `println!` | Debug output leaked to stdout whenever a parsing error was formatted, including from logging paths |
 | A stray `debugger;` in the item-details save handler | Halted the app for anyone with devtools open |
 | `WFInvItemRaw::is_riven` had a branch chain that returned `true` from every path | The trailing `false` was unreachable; the function only ever tested its path prefix. Collapsed without changing behaviour, but the dead branches suggest unimplemented intent |
+| `CacheRecipe::can_craft` chose one ingredient-key mode for a whole recipe via a `from_recipe_only` flag, and returned `false` outright when that flag met an ingredient with no `fromRecipe` | The trade log parser compensated by trying both modes in sequence, which covers recipes whose ingredients are uniformly one kind but never the four sets that mix blueprint-backed Warframe parts with bare weapon components. Those sets were invisible to trade set detection. The key is now resolved per ingredient and the fallback pass is gone. Now covered by regression tests |
 
 ## Unchanged
 

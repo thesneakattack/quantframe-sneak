@@ -20,12 +20,7 @@ pub struct CacheRecipe {
 }
 
 impl CacheRecipe {
-    pub fn can_craft(
-        &self,
-        tradeable_only: bool,
-        from_recipe_only: bool,
-        items: &[CacheItemBase],
-    ) -> bool {
+    pub fn can_craft(&self, tradeable_only: bool, items: &[CacheItemBase]) -> bool {
         let mut owned_counts: HashMap<String, i64> = HashMap::new();
         for item in items {
             *owned_counts.entry(item.unique_name.clone()).or_insert(0) += item.quantity;
@@ -40,11 +35,9 @@ impl CacheRecipe {
             return false;
         }
         let has_all_parts = required_parts.iter().all(|ingredient| {
-            let ingredient_key = if from_recipe_only {
-                ingredient.from_recipe.clone()
-            } else {
-                ingredient.base.unique_name.clone()
-            };
+            // Per ingredient, never per recipe: four sets mix blueprint-backed
+            // Warframe parts with bare weapon components.
+            let ingredient_key = super::cache_item_set::member_key(ingredient);
             if ingredient_key.is_empty() {
                 return false;
             }
@@ -99,5 +92,98 @@ impl Display for CacheRecipe {
             items.push(format!("Ingredients: [{}]", ingredient_str));
         }
         write!(f, "{}", items.join(" | "))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cache::{CacheIngredient, CacheItemBase, CacheRecipe};
+
+    fn ingredient(unique_name: &str, from_recipe: &str, quantity: i64) -> CacheIngredient {
+        let mut base = CacheItemBase::new(unique_name, quantity);
+        base.is_tradeable = true;
+        CacheIngredient {
+            base,
+            from_recipe: from_recipe.to_string(),
+        }
+    }
+
+    fn recipe(ingredients: Vec<CacheIngredient>) -> CacheRecipe {
+        let mut base = CacheItemBase::new("/Set/MainBlueprint", 1);
+        base.is_tradeable = true;
+        CacheRecipe {
+            base,
+            result_type: "/Set/Result".to_string(),
+            override_unique_name: String::new(),
+            ingredients,
+        }
+    }
+
+    fn owned(entries: &[(&str, i64)]) -> Vec<CacheItemBase> {
+        entries
+            .iter()
+            .map(|(name, qty)| CacheItemBase::new(*name, *qty))
+            .collect()
+    }
+
+    /// A set whose parts are all Warframe-style: owned as blueprints named by
+    /// fromRecipe.
+    #[test]
+    fn matches_a_set_whose_ingredients_all_have_a_from_recipe() {
+        let r = recipe(vec![
+            ingredient("/Component/A", "/Blueprint/A", 1),
+            ingredient("/Component/B", "/Blueprint/B", 1),
+        ]);
+        let items = owned(&[
+            ("/Set/MainBlueprint", 1),
+            ("/Blueprint/A", 1),
+            ("/Blueprint/B", 1),
+        ]);
+        assert!(r.can_craft(true, &items));
+    }
+
+    /// A set whose parts are all weapon-style: owned as built components, no
+    /// fromRecipe.
+    #[test]
+    fn matches_a_set_whose_ingredients_have_no_from_recipe() {
+        let r = recipe(vec![
+            ingredient("/Part/Barrel", "", 1),
+            ingredient("/Part/Receiver", "", 1),
+        ]);
+        let items = owned(&[
+            ("/Set/MainBlueprint", 1),
+            ("/Part/Barrel", 1),
+            ("/Part/Receiver", 1),
+        ]);
+        assert!(r.can_craft(true, &items));
+    }
+
+    /// The case the old all-or-nothing flag could never satisfy: with
+    /// from_recipe_only the bare part produced an empty key and bailed out,
+    /// without it the blueprint-backed component was looked up under a name
+    /// the player never holds. Four real sets are shaped like this.
+    #[test]
+    fn matches_a_set_that_mixes_both_kinds_of_ingredient() {
+        let r = recipe(vec![
+            ingredient("/Component/A", "/Blueprint/A", 1),
+            ingredient("/Part/Bare", "", 1),
+        ]);
+        let items = owned(&[
+            ("/Set/MainBlueprint", 1),
+            ("/Blueprint/A", 1),
+            ("/Part/Bare", 1),
+        ]);
+        assert!(r.can_craft(true, &items));
+    }
+
+    /// Quantity still has to be satisfied: 57 tradable ingredients across the
+    /// real set list require more than one copy.
+    #[test]
+    fn rejects_a_set_when_a_multi_copy_ingredient_is_short() {
+        let r = recipe(vec![ingredient("/Part/Bare", "", 3)]);
+        let short = owned(&[("/Set/MainBlueprint", 1), ("/Part/Bare", 2)]);
+        let enough = owned(&[("/Set/MainBlueprint", 1), ("/Part/Bare", 3)]);
+        assert!(!r.can_craft(true, &short));
+        assert!(r.can_craft(true, &enough));
     }
 }
