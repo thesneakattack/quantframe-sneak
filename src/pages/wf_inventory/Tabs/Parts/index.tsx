@@ -11,7 +11,7 @@ import { useResolvedPrices } from "@hooks/useResolvedPrices.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
 import { Group, Loader, NumberFormatter, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
-import { getSafePage } from "@utils/helper";
+import { getSafePage, inventoryRowKey } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
 import { useState } from "react";
 import classes from "../../WFInventory.module.css";
@@ -198,7 +198,7 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
               <ActionWithTooltip
                 icon={faAdd}
                 color={row.properties?.is_in_stock ? "var(--mantine-color-green-6)" : "var(--mantine-color-red-6)"}
-                actionProps={{ size: "sm", loading: loadingRows.includes(row.wfm_url) }}
+                actionProps={{ size: "sm", loading: loadingRows.includes(inventoryRowKey(row.wfm_url, row.sub_type)) }}
                 iconProps={{ size: "xs" }}
                 tooltip={useTranslate(`stock_status.${row.properties?.is_in_stock ? "found" : "not_found"}`)}
                 onClick={() => OpenAddToStockModal(row)}

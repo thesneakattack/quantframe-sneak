@@ -305,3 +305,13 @@ export const getSafePage = (requestedPage: number | undefined, totalPages: numbe
   const maxPages = totalPages ?? 1;
   return Math.min(page, maxPages);
 };
+
+/**
+ * Identifies one inventory row.
+ *
+ * A wfm_url alone is not unique: an unranked and a maxed mod share one, as do
+ * a relic's refinements. Keying on the url alone makes unrelated rows share a
+ * loading spinner and a resolved price. Mirrors `stock_key` on the Rust side.
+ */
+export const inventoryRowKey = (wfmUrl: string, subType?: TauriTypes.SubType): string =>
+  `${wfmUrl}#${subType?.rank ?? 0}#${subType?.variant ?? ""}`;

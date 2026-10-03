@@ -9,18 +9,29 @@ use crate::cache::*;
 
 static COMPONENT: &str = "Cache:ItemSet";
 
+/// The sets and the member lookup into them.
+///
+/// One lock, not two: `by_member` holds indices into `sets`, so a reader that
+/// caught the new sets against the old index would resolve a member to the
+/// wrong set. Today `load` runs once during startup, before any command can
+/// read, so that cannot happen - but the two must be published together for
+/// it to stay true if a reload is ever added.
+#[derive(Debug, Default)]
+struct SetIndex {
+    sets: Vec<CacheItemSet>,
+    /// member unique name -> indices into `sets`
+    by_member: HashMap<String, Vec<usize>>,
+}
+
 #[derive(Debug)]
 pub struct ItemSetModule {
-    sets: Mutex<Vec<CacheItemSet>>,
-    /// member unique name -> indices into `sets`
-    by_member: Mutex<HashMap<String, Vec<usize>>>,
+    index: Mutex<SetIndex>,
 }
 
 impl ItemSetModule {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            sets: Mutex::new(Vec::new()),
-            by_member: Mutex::new(HashMap::new()),
+            index: Mutex::new(SetIndex::default()),
         })
     }
 
@@ -106,27 +117,26 @@ impl ItemSetModule {
             &LoggerOptions::default(),
         );
 
-        *self.sets.lock().unwrap() = sets;
-        *self.by_member.lock().unwrap() = by_member;
+        *self.index.lock().unwrap() = SetIndex { sets, by_member };
         Ok(())
     }
 
     pub fn get_all_sets(&self) -> Result<Vec<CacheItemSet>, Error> {
-        Ok(self.sets.lock().unwrap().clone())
+        Ok(self.index.lock().unwrap().sets.clone())
     }
 
     /// Every set this unique name is a member of. Normally zero or one, but
     /// the akimbo prime sets share the single-pistol blueprint, so three
     /// members belong to two sets each (issue #3).
     pub fn get_sets_for_member(&self, unique_name: &str) -> Vec<CacheItemSet> {
-        let by_member = self.by_member.lock().unwrap();
-        let sets = self.sets.lock().unwrap();
-        by_member
+        let index = self.index.lock().unwrap();
+        index
+            .by_member
             .get(unique_name)
-            .map(|indices| {
-                indices
+            .map(|positions| {
+                positions
                     .iter()
-                    .filter_map(|i| sets.get(*i).cloned())
+                    .filter_map(|i| index.sets.get(*i).cloned())
                     .collect()
             })
             .unwrap_or_default()

@@ -1,6 +1,7 @@
 import { TauriTypes } from "$types";
 import api from "@api/index";
 import { useQuery } from "@tanstack/react-query";
+import { inventoryRowKey } from "@utils/helper";
 
 /**
  * Fills in prices the bundled cache does not carry, for the rows on screen.
@@ -36,7 +37,7 @@ export const useResolvedPrices = (rows: TauriTypes.WFInvItemRow[] | undefined) =
   const resolvedPrice = (row: TauriTypes.WFInvItemRow): number | null | undefined => {
     if (row.properties?.price != null) return row.properties.price;
     if (!query.data) return undefined;
-    return query.data[`${row.wfm_url}#${row.sub_type?.rank ?? 0}#${row.sub_type?.variant ?? ""}`] ?? null;
+    return query.data[inventoryRowKey(row.wfm_url, row.sub_type)] ?? null;
   };
 
   return { resolvedPrice, isResolving: query.isFetching };
