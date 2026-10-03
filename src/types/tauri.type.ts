@@ -178,14 +178,14 @@ export namespace TauriTypes {
     standing: number;
     ignore_standing: boolean;
   }
-  export interface ItemWtbSettings {
+  export interface ItemWtsSettings {
     min_sma: number;
     min_profit: number;
+    min_profit_percentage: number;
     max_price_drop: number;
     min_listings_below: number;
   }
-  export interface ItemWtsSettings {
-    min_profit_percentage: number;
+  export interface ItemWtbSettings {
     volume_threshold: number;
     profit_threshold: number;
     avg_price_cap: number;

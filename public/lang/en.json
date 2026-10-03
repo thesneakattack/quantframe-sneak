@@ -525,7 +525,8 @@
       "volume": {
         "title": "Volume"
       },
-      "price": "Price"
+      "price": "Price",
+      "price_unknown": "No market data yet — may still be valuable"
     },
     "item_name": {
       "title": "Name",
@@ -2837,7 +2838,8 @@
             }
           },
           "filters": {
-            "in_set_only": "Set components only"
+            "in_set_only": "Set components only",
+            "min_price": "Min price"
           }
         },
         "mods": {
@@ -2854,7 +2856,8 @@
           "filters": {
             "all": "All",
             "unranked": "Unranked",
-            "ranked": "Ranked"
+            "ranked": "Ranked",
+            "min_price": "Min price"
           }
         },
         "sets": {
@@ -2872,7 +2875,8 @@
             }
           },
           "filters": {
-            "complete_only": "Complete sets only"
+            "complete_only": "Complete sets only",
+            "min_price": "Min price"
           }
         }
       }

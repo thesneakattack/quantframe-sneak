@@ -21,4 +21,14 @@
   &.alert {
     --offset: 205px;
   }
+
+  /* The filter panel expands above the table and would otherwise push the
+     pagination footer off the bottom of the window. */
+  &.filterOpen {
+    --offset: 250px;
+  }
+
+  &.alert.filterOpen {
+    --offset: 280px;
+  }
 }

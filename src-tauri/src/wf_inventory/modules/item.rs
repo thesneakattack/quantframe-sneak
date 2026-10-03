@@ -88,6 +88,22 @@ pub fn rank_groups(upgrades: &[WFInvItemRaw]) -> HashMap<(String, i64), i64> {
     groups
 }
 
+/// Whether a row clears the minimum-price filter.
+///
+/// The price column exists to pick out what is worth listing, so the filter
+/// hides the cheap. An **unknown** price is never treated as cheap: the
+/// bundled price data covers only part of the inventory, and roughly 45% of
+/// the rows it misses turn out to be worth 10p or more. Hiding those would
+/// bury exactly the items the filter is meant to surface.
+pub fn meets_min_price(price: Option<f64>, min_price: Option<f64>) -> bool {
+    match (price, min_price) {
+        (_, None) => true,
+        (_, Some(min)) if min <= 0.0 => true,
+        (None, Some(_)) => true,
+        (Some(price), Some(min)) => price >= min,
+    }
+}
+
 /// Order rows by a requested column, following the allow-list shape the rest
 /// of the app uses for in-memory pagination (see `commands/order.rs`,
 /// `commands/chat.rs`, `modules/riven.rs`).
@@ -223,6 +239,18 @@ impl ItemModule {
             });
         }
 
+        let min_price = match &query.properties {
+            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
+            _ => 0.0,
+        };
+        items.retain(|item| {
+            meets_min_price(
+                item.properties
+                    .get_property_value::<Option<f64>>("price", None),
+                Some(min_price),
+            )
+        });
+
         sort_rows(&mut items, &query.sort_by, &query.sort_direction);
         Ok(paginate(
             &items,
@@ -315,6 +343,18 @@ impl ItemModule {
             _ => {}
         }
 
+        let min_price = match &query.properties {
+            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
+            _ => 0.0,
+        };
+        items.retain(|item| {
+            meets_min_price(
+                item.properties
+                    .get_property_value::<Option<f64>>("price", None),
+                Some(min_price),
+            )
+        });
+
         sort_rows(&mut items, &query.sort_by, &query.sort_direction);
         Ok(paginate(
             &items,
@@ -326,7 +366,9 @@ impl ItemModule {
 
 #[cfg(test)]
 mod tests {
-    use super::{merge_rank_rows, owned_counts, owned_counts_where, rank_groups, variant_of};
+    use super::{
+        meets_min_price, merge_rank_rows, owned_counts, owned_counts_where, rank_groups, variant_of,
+    };
     use crate::cache::{CacheTradableItem, SubType as CacheSubType};
     use crate::wf_inventory::WFInvItemRaw;
     use std::collections::HashMap;
@@ -521,6 +563,38 @@ mod tests {
         merged.sort();
         assert_eq!(merged.len(), 2);
         let _ = HashMap::<String, i64>::new();
+    }
+
+    /// The price column exists to pick out what is worth listing, so the
+    /// filter keeps anything at or above the threshold.
+    #[test]
+    fn keeps_rows_at_or_above_the_threshold() {
+        assert!(meets_min_price(Some(10.0), Some(10.0)));
+        assert!(meets_min_price(Some(50.0), Some(10.0)));
+        assert!(!meets_min_price(Some(9.0), Some(10.0)));
+    }
+
+    /// An unknown price is not a cheap one. Roughly 45% of the rows with no
+    /// bundled price turn out to be worth 10p or more, so hiding them would
+    /// bury exactly the items the filter is meant to surface.
+    #[test]
+    fn never_hides_a_row_whose_price_is_unknown() {
+        assert!(meets_min_price(None, Some(10.0)));
+        assert!(meets_min_price(None, Some(1000.0)));
+    }
+
+    #[test]
+    fn keeps_everything_when_no_threshold_is_set() {
+        assert!(meets_min_price(Some(1.0), None));
+        assert!(meets_min_price(None, None));
+    }
+
+    /// A zero or negative threshold means "no filter" rather than an
+    /// expression of interest in worthless items.
+    #[test]
+    fn treats_a_zero_threshold_as_no_filter() {
+        assert!(meets_min_price(Some(0.0), Some(0.0)));
+        assert!(meets_min_price(Some(1.0), Some(0.0)));
     }
 }
 

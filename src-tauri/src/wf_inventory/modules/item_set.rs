@@ -7,7 +7,11 @@ use crate::{
     cache::modules::{build_price_index, lookup_price},
     helper::paginate,
     utils::modules::states,
-    wf_inventory::{item_base::WFInvItemBase, modules::item::owned_counts, *},
+    wf_inventory::{
+        item_base::WFInvItemBase,
+        modules::item::{meets_min_price, owned_counts},
+        *,
+    },
 };
 
 #[derive(Debug)]
@@ -89,6 +93,19 @@ impl SetsModule {
         if complete_only {
             sets.retain(|set| set.complete_copies > 0);
         }
+
+        let min_price = match &query.properties {
+            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
+            _ => 0.0,
+        };
+        sets.retain(|set| {
+            meets_min_price(
+                set.base
+                    .properties
+                    .get_property_value::<Option<f64>>("price", None),
+                Some(min_price),
+            )
+        });
 
         // Complete sets first by copies descending, then partials by fewest
         // members missing, so the nearly-complete ones are what you see.
