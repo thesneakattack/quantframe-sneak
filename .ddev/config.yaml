@@ -30,6 +30,7 @@ webimage_extra_packages:
   - x11-utils
   - x11-apps
   - imagemagick
+  - xdotool
   - libgl1-mesa-dri
   - mesa-utils
 
@@ -60,3 +61,8 @@ web_extra_exposed_ports:
 hooks:
   post-start:
     - exec: mkdir -p "$CARGO_HOME" "$CARGO_TARGET_DIR" "$npm_config_store_dir"
+    # The app resolves its data directory to ~/.local/share, which lives in the
+    # container and is lost on rebuild. Point it at local/appdata inside the
+    # bind-mounted project so settings, the database and the login survive.
+    # local/ is gitignored; it holds real account data.
+    - exec: mkdir -p /var/www/html/local/appdata "$HOME/.local/share" && ln -sfn /var/www/html/local/appdata "$HOME/.local/share/dev.thesneakattack.quantframe"

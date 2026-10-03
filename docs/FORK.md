@@ -139,6 +139,41 @@ If no server answers, the app still boots and renders but shows
 `Error in QFClient:AlertGetAlerts component`. That is the endpoint being
 unreachable, not a crash.
 
+### Real game data: `local/`
+
+Testing against real data needs AlecaFrame's `lastData.dat`, Warframe's `EE.log`
+and the app's own database and login. All of it lives in `local/`, which is
+**gitignored**:
+
+```
+local/
+  warframe/
+    lastData.dat      copied from %LOCALAPPDATA%\AlecaFrame
+    inventory.json    decrypted from the above
+    EE.log            copied from %LOCALAPPDATA%\Warframe (a snapshot)
+  appdata/            the app's data directory: settings.json, auth.json,
+                      quantframeV2.sqlite, cache, logs
+```
+
+Two reasons it is here and not read from `C:\` through a bind mount. The project
+directory is already mounted into the container, so these are visible from both
+host and container with no machine-specific mount; and the container's own home
+is ephemeral, so an app data directory there loses the database and login on
+every rebuild. A `post-start` hook symlinks
+`~/.local/share/dev.thesneakattack.quantframe` to `local/appdata` so that
+persists.
+
+Populate it from the Windows side, running on the host rather than in the
+container:
+
+```bash
+scripts/sync-local-data.sh
+```
+
+`EE.log` is a snapshot — the game appends to it continuously — so re-run the
+script to refresh. Everything in `local/` is account data, including the in-game
+names of everyone you have traded or chatted with, so it must never be committed.
+
 ### Getting WF Inventory to work
 
 The WF Inventory panel (one tab: Rivens) reads the `Upgrades` field of your

@@ -38,3 +38,7 @@ build/
 
 # Local key material and machine-specific settings, never committed
 .env.local
+
+# Real game data and app state, kept in-repo so it survives container rebuilds
+# but never committed. Contains account data and other players' names.
+/local/
