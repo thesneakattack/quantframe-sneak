@@ -14,18 +14,33 @@ git diff 78c87d1..HEAD
 
 ## Pulling in upstream changes
 
-There is no `upstream` remote by default, because this is not a fork. To merge
-upstream work in when you want it:
+**This is a hard fork. Merging upstream is no longer a realistic workflow.**
+
+That was a deliberate choice, and it has a cost worth understanding. The cleanup
+commits reformatted every Rust file with rustfmt, applied ~490 clippy fixes and
+repaired 27 doctests. Upstream did none of that, so a merge would now conflict
+across essentially the whole of `src-tauri/`, not just the handful of files in
+`NOTICE.md`.
+
+If you need a specific upstream fix, cherry-pick the change by hand rather than
+merging:
 
 ```bash
 git remote add upstream https://github.com/Kenya-DK/quantframe-react.git
 git fetch upstream development
-# Upstream history is unrelated to ours, so the first merge needs:
-git merge upstream/development --allow-unrelated-histories
+git log upstream/development --oneline        # find the change
+git show <sha>                                # read it, then apply by hand
 ```
 
-Expect conflicts in the files listed in `NOTICE.md` — those are exactly the files
-this fork diverges in. Resolve in favour of our identifiers, not upstream's.
+Diffing a single file against upstream is still useful for orientation:
+
+```bash
+git diff upstream/development -- src-tauri/src/live_scraper/
+```
+
+If you later decide you *do* want to track upstream again, reverting the
+formatting commit (see `.git-blame-ignore-revs`) is the first step, and the
+clippy commit is the second. Both are isolated and contain nothing else.
 
 ## Development environment
 
