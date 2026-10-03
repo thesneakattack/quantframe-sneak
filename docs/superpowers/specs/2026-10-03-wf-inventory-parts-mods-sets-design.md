@@ -86,6 +86,8 @@ complete one. This is a known and accepted inaccuracy: it affects 3 of 864
 members, and modelling contention between sets would complicate every count
 to fix a case the user can see for themselves in the expanded member list.
 
+Tracked as issue #3, deliberately not handled in this work.
+
 ## Inherited defect this fixes
 
 `CacheRecipe::can_craft` (`src-tauri/src/cache/types/cache_recipe.rs`) picks
