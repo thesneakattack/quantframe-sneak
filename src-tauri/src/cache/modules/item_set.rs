@@ -54,34 +54,30 @@ impl ItemSetModule {
                 continue;
             };
 
+            // Recipe ingredients carry no display name of their own, only a
+            // uniqueName, so resolve it the way the Parts tab does.
+            let display_name = |key: &str, fallback: &str| -> String {
+                if let Ok(item) = client.tradable_item().get_by(key) {
+                    return item.name;
+                }
+                if !fallback.is_empty() {
+                    return fallback.to_string();
+                }
+                key.rsplit('/').next().unwrap_or(key).to_string()
+            };
+
+            let blueprint_key = main_blueprint_key(recipe);
             let mut members = vec![CacheItemSetMember {
-                unique_name: recipe.base.unique_name.clone(),
-                name: recipe.base.name.clone(),
+                name: display_name(&blueprint_key, &recipe.base.name),
+                unique_name: blueprint_key,
                 required: 1,
                 is_main_blueprint: true,
             }];
-            for ingredient in &recipe.ingredients {
-                if !ingredient.base.is_tradeable {
-                    continue;
-                }
-                let key = member_key(ingredient);
-                // Recipe ingredients carry no display name of their own, only
-                // a uniqueName, so resolve it the way the Parts tab does.
-                let name = client
-                    .tradable_item()
-                    .get_by(&key)
-                    .map(|item| item.name)
-                    .unwrap_or_else(|_| {
-                        if ingredient.base.name.is_empty() {
-                            key.rsplit('/').next().unwrap_or(&key).to_string()
-                        } else {
-                            ingredient.base.name.clone()
-                        }
-                    });
+            for (key, required) in aggregate_ingredients(recipe) {
                 members.push(CacheItemSetMember {
+                    name: display_name(&key, ""),
                     unique_name: key,
-                    name,
-                    required: ingredient.base.quantity,
+                    required,
                     is_main_blueprint: false,
                 });
             }
@@ -92,10 +88,13 @@ impl ItemSetModule {
         let mut by_member: HashMap<String, Vec<usize>> = HashMap::new();
         for (index, set) in sets.iter().enumerate() {
             for member in &set.members {
-                by_member
-                    .entry(member.unique_name.clone())
-                    .or_default()
-                    .push(index);
+                let entry: &mut Vec<usize> =
+                    by_member.entry(member.unique_name.clone()).or_default();
+                // A member can appear once per set even if the recipe listed
+                // it twice; never report the same set twice for one member.
+                if !entry.contains(&index) {
+                    entry.push(index);
+                }
             }
         }
 

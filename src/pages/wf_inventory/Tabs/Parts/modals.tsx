@@ -41,6 +41,9 @@ export const useModals = ({ createMutation }: ModalHooks) => {
             raw: item.wfm_url,
             bought: data.bought,
             quantity: data.quantity,
+            // Relics carry a refinement variant; without it a Radiant relic
+            // would be listed as whatever the variant-less default is.
+            sub_type: item.sub_type,
           });
         },
         onCancel: (id: string) => modals.close(id),

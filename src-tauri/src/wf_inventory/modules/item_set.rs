@@ -45,10 +45,12 @@ impl SetsModule {
                 })
                 .collect();
 
-            let owned_members = members.iter().filter(|m| m.have > 0).count() as i64;
-            if owned_members == 0 {
+            // Drop sets the player holds no piece of at all; the rest are
+            // shown so the user can see what to buy next.
+            if members.iter().all(|m| m.have == 0) {
                 continue;
             }
+            let owned_members = satisfied_members(&members);
 
             let copies = complete_copies(&members);
             let mut base = WFInvItemBase {

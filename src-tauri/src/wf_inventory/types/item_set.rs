@@ -41,9 +41,21 @@ pub fn complete_copies(members: &[WFInvSetMember]) -> i64 {
         .unwrap_or(0)
 }
 
+/// How many of the set's members the player actually has enough of.
+///
+/// Presence is not enough: a member held 1 of 2 is still missing. Counting
+/// presence makes a set short on quantity render "Missing 0" while offering no
+/// cart action, which reads as "nothing is wrong" and "I refuse" at once.
+pub fn satisfied_members(members: &[WFInvSetMember]) -> i64 {
+    members
+        .iter()
+        .filter(|member| member.required > 0 && member.have >= member.required)
+        .count() as i64
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{complete_copies, WFInvSetMember};
+    use super::{complete_copies, satisfied_members, WFInvSetMember};
 
     fn member(have: i64, required: i64) -> WFInvSetMember {
         WFInvSetMember {
@@ -87,5 +99,26 @@ mod tests {
     fn treats_a_zero_requirement_as_unsatisfiable_rather_than_panicking() {
         let members = vec![member(5, 0), member(5, 1)];
         assert_eq!(complete_copies(&members), 0);
+    }
+
+    /// A member you hold but not enough of is not a member you have. Counting
+    /// mere presence makes a set short of a required quantity render
+    /// "Missing 0" with no cart action - the one combination that tells the
+    /// user nothing is wrong while refusing to act.
+    #[test]
+    fn a_member_short_of_its_required_quantity_does_not_count_as_satisfied() {
+        let members = vec![member(2, 2), member(1, 2)];
+        assert_eq!(satisfied_members(&members), 1);
+    }
+
+    #[test]
+    fn counts_every_member_that_meets_its_requirement() {
+        let members = vec![member(2, 2), member(5, 1)];
+        assert_eq!(satisfied_members(&members), 2);
+    }
+
+    #[test]
+    fn counts_nothing_for_an_empty_set() {
+        assert_eq!(satisfied_members(&[]), 0);
     }
 }

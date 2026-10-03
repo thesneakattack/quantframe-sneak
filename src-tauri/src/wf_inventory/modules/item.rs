@@ -5,6 +5,7 @@ use entity::{dto::PaginatedResult, enums::FieldChange};
 use utils::{Error, SortDirection, SubType};
 
 use crate::{
+    cache::CacheTradableItem,
     helper::paginate,
     utils::modules::states,
     wf_inventory::{item_base::WFInvItemBase, *},
@@ -14,16 +15,57 @@ use crate::{
 /// buckets. Duplicate entries for one unique name are added together, which a
 /// real inventory does contain.
 pub fn owned_counts(buckets: &[&[WFInvItemRaw]]) -> HashMap<String, i64> {
+    owned_counts_where(buckets, |_| true)
+}
+
+/// `owned_counts`, keeping only entries the predicate accepts.
+pub fn owned_counts_where(
+    buckets: &[&[WFInvItemRaw]],
+    keep: impl Fn(&WFInvItemRaw) -> bool,
+) -> HashMap<String, i64> {
     let mut counts: HashMap<String, i64> = HashMap::new();
     for bucket in buckets {
         for entry in bucket.iter() {
-            if entry.unique_name.is_empty() {
+            if entry.unique_name.is_empty() || !keep(entry) {
                 continue;
             }
             *counts.entry(entry.unique_name.clone()).or_insert(0) += entry.quantity;
         }
     }
     counts
+}
+
+/// Which variant of a tradable item a unique name matched through, if any.
+///
+/// `TradableItemModule::load` registers every value of `variantToUniqueName`
+/// as a lookup key, so all four relic refinements resolve to one
+/// `CacheTradableItem`. Without recovering the variant, an Intact and a
+/// Radiant relic are indistinguishable rows that both list as a variant-less
+/// stock item, and the scraper prices the wrong product.
+pub fn variant_of(item: &CacheTradableItem, unique_name: &str) -> Option<String> {
+    if item.unique_name == unique_name {
+        return None;
+    }
+    item.variant_to_unique_name
+        .iter()
+        .find(|(_, mapped)| mapped.as_str() == unique_name)
+        .map(|(variant, _)| variant.clone())
+}
+
+/// Collapse (unique name, rank, quantity) rows that share an item and rank.
+///
+/// A rank-0 instance in `Upgrades` and the unranked `RawUpgrades` stack are
+/// the same listing; emitted separately they render as two rows with the same
+/// name and url and no way to tell them apart.
+pub fn merge_rank_rows(rows: Vec<(String, i64, i64)>) -> Vec<(String, i64, i64)> {
+    let mut merged: HashMap<(String, i64), i64> = HashMap::new();
+    for (unique_name, rank, quantity) in rows {
+        *merged.entry((unique_name, rank)).or_insert(0) += quantity;
+    }
+    merged
+        .into_iter()
+        .map(|((unique_name, rank), quantity)| (unique_name, rank, quantity))
+        .collect()
 }
 
 /// Ranked upgrade instances collapsed to (unique name, rank) -> count.
@@ -114,22 +156,32 @@ impl ItemModule {
             let Ok(tradable) = cache.tradable_item().get_by(&unique_name) else {
                 continue;
             };
-            let in_sets: Vec<String> = item_set
-                .get_sets_for_member(&unique_name)
-                .iter()
-                .map(|set| set.set.name.clone())
-                .collect();
+            let parent_sets = item_set.get_sets_for_member(&unique_name);
+            let in_sets: Vec<String> = parent_sets.iter().map(|s| s.set.name.clone()).collect();
+            // Names are translated and stock rows store whatever language was
+            // active when they were created, so conflicts match on wfm_url.
+            let in_set_urls: Vec<String> =
+                parent_sets.iter().map(|s| s.set.wfm_url.clone()).collect();
 
+            // A relic's four refinements all resolve to one cache item, so
+            // the variant has to be recovered or Intact and Radiant become
+            // indistinguishable rows that list as the same product.
+            let variant = variant_of(&tradable, &unique_name);
             let mut item = WFInvItemBase {
                 id: tradable.wfm_id.clone(),
                 name: tradable.name.clone(),
                 unique_name,
                 wfm_url: tradable.wfm_url.clone(),
                 quantity,
-                sub_type: None,
+                sub_type: variant.map(|variant| SubType {
+                    variant: Some(variant),
+                    ..Default::default()
+                }),
                 ..Default::default()
             };
             item.properties.set_property_value("in_sets", in_sets);
+            item.properties
+                .set_property_value("in_set_urls", in_set_urls);
             item.properties
                 .set_property_value("tags", tradable.tags.clone());
             items.push(item);
@@ -172,32 +224,39 @@ impl ItemModule {
         let root = client.get_root();
         let cache = states::cache_client()?;
 
-        // unique name, rank, quantity
+        // unique name, rank, quantity. Rivens are excluded from both buckets:
+        // the Rivens tab owns them and lists them as a StockRiven, so letting
+        // them through here would split one inventory across two incompatible
+        // stock representations.
         let mut rows: Vec<(String, i64, i64)> = Vec::new();
-        for (unique_name, quantity) in owned_counts(&[&root.raw_upgrades]) {
+        for (unique_name, quantity) in owned_counts_where(&[&root.raw_upgrades], |e| !e.is_riven())
+        {
             rows.push((unique_name, 0, quantity));
         }
         for ((unique_name, rank), quantity) in rank_groups(&root.upgrades) {
             rows.push((unique_name, rank, quantity));
         }
+        let rows = merge_rank_rows(rows);
 
         let mut items: Vec<WFInvItemBase> = Vec::new();
         for (unique_name, rank, quantity) in rows {
             let Ok(tradable) = cache.tradable_item().get_by(&unique_name) else {
                 continue;
             };
+            let variant = variant_of(&tradable, &unique_name);
             let mut item = WFInvItemBase {
                 id: tradable.wfm_id.clone(),
                 name: tradable.name.clone(),
                 unique_name,
                 wfm_url: tradable.wfm_url.clone(),
                 quantity,
-                // Unranked rows carry no sub_type at all, matching how stock
+                // Unranked rows carry no rank at all, matching how stock
                 // represents an unranked item. Some(rank: 0) would make
                 // ItemName render a bare "Rank " with no number after it.
-                sub_type: if rank > 0 {
+                sub_type: if rank > 0 || variant.is_some() {
                     Some(SubType {
-                        rank: Some(rank),
+                        rank: (rank > 0).then_some(rank),
+                        variant,
                         ..Default::default()
                     })
                 } else {
@@ -243,8 +302,10 @@ impl ItemModule {
 
 #[cfg(test)]
 mod tests {
-    use super::{owned_counts, rank_groups};
+    use super::{merge_rank_rows, owned_counts, owned_counts_where, rank_groups, variant_of};
+    use crate::cache::{CacheTradableItem, SubType as CacheSubType};
     use crate::wf_inventory::WFInvItemRaw;
+    use std::collections::HashMap;
 
     fn raw(unique_name: &str, quantity: i64) -> WFInvItemRaw {
         WFInvItemRaw {
@@ -340,6 +401,102 @@ mod tests {
         let counts = owned_counts(&[&recipes]);
         assert_eq!(counts.get(""), None);
         assert_eq!(counts.get("/A"), Some(&1));
+    }
+
+    fn relic(unique_name: &str, variants: &[(&str, &str)]) -> CacheTradableItem {
+        CacheTradableItem {
+            name: "Lith B6 Relic".to_string(),
+            unique_name: unique_name.to_string(),
+            wfm_id: "id".to_string(),
+            wfm_url: "lith_b6_relic".to_string(),
+            trade_tax: 0,
+            mr_requirement: 0,
+            tags: vec!["relic".to_string()],
+            icon: String::new(),
+            bulk_tradable: false,
+            sub_type: Some(CacheSubType::default()),
+            variant_to_unique_name: variants
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        }
+    }
+
+    /// The tradable-items cache registers every variant unique name as a
+    /// lookup key, so all four relic refinements resolve to one item. Without
+    /// recovering which variant was matched, a Radiant relic lists as a
+    /// variant-less item and the scraper prices the wrong product.
+    #[test]
+    fn recovers_the_variant_a_unique_name_matched_through() {
+        let item = relic(
+            "/Relic/LithB6Intact",
+            &[
+                ("intact", "/Relic/LithB6Intact"),
+                ("radiant", "/Relic/LithB6Radiant"),
+            ],
+        );
+        assert_eq!(
+            variant_of(&item, "/Relic/LithB6Radiant").as_deref(),
+            Some("radiant")
+        );
+    }
+
+    /// Matching the item's own unique name is not a variant match.
+    #[test]
+    fn reports_no_variant_for_a_direct_unique_name_match() {
+        let item = relic("/Relic/LithB6Intact", &[("intact", "/Relic/LithB6Intact")]);
+        assert_eq!(variant_of(&item, "/Relic/LithB6Intact"), None);
+    }
+
+    #[test]
+    fn reports_no_variant_when_the_item_has_none() {
+        let mut item = relic("/Part/Barrel", &[]);
+        item.variant_to_unique_name = Default::default();
+        assert_eq!(variant_of(&item, "/Part/Barrel"), None);
+    }
+
+    /// Veiled rivens live in RawUpgrades as well as Upgrades. The Rivens tab
+    /// already owns them and lists them as StockRiven; letting them through
+    /// here would list the same inventory as a StockItem.
+    #[test]
+    fn owned_counts_where_can_exclude_rivens() {
+        let bucket = vec![
+            raw("/Lotus/Upgrades/Mods/Randomized/RawMeleeRandomMod", 37),
+            raw("/Mods/Serration", 2),
+        ];
+        let counts = owned_counts_where(&[&bucket], |e| !e.is_riven());
+        assert_eq!(counts.len(), 1);
+        assert_eq!(counts.get("/Mods/Serration"), Some(&2));
+    }
+
+    /// A rank-0 instance in Upgrades and the unranked RawUpgrades stack are
+    /// the same listing. Emitting both gives two rows with the same name, the
+    /// same url and no way to tell them apart.
+    #[test]
+    fn merges_rows_that_share_a_unique_name_and_rank() {
+        let rows = vec![
+            ("/Mods/Serration".to_string(), 0, 3),
+            ("/Mods/Serration".to_string(), 0, 1),
+            ("/Mods/Serration".to_string(), 10, 1),
+        ];
+        let mut merged = merge_rank_rows(rows);
+        merged.sort();
+        assert_eq!(
+            merged,
+            vec![
+                ("/Mods/Serration".to_string(), 0, 4),
+                ("/Mods/Serration".to_string(), 10, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn merge_rank_rows_keeps_distinct_items_apart() {
+        let rows = vec![("/Mods/A".to_string(), 0, 1), ("/Mods/B".to_string(), 0, 2)];
+        let mut merged = merge_rank_rows(rows);
+        merged.sort();
+        assert_eq!(merged.len(), 2);
+        let _ = HashMap::<String, i64>::new();
     }
 }
 
