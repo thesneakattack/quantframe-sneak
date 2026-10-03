@@ -5,8 +5,9 @@ import { SearchField } from "@components/Forms/SearchField";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
+import { useResolvedPrices } from "@hooks/useResolvedPrices.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { Badge, Box, Group, NumberFormatter, NumberInput, Stack, Switch, Text, Tooltip } from "@mantine/core";
+import { Badge, Box, Group, Loader, NumberFormatter, NumberInput, Stack, Switch, Text, Tooltip } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -55,6 +56,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
   // Queries
   const { setsQuery, refetchQueries } = useQueries({ queryData: effectiveQuery, isActive });
   const { createMutation } = useMutations({ refetchQueries, setLoadingRows });
+  const { resolvedPrice } = useResolvedPrices(setsQuery.data?.results);
   const { OpenAddToStockModal } = useModals({ createMutation });
 
   const completeOnly = Boolean((queryData.properties as { complete_only?: boolean } | undefined)?.complete_only);
@@ -159,22 +161,26 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
             title: useTranslateCommon("datatable_columns.price"),
             sortable: true,
             width: 110,
-            render: (row) =>
-              row.properties?.price != null ? (
+            render: (row) => {
+              const price = resolvedPrice(row);
+              // undefined means still being looked up, null means asked and
+              // nothing traded. Neither is a reason to read the row as cheap.
+              if (price === undefined) return <Loader size="xs" color="gray.6" />;
+              if (price === null)
+                return (
+                  <Tooltip label={useTranslateCommon("datatable_columns.price_unknown")}>
+                    <Text c="dimmed">?</Text>
+                  </Tooltip>
+                );
+              return (
                 <Group gap={4}>
-                  <NumberFormatter value={Math.round(row.properties.price)} thousandSeparator="." decimalSeparator="," />
+                  <NumberFormatter value={Math.round(price)} thousandSeparator="." decimalSeparator="," />
                   <Text c="dimmed" size="xs">
                     p
                   </Text>
                 </Group>
-              ) : (
-                // Unknown, not cheap: these are never hidden by the minimum
-                // price filter, because a good many of them turn out to be
-                // worth more than the threshold.
-                <Tooltip label={useTranslateCommon("datatable_columns.price_unknown")}>
-                  <Text c="dimmed">?</Text>
-                </Tooltip>
-              ),
+              );
+            },
           },
           {
             accessor: "actions",

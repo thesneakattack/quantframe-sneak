@@ -88,6 +88,18 @@ pub fn rank_groups(upgrades: &[WFInvItemRaw]) -> HashMap<(String, i64), i64> {
     groups
 }
 
+/// A price resolved earlier against warframe.market, for items the bundled
+/// cache never carried. Cache-only: building a table never makes HTTP calls.
+fn resolved_price(wfm_url: &str, sub_type: Option<&SubType>) -> Option<f64> {
+    crate::market_prices::MarketPriceStore::get().remembered_price(
+        &crate::market_prices::PriceKey {
+            wfm_url: wfm_url.to_string(),
+            rank: sub_type.and_then(|s| s.rank),
+            variant: sub_type.and_then(|s| s.variant.clone()),
+        },
+    )
+}
+
 /// Whether a row clears the minimum-price filter.
 ///
 /// The price column exists to pick out what is worth listing, so the filter
@@ -215,7 +227,8 @@ impl ItemModule {
                 .set_property_value("in_set_urls", in_set_urls);
             item.properties.set_property_value(
                 "price",
-                lookup_price(&prices, &item.wfm_url, item.sub_type.clone()),
+                lookup_price(&prices, &item.wfm_url, item.sub_type.clone())
+                    .or_else(|| resolved_price(&item.wfm_url, item.sub_type.as_ref())),
             );
             item.properties
                 .set_property_value("tags", tradable.tags.clone());
@@ -320,7 +333,8 @@ impl ItemModule {
             );
             item.properties.set_property_value(
                 "price",
-                lookup_price(&prices, &item.wfm_url, item.sub_type.clone()),
+                lookup_price(&prices, &item.wfm_url, item.sub_type.clone())
+                    .or_else(|| resolved_price(&item.wfm_url, item.sub_type.as_ref())),
             );
             items.push(item);
         }

@@ -70,8 +70,20 @@ impl SetsModule {
             };
             base.properties
                 .set_property_value("tags", cache_set.set.tags.clone());
-            base.properties
-                .set_property_value("price", lookup_price(&prices, &cache_set.set.wfm_url, None));
+            base.properties.set_property_value(
+                "price",
+                lookup_price(&prices, &cache_set.set.wfm_url, None).or_else(|| {
+                    // Filled in by an earlier page view; cache-only, never
+                    // an HTTP call from a table query.
+                    crate::market_prices::MarketPriceStore::get().remembered_price(
+                        &crate::market_prices::PriceKey {
+                            wfm_url: cache_set.set.wfm_url.clone(),
+                            rank: None,
+                            variant: None,
+                        },
+                    )
+                }),
+            );
 
             sets.push(WFInvSet {
                 base,

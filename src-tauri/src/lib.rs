@@ -32,6 +32,7 @@ mod config;
 mod handlers;
 mod http_server;
 mod macros;
+mod market_prices;
 mod utils;
 mod wf_inventory;
 
@@ -386,6 +387,7 @@ pub fn run() {
             commands::wf_inventory::wf_inventory_get_parts,
             commands::wf_inventory::wf_inventory_get_mods,
             commands::wf_inventory::wf_inventory_get_sets,
+            commands::wf_inventory::wf_inventory_resolve_prices,
             commands::wf_inventory::wf_inventory_get_syndicates,
             commands::wf_inventory::wf_inventory_update,
         ])

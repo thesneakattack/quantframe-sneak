@@ -28,6 +28,9 @@ export class WfInventoryModule {
       query: this.client.convertToTauriQuery(query),
     });
   }
+  async resolvePrices(keys: TauriTypes.MarketPriceKey[]): Promise<Record<string, number | null>> {
+    return await this.client.sendInvoke<Record<string, number | null>>("wf_inventory_resolve_prices", { keys });
+  }
   update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),
