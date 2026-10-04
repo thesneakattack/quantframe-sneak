@@ -33,6 +33,11 @@ export class WfInventoryModule {
       query: this.client.convertToTauriQuery(query),
     });
   }
+  async getArcanesPagination(query: TauriTypes.WFItemControllerGetListParams): Promise<TauriTypes.WFInvArcanesControllerGetListData> {
+    return await this.client.sendInvoke<TauriTypes.WFInvArcanesControllerGetListData>("wf_inventory_get_arcanes", {
+      query: this.client.convertToTauriQuery(query),
+    });
+  }
    update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

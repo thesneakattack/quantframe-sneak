@@ -167,13 +167,43 @@ impl ItemModule {
         ))
     }
 
-    /// Tradable mods and arcanes, unranked stacks and ranked instances alike.
+    /// Tradable mods, unranked stacks and ranked instances alike. Arcanes
+    /// have their own tab and are not included.
     pub fn get_mods(
         &self,
         query: WFItemPaginationDto,
     ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
         let rows = self.client.upgrade().unwrap().rows()?;
         let mut items = priced_rows(&rows.mods)?;
+
+        let rank_filter = match &query.properties {
+            FieldChange::Value(properties) => {
+                properties.get_property_value("rank_filter", String::new())
+            }
+            _ => String::new(),
+        };
+        items.retain(|item| {
+            passes_rank_filter(item.sub_type.as_ref().and_then(|s| s.rank), &rank_filter)
+        });
+        apply_common_filters(&mut items, &query);
+        sort_by_fields(&mut items, &query.sort_fields(), row_value);
+        Ok(paginate(
+            &items,
+            query.pagination.page,
+            query.pagination.limit,
+        ))
+    }
+
+    /// Arcanes, which rank and price exactly as mods do and so share the row
+    /// logic. They are a separate tab because they are a separate decision: an
+    /// inventory holds thousands of near-worthless mods and a few dozen
+    /// arcanes worth listing, and mixed together the arcanes are invisible.
+    pub fn get_arcanes(
+        &self,
+        query: WFItemPaginationDto,
+    ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
+        let rows = self.client.upgrade().unwrap().rows()?;
+        let mut items = priced_rows(&rows.arcanes)?;
 
         let rank_filter = match &query.properties {
             FieldChange::Value(properties) => {

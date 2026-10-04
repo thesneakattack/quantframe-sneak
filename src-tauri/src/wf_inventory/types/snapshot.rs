@@ -7,7 +7,7 @@ use utils::{Error, SubType};
 
 use crate::utils::modules::states;
 use crate::wf_inventory::{
-    is_relic,
+    is_arcane, is_relic,
     item_base::WFInvItemBase,
     modules::item::{merge_rank_rows, owned_counts, rank_groups, variant_of},
     WFInvItemRaw, WFInvSet, WFInvSetMember, WarframeRootObject,
@@ -33,6 +33,9 @@ pub struct InventorySnapshot {
     /// for reading, at query time, once prices are known.
     pub relics: Vec<WFInvItemBase>,
     pub mods: Vec<WFInvItemBase>,
+    /// Arcanes, kept out of Mods: they rank to 5 rather than 10, are priced
+    /// per rank, and are the things actually worth listing in that bucket.
+    pub arcanes: Vec<WFInvItemBase>,
     pub sets: Vec<WFInvSet>,
 }
 
@@ -112,6 +115,7 @@ impl InventorySnapshot {
             rows.push((unique_name, rank, quantity));
         }
         let mut mods: Vec<WFInvItemBase> = Vec::new();
+        let mut arcanes: Vec<WFInvItemBase> = Vec::new();
         for (unique_name, rank, quantity) in merge_rank_rows(rows) {
             let Ok(item) = tradable.get_by(&unique_name) else {
                 continue;
@@ -143,7 +147,11 @@ impl InventorySnapshot {
             row.properties
                 .set_property_value("is_mastered", mastered.contains(&unique_name));
             row.unique_name = unique_name;
-            mods.push(row);
+            if is_arcane(&item.tags) {
+                arcanes.push(row);
+            } else {
+                mods.push(row);
+            }
         }
 
         // Sets: completion counted across the same two buckets.
@@ -196,6 +204,7 @@ impl InventorySnapshot {
             parts,
             relics,
             mods,
+            arcanes,
             sets,
         })
     }

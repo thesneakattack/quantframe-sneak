@@ -166,6 +166,27 @@ pub async fn wf_inventory_get_parts(
 }
 
 #[tauri::command]
+pub async fn wf_inventory_get_arcanes(
+    query: WFItemPaginationDto,
+    wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
+) -> Result<Value, Error> {
+    let wf_inventory = wf_inventory.lock()?.clone();
+    let listed = listed_stock().await?;
+
+    let mut arcanes = wf_inventory.item().get_arcanes(query)?;
+    for item in arcanes.results.iter_mut() {
+        let sub_type = item.sub_type.as_ref();
+        let in_stock = listed.has(
+            &item.wfm_url,
+            sub_type.and_then(|s| s.rank),
+            sub_type.and_then(|s| s.variant.as_deref()),
+        );
+        item.properties.set_property_value("is_in_stock", in_stock);
+    }
+    Ok(json!(arcanes))
+}
+
+#[tauri::command]
 pub async fn wf_inventory_get_mods(
     query: WFItemPaginationDto,
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,

@@ -1008,6 +1008,9 @@ export namespace TauriTypes {
   export type WFInvModsControllerGetListData = PaginatedDto & {
     results?: WFInvItemRow[];
   };
+  export type WFInvArcanesControllerGetListData = PaginatedDto & {
+    results?: WFInvItemRow[];
+  };
   export interface WFInvSetMember {
     unique_name: string;
     name: string;

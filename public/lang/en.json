@@ -2909,6 +2909,27 @@
           "filters": {
             "min_owned": "Min owned"
           }
+        },
+        "arcanes": {
+          "title": "Arcanes",
+          "stock_status": {
+            "found": "Already in stock",
+            "not_found": "Not in stock"
+          },
+          "datatable": {
+            "columns": {
+              "owned": "Owned"
+            }
+          },
+          "filters": {
+            "all": "All",
+            "unranked": "Unranked",
+            "ranked": "Ranked",
+            "min_price": "Min price",
+            "min_owned": "Min owned",
+            "unvaulted_only": "Unvaulted only",
+            "mastered_only": "Mastered only"
+          }
         }
       }
     }
