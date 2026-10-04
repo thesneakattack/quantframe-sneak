@@ -61,6 +61,19 @@ impl PriceKey {
     /// has to outlive the inventory that happened to ask for it - selling your
     /// last copy, re-importing a profile or wiping the inventory entirely must
     /// leave the figure intact and reusable.
+    /// This product expressed as a `SubType`, for the lookups that key on one.
+    ///
+    /// Faithful for inventory rows because they only ever carry a rank and a
+    /// refinement; a `SubType` built elsewhere with star counts would not round
+    /// trip through a `PriceKey`.
+    pub fn as_sub_type(&self) -> Option<utils::SubType> {
+        (self.rank.is_some() || self.variant.is_some()).then(|| utils::SubType {
+            rank: self.rank,
+            variant: self.variant.clone(),
+            ..Default::default()
+        })
+    }
+
     pub fn id(&self) -> String {
         format!(
             "{}#{}#{}",
@@ -254,6 +267,30 @@ pub fn plan_backfill(
         .collect()
 }
 
+/// Fold a bundled seed into what this install already knows.
+///
+/// A fresh install otherwise spends its first quarter of an hour rediscovering
+/// prices that were already known when the build was made. The seed covers
+/// every tradable item rather than any one player's inventory, so what ships
+/// says nothing about who built it.
+///
+/// Whichever entry was fetched more recently wins. That is the only rule worth
+/// having: a price this install fetched itself is better than one baked into
+/// the build months ago, and a store left untouched for months is worse than a
+/// seed from last week. Nothing here decides freshness - `is_fresh` still does
+/// that, so a seeded entry past its TTL is simply due and gets refreshed like
+/// any other.
+pub fn merge_seed(known: &mut HashMap<String, CachedPrice>, seed: HashMap<String, CachedPrice>) {
+    for (id, entry) in seed {
+        match known.get(&id) {
+            Some(existing) if existing.fetched_at >= entry.fetched_at => continue,
+            _ => {
+                known.insert(id, entry);
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct MarketPriceStore {
     entries: Mutex<HashMap<String, CachedPrice>>,
@@ -266,12 +303,42 @@ impl MarketPriceStore {
         helper::get_app_storage_path().join("market_prices.json")
     }
 
+    /// The seed shipped with the build.
+    ///
+    /// Bundled rather than fetched so a first run is useful offline and
+    /// immediately, and resolved through the app handle because a packaged
+    /// build keeps its resources beside the executable rather than in app data.
+    fn seed_path() -> Option<PathBuf> {
+        use tauri::{path::BaseDirectory, Manager};
+        crate::APP
+            .get()?
+            .path()
+            .resolve("resources/seed_prices.json", BaseDirectory::Resource)
+            .ok()
+    }
+
     fn load() -> Self {
         let path = Self::path();
-        let entries = std::fs::read_to_string(&path)
+        let mut entries = std::fs::read_to_string(&path)
             .ok()
             .and_then(|raw| serde_json::from_str::<HashMap<String, CachedPrice>>(&raw).ok())
             .unwrap_or_default();
+
+        // A missing or unreadable seed is not a failure: it only means this
+        // install discovers prices the slow way, which is what it did before
+        // the seed existed.
+        let seeded = Self::seed_path()
+            .and_then(|seed| std::fs::read_to_string(seed).ok())
+            .and_then(|raw| serde_json::from_str::<HashMap<String, CachedPrice>>(&raw).ok());
+        if let Some(seed) = seeded {
+            let before = entries.len();
+            merge_seed(&mut entries, seed);
+            info(
+                format!("{}:Seed", COMPONENT),
+                format!("Seed added {} prices", entries.len() - before),
+                &LoggerOptions::default(),
+            );
+        }
         info(
             format!("{}:Load", COMPONENT),
             format!(
@@ -399,7 +466,7 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
 #[cfg(test)]
 mod tests {
     use super::{
-        is_fresh, plan_backfill, price_from_payload, select_price, window_from_payload,
+        is_fresh, merge_seed, plan_backfill, price_from_payload, select_price, window_from_payload,
         CachedPrice, PriceKey, FOUND_TTL_SECS,
     };
     use serde_json::json;
@@ -633,6 +700,61 @@ mod tests {
             .collect()
     }
 
+    fn seeded(price: f64, fetched_at: i64) -> CachedPrice {
+        CachedPrice {
+            price: Some(price),
+            fetched_at,
+        }
+    }
+
+    /// A fresh install knows nothing, and the whole point of shipping a seed is
+    /// that it does not spend its first quarter of an hour discovering prices
+    /// that were already known when the build was made.
+    #[test]
+    fn adopts_a_seeded_price_the_install_has_never_seen() {
+        let mut known = HashMap::new();
+        merge_seed(
+            &mut known,
+            HashMap::from([("an_item#0#".to_string(), seeded(10.0, 500))]),
+        );
+        assert_eq!(known["an_item#0#"].price, Some(10.0));
+    }
+
+    /// A price this install fetched itself is worth more than one baked into
+    /// the build months earlier, so the seed must never overwrite it.
+    #[test]
+    fn keeps_a_locally_fetched_price_over_an_older_seeded_one() {
+        let mut known = HashMap::from([("an_item#0#".to_string(), seeded(42.0, 9_000))]);
+        merge_seed(
+            &mut known,
+            HashMap::from([("an_item#0#".to_string(), seeded(10.0, 500))]),
+        );
+        assert_eq!(known["an_item#0#"].price, Some(42.0));
+    }
+
+    /// The comparison is on when each was fetched, not on which side it came
+    /// from: a store left untouched for months is the stale one.
+    #[test]
+    fn takes_a_seeded_price_that_is_newer_than_the_stored_one() {
+        let mut known = HashMap::from([("an_item#0#".to_string(), seeded(42.0, 500))]);
+        merge_seed(
+            &mut known,
+            HashMap::from([("an_item#0#".to_string(), seeded(10.0, 9_000))]),
+        );
+        assert_eq!(known["an_item#0#"].price, Some(10.0));
+    }
+
+    /// Equally old is not newer, so nothing churns on every start.
+    #[test]
+    fn leaves_an_equally_old_entry_alone() {
+        let mut known = HashMap::from([("an_item#0#".to_string(), seeded(42.0, 500))]);
+        merge_seed(
+            &mut known,
+            HashMap::from([("an_item#0#".to_string(), seeded(10.0, 500))]),
+        );
+        assert_eq!(known["an_item#0#"].price, Some(42.0));
+    }
+
     fn candidate(name: &str, value: Option<f64>) -> (PriceKey, Option<f64>) {
         (
             PriceKey {
@@ -743,5 +865,175 @@ mod tests {
     #[test]
     fn treats_an_entry_stamped_in_the_future_as_stale() {
         assert!(!is_fresh(10_000, 1_000, true));
+    }
+}
+
+/// Builds the seed shipped in `resources/seed_prices.json`.
+///
+/// Ignored because it makes 3891 requests and takes about twenty minutes. Run
+/// it when the seed should be refreshed:
+///
+/// ```text
+/// ddev cargo test --lib generate_seed_prices -- --ignored --nocapture
+/// ```
+///
+/// `SEED_ITEMS` points at a `TradableItems.json`. `SEED_REUSE` optionally
+/// points at an existing `market_prices.json`, whose prices are kept rather
+/// than fetched again - which is most of the run time.
+///
+/// Scoped to every tradable item rather than any one inventory, so the file
+/// says nothing about whoever generated it. One statistics response carries
+/// every rank and refinement of an item, so 3891 requests yield about 7900
+/// keys.
+#[cfg(test)]
+mod seed_generator {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::Semaphore;
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct SeedItem {
+        wfm_url: Option<String>,
+        #[serde(default)]
+        sub_types: Option<SeedSubTypes>,
+        #[serde(default)]
+        variant_to_unique_name: Option<HashMap<String, String>>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct SeedSubTypes {
+        max_rank: Option<i64>,
+    }
+
+    /// Every product the market prices separately for one item.
+    fn keys_for(item: &SeedItem) -> Vec<PriceKey> {
+        let Some(url) = item.wfm_url.clone() else {
+            return vec![];
+        };
+        let variants: Vec<Option<String>> = match &item.variant_to_unique_name {
+            Some(map) if !map.is_empty() => map.keys().cloned().map(Some).collect(),
+            _ => vec![None],
+        };
+        let max_rank = item.sub_types.as_ref().and_then(|s| s.max_rank);
+        let mut keys = Vec::new();
+        for variant in variants {
+            keys.push(PriceKey {
+                wfm_url: url.clone(),
+                rank: None,
+                variant: variant.clone(),
+            });
+            if let Some(rank) = max_rank.filter(|r| *r > 0) {
+                keys.push(PriceKey {
+                    wfm_url: url.clone(),
+                    rank: Some(rank),
+                    variant,
+                });
+            }
+        }
+        keys
+    }
+
+    #[tokio::test]
+    #[ignore = "makes 3891 requests to warframe.market; regenerates resources/seed_prices.json"]
+    async fn generate_seed_prices() {
+        let items_path = std::env::var("SEED_ITEMS")
+            .unwrap_or_else(|_| "../local/appdata/cache/items/TradableItems.json".to_string());
+        let raw = std::fs::read_to_string(&items_path)
+            .unwrap_or_else(|e| panic!("could not read {items_path}: {e}"));
+        let items: Vec<SeedItem> =
+            serde_json::from_str(&raw).expect("tradable items did not parse");
+
+        let mut by_url: HashMap<String, Vec<PriceKey>> = HashMap::new();
+        for item in &items {
+            for key in keys_for(item) {
+                by_url.entry(key.wfm_url.clone()).or_default().push(key);
+            }
+        }
+        let wanted = by_url.values().map(Vec::len).sum::<usize>();
+
+        // Prices already fetched are prices worth keeping: re-asking for them
+        // spends twenty minutes learning what is already known. Reused entries
+        // keep their original timestamp, so an install still judges them by age
+        // rather than by where they came from.
+        let reused: HashMap<String, CachedPrice> = std::env::var("SEED_REUSE")
+            .ok()
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .and_then(|raw| serde_json::from_str::<HashMap<String, CachedPrice>>(&raw).ok())
+            .map(|known| {
+                known
+                    .into_iter()
+                    .filter(|(_, entry)| entry.price.is_some())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Only an item whose every product is already known can be skipped:
+        // one response carries them all, so a partial hit still costs the same
+        // single request.
+        by_url.retain(|_, keys| !keys.iter().all(|key| reused.contains_key(&key.id())));
+        println!(
+            "{} keys wanted, {} reused, {} items still to fetch",
+            wanted,
+            reused.len(),
+            by_url.len()
+        );
+
+        let client = reqwest::Client::new();
+        let out: Arc<Mutex<HashMap<String, CachedPrice>>> = Arc::new(Mutex::new(reused));
+        let mut cadence = tokio::time::interval(std::time::Duration::from_micros(333_333));
+        cadence.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        let in_flight = Arc::new(Semaphore::new(8));
+        let mut tasks = Vec::new();
+
+        for (url, keys) in by_url {
+            cadence.tick().await;
+            let permit = in_flight.clone().acquire_owned().await.unwrap();
+            let client = client.clone();
+            let out = out.clone();
+            tasks.push(tokio::spawn(async move {
+                let body = client
+                    .get(format!(
+                        "https://api.warframe.market/v1/items/{url}/statistics"
+                    ))
+                    .header("accept", "application/json")
+                    .send()
+                    .await
+                    .ok();
+                if let Some(body) = body {
+                    if let Ok(json) = body.json::<Value>().await {
+                        let now = now_secs();
+                        let mut out = out.lock().unwrap();
+                        for key in keys {
+                            if let Some(price) = price_from_payload(&json, &key) {
+                                out.insert(
+                                    key.id(),
+                                    CachedPrice {
+                                        price: Some(price),
+                                        fetched_at: now,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+                drop(permit);
+            }));
+        }
+        for task in tasks {
+            let _ = task.await;
+        }
+
+        let out = out.lock().unwrap();
+        // Only priced keys are written: shipping "we asked and found nothing"
+        // would suppress a real lookup for a day on every install.
+        std::fs::write(
+            "resources/seed_prices.json",
+            serde_json::to_string(&*out).expect("seed did not serialise"),
+        )
+        .expect("could not write resources/seed_prices.json");
+        println!("wrote {} priced keys", out.len());
+        assert!(!out.is_empty(), "seed came back empty");
     }
 }
