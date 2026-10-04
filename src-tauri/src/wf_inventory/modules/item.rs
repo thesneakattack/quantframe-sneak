@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use entity::{dto::PaginatedResult, enums::FieldChange};
-use utils::{Error, SubType};
+use utils::Error;
 
 use crate::{
     cache::{
@@ -88,18 +88,6 @@ pub fn rank_groups(upgrades: &[WFInvItemRaw]) -> HashMap<(String, i64), i64> {
     groups
 }
 
-/// A price resolved earlier against warframe.market, for items the bundled
-/// cache never carried. Cache-only: building a table never makes HTTP calls.
-fn resolved_price(wfm_url: &str, sub_type: Option<&SubType>) -> Option<f64> {
-    crate::market_prices::MarketPriceStore::get().remembered_price(
-        &crate::market_prices::PriceKey {
-            wfm_url: wfm_url.to_string(),
-            rank: sub_type.and_then(|s| s.rank),
-            variant: sub_type.and_then(|s| s.variant.clone()),
-        },
-    )
-}
-
 /// Whether a row clears the minimum-price filter.
 ///
 /// The price column exists to pick out what is worth listing, so the filter
@@ -142,16 +130,6 @@ pub fn passes_rank_filter(rank: Option<i64>, filter: &str) -> bool {
     }
 }
 
-/// A Parts or Mods row's value for a sortable column.
-fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
-    match column {
-        "quantity" => SortValue::Num(item.quantity as f64),
-        "rank" => SortValue::Num(item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0) as f64),
-        "price" => SortValue::MaybeNum(item.properties.get_property_value("price", None)),
-        _ => SortValue::Text(item.name.clone()),
-    }
-}
-
 #[derive(Debug)]
 pub struct ItemModule {
     client: Weak<WFInventoryState>,
@@ -164,91 +142,23 @@ impl ItemModule {
         })
     }
 
-    /// Tradable parts: everything in the Recipes and MiscItems buckets that
-    /// the tradable-items cache knows about. That lookup is the filter -
-    /// resources, fish and gems are absent from the cache and drop out here
-    /// without any path matching.
+    /// Tradable parts: the Recipes and MiscItems buckets.
     pub fn get_parts(
         &self,
         query: WFItemPaginationDto,
     ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
-        let client = self.client.upgrade().unwrap();
-        let root = client.get_root();
-        let cache = states::cache_client()?;
+        let rows = self.client.upgrade().unwrap().rows()?;
+        let mut items = priced_rows(&rows.parts)?;
 
-        let counts = owned_counts(&[&root.recipes, &root.misc_items]);
-        let item_set = cache.item_set();
-        let prices = build_price_index(&cache.item_price().get_items()?);
-
-        let mut items: Vec<WFInvItemBase> = Vec::new();
-        for (unique_name, quantity) in counts {
-            let Ok(tradable) = cache.tradable_item().get_by(&unique_name) else {
-                continue;
-            };
-            let parent_sets = item_set.get_sets_for_member(&unique_name);
-            let in_sets: Vec<String> = parent_sets.iter().map(|s| s.set.name.clone()).collect();
-            // Names are translated and stock rows store whatever language was
-            // active when they were created, so conflicts match on wfm_url.
-            let in_set_urls: Vec<String> =
-                parent_sets.iter().map(|s| s.set.wfm_url.clone()).collect();
-
-            // A relic's four refinements all resolve to one cache item, so
-            // the variant has to be recovered or Intact and Radiant become
-            // indistinguishable rows that list as the same product.
-            let variant = variant_of(&tradable, &unique_name);
-            let mut item = WFInvItemBase {
-                id: tradable.wfm_id.clone(),
-                name: tradable.name.clone(),
-                unique_name,
-                wfm_url: tradable.wfm_url.clone(),
-                quantity,
-                sub_type: variant.map(|variant| SubType {
-                    variant: Some(variant),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            };
-            item.properties.set_property_value("in_sets", in_sets);
-            item.properties
-                .set_property_value("in_set_urls", in_set_urls);
-            item.properties.set_property_value(
-                "price",
-                lookup_price(&prices, &item.wfm_url, item.sub_type.clone())
-                    .or_else(|| resolved_price(&item.wfm_url, item.sub_type.as_ref())),
-            );
-            item.properties
-                .set_property_value("tags", tradable.tags.clone());
-            items.push(item);
-        }
-
-        if let FieldChange::Value(text) = &query.query {
-            items.retain(|item| matches_query(&item.name, text));
-        }
-        let in_set_only = match &query.properties {
-            FieldChange::Value(properties) => properties.get_property_value("in_set_only", false),
-            _ => false,
-        };
-        if in_set_only {
-            items.retain(|item| {
-                !item
+        let in_set_only = flag(&query, "in_set_only");
+        items.retain(|item| {
+            !in_set_only
+                || !item
                     .properties
                     .get_property_value::<Vec<String>>("in_sets", vec![])
                     .is_empty()
-            });
-        }
-
-        let min_price = match &query.properties {
-            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
-            _ => 0.0,
-        };
-        items.retain(|item| {
-            meets_min_price(
-                item.properties
-                    .get_property_value::<Option<f64>>("price", None),
-                Some(min_price),
-            )
         });
-
+        apply_common_filters(&mut items, &query);
         sort_by_fields(&mut items, &query.sort_fields(), row_value);
         Ok(paginate(
             &items,
@@ -257,76 +167,14 @@ impl ItemModule {
         ))
     }
 
-    /// Tradable mods and arcanes. The RawUpgrades bucket holds unranked
-    /// stacks; the Upgrades bucket holds individually ranked instances, which
-    /// are grouped by rank so a maxed copy lists separately from an unranked
-    /// one.
+    /// Tradable mods and arcanes, unranked stacks and ranked instances alike.
     pub fn get_mods(
         &self,
         query: WFItemPaginationDto,
     ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
-        let client = self.client.upgrade().unwrap();
-        let root = client.get_root();
-        let cache = states::cache_client()?;
+        let rows = self.client.upgrade().unwrap().rows()?;
+        let mut items = priced_rows(&rows.mods)?;
 
-        // unique name, rank, quantity. Rivens are excluded from both buckets:
-        // the Rivens tab owns them and lists them as a StockRiven, so letting
-        // them through here would split one inventory across two incompatible
-        // stock representations.
-        let mut rows: Vec<(String, i64, i64)> = Vec::new();
-        for (unique_name, quantity) in owned_counts_where(&[&root.raw_upgrades], |e| !e.is_riven())
-        {
-            rows.push((unique_name, 0, quantity));
-        }
-        for ((unique_name, rank), quantity) in rank_groups(&root.upgrades) {
-            rows.push((unique_name, rank, quantity));
-        }
-        let rows = merge_rank_rows(rows);
-
-        let prices = build_price_index(&cache.item_price().get_items()?);
-        let mut items: Vec<WFInvItemBase> = Vec::new();
-        for (unique_name, rank, quantity) in rows {
-            let Ok(tradable) = cache.tradable_item().get_by(&unique_name) else {
-                continue;
-            };
-            let variant = variant_of(&tradable, &unique_name);
-            let mut item = WFInvItemBase {
-                id: tradable.wfm_id.clone(),
-                name: tradable.name.clone(),
-                unique_name,
-                wfm_url: tradable.wfm_url.clone(),
-                quantity,
-                // Unranked rows carry no rank at all, matching how stock
-                // represents an unranked item. Some(rank: 0) would make
-                // ItemName render a bare "Rank " with no number after it.
-                sub_type: if rank > 0 || variant.is_some() {
-                    Some(SubType {
-                        rank: (rank > 0).then_some(rank),
-                        variant,
-                        ..Default::default()
-                    })
-                } else {
-                    None
-                },
-                ..Default::default()
-            };
-            item.properties
-                .set_property_value("tags", tradable.tags.clone());
-            item.properties.set_property_value(
-                "max_rank",
-                tradable.sub_type.as_ref().and_then(|s| s.max_rank),
-            );
-            item.properties.set_property_value(
-                "price",
-                lookup_price(&prices, &item.wfm_url, item.sub_type.clone())
-                    .or_else(|| resolved_price(&item.wfm_url, item.sub_type.as_ref())),
-            );
-            items.push(item);
-        }
-
-        if let FieldChange::Value(text) = &query.query {
-            items.retain(|item| matches_query(&item.name, text));
-        }
         let rank_filter = match &query.properties {
             FieldChange::Value(properties) => {
                 properties.get_property_value("rank_filter", String::new())
@@ -336,19 +184,7 @@ impl ItemModule {
         items.retain(|item| {
             passes_rank_filter(item.sub_type.as_ref().and_then(|s| s.rank), &rank_filter)
         });
-
-        let min_price = match &query.properties {
-            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
-            _ => 0.0,
-        };
-        items.retain(|item| {
-            meets_min_price(
-                item.properties
-                    .get_property_value::<Option<f64>>("price", None),
-                Some(min_price),
-            )
-        });
-
+        apply_common_filters(&mut items, &query);
         sort_by_fields(&mut items, &query.sort_fields(), row_value);
         Ok(paginate(
             &items,
@@ -358,11 +194,97 @@ impl ItemModule {
     }
 }
 
+/// A boolean toggle from the query's property bag.
+pub fn flag(query: &WFItemPaginationDto, name: &str) -> bool {
+    match &query.properties {
+        FieldChange::Value(properties) => properties.get_property_value(name, false),
+        _ => false,
+    }
+}
+
+/// A numeric threshold from the query's property bag.
+pub fn threshold(query: &WFItemPaginationDto, name: &str) -> i64 {
+    match &query.properties {
+        FieldChange::Value(properties) => properties.get_property_value(name, 0i64),
+        _ => 0,
+    }
+}
+
+/// Whether a row holds at least as many as the threshold asks for.
+///
+/// The point of the owned column is finding duplicates worth selling, so the
+/// useful question is "do I have a spare", not "how many exactly". A
+/// threshold of zero or less is no filter.
+pub fn meets_min_owned(quantity: i64, min_owned: i64) -> bool {
+    min_owned <= 0 || quantity >= min_owned
+}
+
+/// The filters every tab shares: free text, minimum price, minimum owned,
+/// and the two "worth my attention" flags.
+pub fn apply_common_filters(items: &mut Vec<WFInvItemBase>, query: &WFItemPaginationDto) {
+    if let FieldChange::Value(text) = &query.query {
+        items.retain(|item| matches_query(&item.name, text));
+    }
+    let min_price = threshold(query, "min_price");
+    items.retain(|item| {
+        meets_min_price(
+            item.properties
+                .get_property_value::<Option<f64>>("price", None),
+            Some(min_price as f64),
+        )
+    });
+    let min_owned = threshold(query, "min_owned");
+    items.retain(|item| meets_min_owned(item.quantity, min_owned));
+    if flag(query, "unvaulted_only") {
+        items.retain(|item| item.properties.get_property_value("is_unvaulted", false));
+    }
+    if flag(query, "mastered_only") {
+        items.retain(|item| item.properties.get_property_value("is_mastered", false));
+    }
+}
+
+/// Copy the snapshot rows and stamp each with the price known right now.
+///
+/// Prices are deliberately not baked into the snapshot: the live scraper
+/// records new ones as it trades, and they must show without rebuilding
+/// every row. Both lookups are prepared once here rather than per row.
+pub fn priced_rows(rows: &[WFInvItemBase]) -> Result<Vec<WFInvItemBase>, Error> {
+    let cache = states::cache_client()?;
+    let statistics = build_price_index(&cache.item_price().get_items()?);
+    let live = crate::market_prices::MarketPriceStore::get().all_prices();
+
+    Ok(rows
+        .iter()
+        .map(|row| {
+            let mut row = row.clone();
+            let key = crate::market_prices::PriceKey {
+                wfm_url: row.wfm_url.clone(),
+                rank: row.sub_type.as_ref().and_then(|s| s.rank),
+                variant: row.sub_type.as_ref().and_then(|s| s.variant.clone()),
+            };
+            let price = lookup_price(&statistics, &row.wfm_url, row.sub_type.clone())
+                .or_else(|| live.get(&key.id()).copied());
+            row.properties.set_property_value("price", price);
+            row
+        })
+        .collect())
+}
+
+/// A Parts or Mods row's value for a sortable column.
+fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
+    match column {
+        "quantity" => SortValue::Num(item.quantity as f64),
+        "rank" => SortValue::Num(item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0) as f64),
+        "price" => SortValue::MaybeNum(item.properties.get_property_value("price", None)),
+        _ => SortValue::Text(item.name.clone()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        matches_query, meets_min_price, merge_rank_rows, owned_counts, owned_counts_where,
-        passes_rank_filter, rank_groups, variant_of,
+        matches_query, meets_min_owned, meets_min_price, merge_rank_rows, owned_counts,
+        owned_counts_where, passes_rank_filter, rank_groups, variant_of,
     };
     use crate::cache::{CacheTradableItem, SubType as CacheSubType};
     use crate::wf_inventory::WFInvItemRaw;
@@ -436,6 +358,23 @@ mod tests {
         ];
         let groups = rank_groups(&upgrades);
         assert_eq!(groups.get(&("/Mods/Serration".to_string(), 0)), Some(&2));
+    }
+
+    /// The owned column exists to find spares worth selling, so the filter
+    /// asks "at least this many", not "exactly this many".
+    #[test]
+    fn the_owned_threshold_keeps_anything_at_or_above_it() {
+        assert!(meets_min_owned(2, 2));
+        assert!(meets_min_owned(9, 2));
+        assert!(!meets_min_owned(1, 2));
+    }
+
+    /// Zero or less means the filter is off, not that worthless rows are
+    /// wanted.
+    #[test]
+    fn an_owned_threshold_of_zero_or_less_is_no_filter() {
+        assert!(meets_min_owned(0, 0));
+        assert!(meets_min_owned(1, -5));
     }
 
     #[test]

@@ -69,6 +69,20 @@ pub struct WarframeRootObject {
 
     #[serde(rename = "Affiliations", default)]
     pub affiliations: Vec<WFInvAffiliation>,
+
+    /// Experience earned per item type, which is how mastery is recorded.
+    #[serde(rename = "XPInfo", default)]
+    pub xp_info: Vec<WFInvXpEntry>,
+}
+
+/// One item type's lifetime experience.
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct WFInvXpEntry {
+    #[serde(rename = "ItemType", default)]
+    pub item_type: String,
+
+    #[serde(rename = "XP", default)]
+    pub xp: i64,
 }
 
 #[cfg(test)]

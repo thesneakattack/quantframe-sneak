@@ -1,15 +1,13 @@
 use std::sync::{Arc, Weak};
 
-use entity::{dto::PaginatedResult, enums::FieldChange};
+use entity::dto::PaginatedResult;
 use utils::Error;
 
 use crate::{
-    cache::modules::{build_price_index, lookup_price},
     helper::paginate,
-    utils::modules::states,
     wf_inventory::{
         item_base::WFInvItemBase,
-        modules::item::{matches_query, meets_min_price, owned_counts},
+        modules::item::{apply_common_filters, flag, priced_rows},
         *,
     },
 };
@@ -40,94 +38,35 @@ impl SetsModule {
     /// Every set the player holds at least one member of, complete ones first
     /// and the rest ordered by how few members are missing - the partials are
     /// there to show what to buy next.
+    /// Every set the player holds a piece of, complete ones first.
     pub fn get_sets(&self, query: WFItemPaginationDto) -> Result<PaginatedResult<WFInvSet>, Error> {
-        let client = self.client.upgrade().unwrap();
-        let root = client.get_root();
-        let cache = states::cache_client()?;
+        let rows = self.client.upgrade().unwrap().rows()?;
 
-        let counts = owned_counts(&[&root.recipes, &root.misc_items]);
-        let prices = build_price_index(&cache.item_price().get_items()?);
-
-        let mut sets: Vec<WFInvSet> = Vec::new();
-        for cache_set in cache.item_set().get_all_sets()? {
-            let members: Vec<WFInvSetMember> = cache_set
-                .members
-                .iter()
-                .map(|member| WFInvSetMember {
-                    unique_name: member.unique_name.clone(),
-                    name: member.name.clone(),
-                    have: counts.get(&member.unique_name).copied().unwrap_or(0),
-                    required: member.required,
-                    is_main_blueprint: member.is_main_blueprint,
-                })
-                .collect();
-
-            // Drop sets the player holds no piece of at all; the rest are
-            // shown so the user can see what to buy next.
-            if members.iter().all(|m| m.have == 0) {
-                continue;
-            }
-            let owned_members = satisfied_members(&members);
-
-            let copies = complete_copies(&members);
-            let mut base = WFInvItemBase {
-                id: cache_set.set.wfm_id.clone(),
-                name: cache_set.set.name.clone(),
-                unique_name: cache_set.set.unique_name.clone(),
-                wfm_url: cache_set.set.wfm_url.clone(),
-                quantity: copies,
-                sub_type: None,
-                ..Default::default()
-            };
-            base.properties
-                .set_property_value("tags", cache_set.set.tags.clone());
-            base.properties.set_property_value(
-                "price",
-                lookup_price(&prices, &cache_set.set.wfm_url, None).or_else(|| {
-                    // Filled in by an earlier page view; cache-only, never
-                    // an HTTP call from a table query.
-                    crate::market_prices::MarketPriceStore::get().remembered_price(
-                        &crate::market_prices::PriceKey {
-                            wfm_url: cache_set.set.wfm_url.clone(),
-                            rank: None,
-                            variant: None,
-                        },
-                    )
-                }),
-            );
-
-            sets.push(WFInvSet {
+        // Sets carry their price on the embedded row, so they are priced
+        // through the same path as the other tabs.
+        let bases: Vec<WFInvItemBase> = rows.sets.iter().map(|s| s.base.clone()).collect();
+        let priced = priced_rows(&bases)?;
+        let mut sets: Vec<WFInvSet> = rows
+            .sets
+            .iter()
+            .zip(priced)
+            .map(|(set, base)| WFInvSet {
                 base,
-                total_members: members.len() as i64,
-                owned_members,
-                complete_copies: copies,
-                members,
-            });
-        }
+                members: set.members.clone(),
+                complete_copies: set.complete_copies,
+                owned_members: set.owned_members,
+                total_members: set.total_members,
+            })
+            .collect();
 
-        if let FieldChange::Value(text) = &query.query {
-            sets.retain(|set| matches_query(&set.base.name, text));
-        }
-        let complete_only = match &query.properties {
-            FieldChange::Value(properties) => properties.get_property_value("complete_only", false),
-            _ => false,
-        };
-        if complete_only {
+        if flag(&query, "complete_only") {
             sets.retain(|set| set.complete_copies > 0);
         }
-
-        let min_price = match &query.properties {
-            FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
-            _ => 0.0,
-        };
-        sets.retain(|set| {
-            meets_min_price(
-                set.base
-                    .properties
-                    .get_property_value::<Option<f64>>("price", None),
-                Some(min_price),
-            )
-        });
+        let mut bases: Vec<WFInvItemBase> = sets.iter().map(|s| s.base.clone()).collect();
+        apply_common_filters(&mut bases, &query);
+        let kept: std::collections::HashSet<String> =
+            bases.into_iter().map(|b| b.unique_name).collect();
+        sets.retain(|set| kept.contains(&set.base.unique_name));
 
         let sorts = query.sort_fields();
         if sorts.is_empty() {

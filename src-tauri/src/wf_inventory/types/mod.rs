@@ -26,3 +26,5 @@ pub use inv_sources::*;
 
 pub mod item_set;
 pub use item_set::*;
+
+pub mod snapshot;

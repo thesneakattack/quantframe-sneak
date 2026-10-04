@@ -57,7 +57,7 @@ pub struct PriceKey {
 }
 
 impl PriceKey {
-    fn id(&self) -> String {
+    pub fn id(&self) -> String {
         format!(
             "{}#{}#{}",
             self.wfm_url,
@@ -257,19 +257,17 @@ impl MarketPriceStore {
         STORE.get_or_init(MarketPriceStore::load)
     }
 
-    /// A price already resolved for this key, without asking the network.
+    /// Every remembered price, keyed by `PriceKey::id`.
     ///
-    /// Deliberately ignores age. An out-of-date price is still a price, and a
-    /// far better answer than "unknown": treating staleness as ignorance
-    /// would make rows flicker back to "?" and slip past the minimum-price
-    /// filter every time their hour was up. Renewal happens in the
-    /// background instead.
-    pub fn remembered_price(&self, key: &PriceKey) -> Option<f64> {
+    /// Taken once per request so stamping a few thousand rows costs one lock
+    /// rather than one per row.
+    pub fn all_prices(&self) -> HashMap<String, f64> {
         self.entries
             .lock()
             .unwrap()
-            .get(&key.id())
-            .and_then(best_price)
+            .iter()
+            .filter_map(|(id, entry)| best_price(entry).map(|price| (id.clone(), price)))
+            .collect()
     }
 
     /// Record what the live scraper saw while pricing this item.
