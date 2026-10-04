@@ -137,8 +137,13 @@ fn load() -> FileConfig {
     let explicit_was_set = explicit.is_some();
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-    let app_data = crate::helper::get_app_storage_path();
-    let Some(path) = resolve_config_path(&cwd, explicit, Some(app_data.as_path())) else {
+    // Only once Tauri has handed over its app handle: the storage path is
+    // derived from it and panics without it. Reading config earlier than that
+    // should lose the fallback, not take the app down.
+    let app_data = crate::APP
+        .get()
+        .map(|_| crate::helper::get_app_storage_path());
+    let Some(path) = resolve_config_path(&cwd, explicit, app_data.as_deref()) else {
         if explicit_was_set {
             warning(
                 format!("{}:Load", COMPONENT),

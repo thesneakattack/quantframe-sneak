@@ -135,7 +135,7 @@ whether you run from the project root or from `src-tauri/`.
 directory — the same folder as `settings.json` and `quantframeV2.sqlite`:
 
 ```
-%APPDATA%\dev.thesneakattack.quantframe\config.json
+%LOCALAPPDATA%\dev.thesneakattack.quantframe\config.json
 ```
 
 Copy your `config.json` there after installing, or the AlecaFrame source falls
