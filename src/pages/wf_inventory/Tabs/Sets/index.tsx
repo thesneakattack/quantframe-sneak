@@ -4,8 +4,7 @@ import { ItemName } from "@components/DataDisplay/ItemName";
 import { SearchField } from "@components/Forms/SearchField";
 import { SortPriority } from "@components/Forms/SortPriority";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
-import { faAdd, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useResolvedPrices } from "@hooks/useResolvedPrices.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
@@ -138,18 +137,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
             <Stack gap={2} p="sm">
               {record.members.map((member) => (
                 <Group key={member.unique_name} gap="xs" justify="space-between" px="md">
-                  <Group gap={6}>
-                    <Text size="sm">{member.name}</Text>
-                    {member.shared_with.length > 0 && (
-                      // One copy is credited to every set that lists it, so
-                      // two sets can read as complete on the same part.
-                      <Tooltip label={useTranslate("shared_member", { sets: member.shared_with.join(", ") })}>
-                        <Text c="yellow.7" component="span" size="sm">
-                          <FontAwesomeIcon icon={faTriangleExclamation} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                  </Group>
+                  <Text size="sm">{member.name}</Text>
                   <Text size="sm" c={member.have >= member.required ? "green.6" : "red.6"}>
                     {member.have} / {member.required}
                   </Text>

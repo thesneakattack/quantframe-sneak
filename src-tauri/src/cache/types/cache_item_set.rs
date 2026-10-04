@@ -93,13 +93,6 @@ pub struct CacheItemSetMember {
     pub name: String,
     pub required: i64,
     pub is_main_blueprint: bool,
-
-    /// Other sets that count this same member. The akimbo primes are built
-    /// from the single-pistol blueprint, so one copy is credited to both
-    /// sets even though it can only complete one. Surfaced as a warning
-    /// rather than resolved; see issue #3.
-    #[serde(default)]
-    pub shared_with: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

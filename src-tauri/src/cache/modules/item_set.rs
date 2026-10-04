@@ -81,7 +81,6 @@ impl ItemSetModule {
                 unique_name: blueprint_key,
                 required: 1,
                 is_main_blueprint: true,
-                shared_with: vec![],
             }];
             for (key, required) in aggregate_ingredients(recipe) {
                 members.push(CacheItemSetMember {
@@ -89,7 +88,6 @@ impl ItemSetModule {
                     unique_name: key,
                     required,
                     is_main_blueprint: false,
-                    shared_with: vec![],
                 });
             }
 
@@ -118,23 +116,6 @@ impl ItemSetModule {
             ),
             &LoggerOptions::default(),
         );
-
-        // A member counted by more than one set is credited to each of them,
-        // which can show two sets as complete on one copy. Mark it so the
-        // row can say so.
-        let names: Vec<String> = sets.iter().map(|set| set.set.name.clone()).collect();
-        for (index, set) in sets.iter_mut().enumerate() {
-            for member in set.members.iter_mut() {
-                let Some(positions) = by_member.get(&member.unique_name) else {
-                    continue;
-                };
-                member.shared_with = positions
-                    .iter()
-                    .filter(|other| **other != index)
-                    .filter_map(|other| names.get(*other).cloned())
-                    .collect();
-            }
-        }
 
         *self.index.lock().unwrap() = SetIndex { sets, by_member };
         Ok(())

@@ -9,8 +9,6 @@ pub struct WFInvSetMember {
     pub have: i64,
     pub required: i64,
     pub is_main_blueprint: bool,
-    /// Other sets counting this same copy; see issue #3.
-    pub shared_with: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -66,7 +64,6 @@ mod tests {
             have,
             required,
             is_main_blueprint: false,
-            shared_with: vec![],
         }
     }
 
