@@ -9,7 +9,7 @@ use crate::{
     utils::modules::states,
     wf_inventory::{
         item_base::WFInvItemBase,
-        modules::item::{meets_min_price, owned_counts},
+        modules::item::{matches_query, meets_min_price, owned_counts},
         *,
     },
 };
@@ -106,8 +106,7 @@ impl SetsModule {
         }
 
         if let FieldChange::Value(text) = &query.query {
-            let text = text.to_lowercase();
-            sets.retain(|set| set.base.name.to_lowercase().contains(&text));
+            sets.retain(|set| matches_query(&set.base.name, text));
         }
         let complete_only = match &query.properties {
             FieldChange::Value(properties) => properties.get_property_value("complete_only", false),

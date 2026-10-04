@@ -116,6 +116,32 @@ pub fn meets_min_price(price: Option<f64>, min_price: Option<f64>) -> bool {
     }
 }
 
+/// Whether a row's name matches the free-text search box.
+///
+/// The box matches case-insensitively, anywhere in the name: item names are
+/// title case and translated, so a user typing "prime" would otherwise miss
+/// every Prime row, and typing a word from the middle of a name is the normal
+/// way to narrow a tab. An empty query matches everything, which is what makes
+/// clearing the box restore the full table instead of emptying it.
+pub fn matches_query(name: &str, query: &str) -> bool {
+    name.to_lowercase().contains(&query.to_lowercase())
+}
+
+/// Whether a mod row passes the rank toggle.
+///
+/// An unranked row carries no rank at all rather than `Some(0)` - that is how
+/// stock represents an unranked item - so "unranked" has to accept both or
+/// half of them disappear from the tab. Anything else, including the UI's
+/// default "all" and the empty string a query with no properties leaves
+/// behind, is not a filter: an unrecognised value must never empty the table.
+pub fn passes_rank_filter(rank: Option<i64>, filter: &str) -> bool {
+    match filter {
+        "unranked" => rank.unwrap_or(0) == 0,
+        "ranked" => rank.unwrap_or(0) > 0,
+        _ => true,
+    }
+}
+
 /// A Parts or Mods row's value for a sortable column.
 fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
     match column {
@@ -196,8 +222,7 @@ impl ItemModule {
         }
 
         if let FieldChange::Value(text) = &query.query {
-            let text = text.to_lowercase();
-            items.retain(|item| item.name.to_lowercase().contains(&text));
+            items.retain(|item| matches_query(&item.name, text));
         }
         let in_set_only = match &query.properties {
             FieldChange::Value(properties) => properties.get_property_value("in_set_only", false),
@@ -300,8 +325,7 @@ impl ItemModule {
         }
 
         if let FieldChange::Value(text) = &query.query {
-            let text = text.to_lowercase();
-            items.retain(|item| item.name.to_lowercase().contains(&text));
+            items.retain(|item| matches_query(&item.name, text));
         }
         let rank_filter = match &query.properties {
             FieldChange::Value(properties) => {
@@ -309,13 +333,9 @@ impl ItemModule {
             }
             _ => String::new(),
         };
-        let rank_of =
-            |item: &WFInvItemBase| item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0);
-        match rank_filter.as_str() {
-            "unranked" => items.retain(|item| rank_of(item) == 0),
-            "ranked" => items.retain(|item| rank_of(item) > 0),
-            _ => {}
-        }
+        items.retain(|item| {
+            passes_rank_filter(item.sub_type.as_ref().and_then(|s| s.rank), &rank_filter)
+        });
 
         let min_price = match &query.properties {
             FieldChange::Value(properties) => properties.get_property_value("min_price", 0.0f64),
@@ -341,7 +361,8 @@ impl ItemModule {
 #[cfg(test)]
 mod tests {
     use super::{
-        meets_min_price, merge_rank_rows, owned_counts, owned_counts_where, rank_groups, variant_of,
+        matches_query, meets_min_price, merge_rank_rows, owned_counts, owned_counts_where,
+        passes_rank_filter, rank_groups, variant_of,
     };
     use crate::cache::{CacheTradableItem, SubType as CacheSubType};
     use crate::wf_inventory::WFInvItemRaw;
@@ -569,6 +590,71 @@ mod tests {
     fn treats_a_zero_threshold_as_no_filter() {
         assert!(meets_min_price(Some(0.0), Some(0.0)));
         assert!(meets_min_price(Some(1.0), Some(0.0)));
+    }
+
+    /// Item names are title case while nobody types them that way, so a
+    /// case-sensitive search box would find nothing for most of what is typed.
+    #[test]
+    fn matches_a_name_whatever_the_case_of_the_query() {
+        assert!(matches_query("Bo Prime Blueprint", "prime"));
+        assert!(matches_query("Bo Prime Blueprint", "PRIME"));
+        assert!(matches_query("bo prime blueprint", "Prime"));
+    }
+
+    /// Searching for "prime" has to find every Prime, not just the rows whose
+    /// name starts with it, so the match runs anywhere in the name.
+    #[test]
+    fn matches_a_substring_from_anywhere_in_the_name() {
+        assert!(matches_query("Bo Prime Blueprint", "Blueprint"));
+        assert!(matches_query("Bo Prime Blueprint", "o Pri"));
+    }
+
+    /// Clearing the search box must restore the whole table. An empty query
+    /// that filtered everything out would leave the tab looking broken.
+    #[test]
+    fn keeps_every_row_for_an_empty_query() {
+        assert!(matches_query("Bo Prime Blueprint", ""));
+        assert!(matches_query("", ""));
+    }
+
+    /// A typo should empty the table rather than quietly fall back to showing
+    /// everything; that is how the user sees there is nothing to find.
+    #[test]
+    fn rejects_a_query_that_appears_nowhere_in_the_name() {
+        assert!(!matches_query("Bo Prime Blueprint", "zephyr"));
+        assert!(!matches_query("", "prime"));
+    }
+
+    /// Unranked rows carry no rank at all rather than Some(0) - that is how
+    /// stock represents an unranked item - so the toggle has to accept both
+    /// shapes or half the unranked mods vanish from the tab.
+    #[test]
+    fn the_unranked_filter_keeps_rows_with_no_rank_and_rank_zero() {
+        assert!(passes_rank_filter(None, "unranked"));
+        assert!(passes_rank_filter(Some(0), "unranked"));
+        assert!(!passes_rank_filter(Some(10), "unranked"));
+    }
+
+    /// The ranked view exists to find maxed copies worth listing separately,
+    /// so a rank-0 row - however it is spelled - is not one of them.
+    #[test]
+    fn the_ranked_filter_keeps_only_rows_above_rank_zero() {
+        assert!(passes_rank_filter(Some(10), "ranked"));
+        assert!(passes_rank_filter(Some(1), "ranked"));
+        assert!(!passes_rank_filter(Some(0), "ranked"));
+        assert!(!passes_rank_filter(None, "ranked"));
+    }
+
+    /// A query that sets no properties leaves the filter empty, and the UI's
+    /// default sends "all". Neither is a filter, and an unrecognised value
+    /// must never empty the table either.
+    #[test]
+    fn an_unset_or_unrecognised_rank_filter_keeps_everything() {
+        for filter in ["", "all", "Unranked", "something_else"] {
+            assert!(passes_rank_filter(None, filter), "filter {filter:?}");
+            assert!(passes_rank_filter(Some(0), filter), "filter {filter:?}");
+            assert!(passes_rank_filter(Some(10), filter), "filter {filter:?}");
+        }
     }
 }
 
