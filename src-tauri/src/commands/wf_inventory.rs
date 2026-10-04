@@ -25,14 +25,60 @@ pub fn stock_key(wfm_url: &str, rank: Option<i64>, variant: Option<&str>) -> Str
     )
 }
 
-/// `stock_key` for a stock row.
-fn stock_key_of(item: &entity::stock_item::Model) -> String {
-    let sub_type = item.sub_type.as_ref();
-    stock_key(
-        &item.wfm_url,
-        sub_type.and_then(|s| s.rank),
-        sub_type.and_then(|s| s.variant.as_deref()),
-    )
+/// What the stock section currently lists, in the two shapes the inventory
+/// tabs ask about.
+///
+/// This is the only place the inventory section reads stock. The tabs work on
+/// the answers rather than on stock's tables, so how a listing is stored and
+/// queried stays stock's business, and a change there lands in one function
+/// instead of in every tab's command.
+pub struct ListedStock {
+    /// Exact listings: url, rank and variant together.
+    keys: HashSet<String>,
+    /// Urls listed in any form at all.
+    urls: HashSet<String>,
+}
+
+impl ListedStock {
+    fn from_listings<'a>(
+        listings: impl IntoIterator<Item = (&'a str, Option<i64>, Option<&'a str>)>,
+    ) -> Self {
+        let mut keys = HashSet::new();
+        let mut urls = HashSet::new();
+        for (wfm_url, rank, variant) in listings {
+            keys.insert(stock_key(wfm_url, rank, variant));
+            urls.insert(wfm_url.to_string());
+        }
+        Self { keys, urls }
+    }
+
+    /// Whether this exact listing is in stock. A Radiant relic and an Intact
+    /// one share a url but are different products, so both parts matter.
+    pub fn has(&self, wfm_url: &str, rank: Option<i64>, variant: Option<&str>) -> bool {
+        self.keys.contains(&stock_key(wfm_url, rank, variant))
+    }
+
+    /// Whether anything with this url is in stock, whatever its rank or
+    /// variant. A set is listed as itself, so the url is the whole question.
+    pub fn has_url(&self, wfm_url: &str) -> bool {
+        self.urls.contains(wfm_url)
+    }
+}
+
+/// Read what stock currently lists.
+async fn listed_stock() -> Result<ListedStock, Error> {
+    let conn = DATABASE.get().unwrap();
+    let stock = StockItemQuery::get_all(conn, StockItemPaginationQueryDto::new(1, -1)).await?;
+    Ok(ListedStock::from_listings(stock.results.iter().map(
+        |item| {
+            let sub_type = item.sub_type.as_ref();
+            (
+                item.wfm_url.as_str(),
+                sub_type.and_then(|s| s.rank),
+                sub_type.and_then(|s| s.variant.as_deref()),
+            )
+        },
+    )))
 }
 
 #[tauri::command]
@@ -89,23 +135,12 @@ pub async fn wf_inventory_get_parts(
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
 ) -> Result<Value, Error> {
     let wf_inventory = wf_inventory.lock()?.clone();
-    let conn = DATABASE.get().unwrap();
-    let stock = StockItemQuery::get_all(conn, StockItemPaginationQueryDto::new(1, -1)).await?;
-
-    let listed: HashSet<String> = stock.results.iter().map(stock_key_of).collect();
-    // Matched by url, not by item_name: that column stores whatever language
-    // was active when the row was created, so a language change would
-    // silently stop the warning from ever appearing.
-    let listed_urls: HashSet<&str> = stock
-        .results
-        .iter()
-        .map(|item| item.wfm_url.as_str())
-        .collect();
+    let listed = listed_stock().await?;
 
     let mut parts = wf_inventory.item().get_parts(query)?;
     for item in parts.results.iter_mut() {
         let variant = item.sub_type.as_ref().and_then(|s| s.variant.clone());
-        let in_stock = listed.contains(&stock_key(&item.wfm_url, None, variant.as_deref()));
+        let in_stock = listed.has(&item.wfm_url, None, variant.as_deref());
         item.properties.set_property_value("is_in_stock", in_stock);
 
         // Listing a part separately undercuts a set listing that contains it.
@@ -115,10 +150,13 @@ pub async fn wf_inventory_get_parts(
         let urls = item
             .properties
             .get_property_value::<Vec<String>>("in_set_urls", vec![]);
+        // Matched by url, not by item_name: that column stores whatever
+        // language was active when the row was created, so a language change
+        // would silently stop the warning from ever appearing.
         let conflicting: Vec<String> = urls
             .iter()
             .enumerate()
-            .filter(|(_, url)| listed_urls.contains(url.as_str()))
+            .filter(|(_, url)| listed.has_url(url))
             .filter_map(|(i, _)| names.get(i).cloned())
             .collect();
         item.properties
@@ -133,18 +171,16 @@ pub async fn wf_inventory_get_mods(
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
 ) -> Result<Value, Error> {
     let wf_inventory = wf_inventory.lock()?.clone();
-    let conn = DATABASE.get().unwrap();
-    let stock = StockItemQuery::get_all(conn, StockItemPaginationQueryDto::new(1, -1)).await?;
-    let listed: HashSet<String> = stock.results.iter().map(stock_key_of).collect();
+    let listed = listed_stock().await?;
 
     let mut mods = wf_inventory.item().get_mods(query)?;
     for item in mods.results.iter_mut() {
         let sub_type = item.sub_type.as_ref();
-        let in_stock = listed.contains(&stock_key(
+        let in_stock = listed.has(
             &item.wfm_url,
             sub_type.and_then(|s| s.rank),
             sub_type.and_then(|s| s.variant.as_deref()),
-        ));
+        );
         item.properties.set_property_value("is_in_stock", in_stock);
     }
     Ok(json!(mods))
@@ -156,17 +192,11 @@ pub async fn wf_inventory_get_sets(
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
 ) -> Result<Value, Error> {
     let wf_inventory = wf_inventory.lock()?.clone();
-    let conn = DATABASE.get().unwrap();
-    let stock = StockItemQuery::get_all(conn, StockItemPaginationQueryDto::new(1, -1)).await?;
-    let listed: HashSet<String> = stock
-        .results
-        .iter()
-        .map(|item| stock_key(&item.wfm_url, None, None))
-        .collect();
+    let listed = listed_stock().await?;
 
     let mut sets = wf_inventory.sets().get_sets(query)?;
     for set in sets.results.iter_mut() {
-        let in_stock = listed.contains(&stock_key(&set.base.wfm_url, None, None));
+        let in_stock = listed.has_url(&set.base.wfm_url);
         set.base
             .properties
             .set_property_value("is_in_stock", in_stock);
@@ -188,7 +218,37 @@ pub async fn wf_inventory_resolve_prices(
 
 #[cfg(test)]
 mod tests {
-    use super::stock_key;
+    use super::{stock_key, ListedStock};
+
+    /// The one seam between the inventory tabs and stock has to answer both
+    /// questions the tabs ask: "is this exact listing in stock" for a row,
+    /// and "is anything with this url in stock" for a set.
+    #[test]
+    fn answers_exact_and_url_wide_questions() {
+        let listed = ListedStock::from_listings([
+            ("serration", Some(10), None),
+            ("axi_a17_relic", None, Some("intact")),
+        ]);
+
+        assert!(listed.has("serration", Some(10), None));
+        assert!(!listed.has("serration", Some(9), None));
+        assert!(listed.has_url("serration"));
+
+        // A Radiant relic is a different product from the Intact one that is
+        // listed, but the set-level question is only about the url.
+        assert!(!listed.has("axi_a17_relic", None, Some("radiant")));
+        assert!(listed.has("axi_a17_relic", None, Some("intact")));
+        assert!(listed.has_url("axi_a17_relic"));
+
+        assert!(!listed.has_url("mag_prime_set"));
+    }
+
+    /// Unranked is unranked however it was saved, through the seam too.
+    #[test]
+    fn an_unranked_listing_matches_an_unranked_row() {
+        let listed = ListedStock::from_listings([("serration", Some(0), None)]);
+        assert!(listed.has("serration", None, None));
+    }
 
     /// A stock item saved without a sub_type and one saved with rank 0 are the
     /// same unranked item. Treating them differently shows a red "not in
