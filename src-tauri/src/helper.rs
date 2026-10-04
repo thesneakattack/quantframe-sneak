@@ -550,3 +550,169 @@ pub async fn populate_riven_market_properties(
     properties.set_property_value("ui_operations", operations.operations.clone());
     Ok(vec![])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::paginate;
+
+    /// Stand-in for a page of inventory rows: 1..=n, so the value of an item
+    /// is also its 1-based position and a wrong slice is obvious on sight.
+    fn rows(n: i64) -> Vec<i64> {
+        (1..=n).collect()
+    }
+
+    /// The common case. Every paginated table in the app walks middle pages,
+    /// and an off-by-one here shows the user the neighbouring page's rows
+    /// without any visible sign that anything is wrong.
+    #[test]
+    fn a_middle_page_returns_exactly_its_own_slice() {
+        let page = paginate(&rows(25), 2, 10);
+        assert_eq!(page.results, vec![11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+        assert_eq!(page.page, 2);
+        assert_eq!(page.limit, 10);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 3);
+    }
+
+    /// 25 rows over 10 per page leaves a short final page. Reading past the
+    /// end of the slice would panic and take the whole tab down, so the end
+    /// of the range has to be clamped to the item count.
+    #[test]
+    fn the_last_page_is_short_when_the_total_does_not_divide_evenly() {
+        let page = paginate(&rows(25), 3, 10);
+        assert_eq!(page.results, vec![21, 22, 23, 24, 25]);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 3);
+    }
+
+    /// An exact multiple must not round up to a phantom extra page. 1500 rows
+    /// at 25 per page is 60 pages, not 61, and a 61st page would render empty.
+    #[test]
+    fn an_exactly_divisible_total_does_not_gain_a_trailing_empty_page() {
+        let page = paginate(&rows(20), 2, 10);
+        assert_eq!(page.results, vec![11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+        assert_eq!(page.total, 20);
+        assert_eq!(page.total_pages, 2);
+    }
+
+    /// `per_page == -1` is the app's "no limit" sentinel, used by every caller
+    /// that wants the full set in one shot. It must return every row, not a
+    /// slice, and report a single page rather than a negative page count.
+    #[test]
+    fn a_per_page_of_minus_one_returns_every_item_as_one_page() {
+        let page = paginate(&rows(25), 1, -1);
+        assert_eq!(page.results, rows(25));
+        assert_eq!(page.limit, -1);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 1);
+    }
+
+    /// "No limit" ignores the page number entirely: asking for page 2 of an
+    /// unlimited query still hands back everything rather than an empty
+    /// second page. Pinned because a stale page number in the UI state would
+    /// otherwise silently empty a tab.
+    #[test]
+    fn a_per_page_of_minus_one_ignores_the_page_number() {
+        let page = paginate(&rows(25), 2, -1);
+        assert_eq!(page.results, rows(25));
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 1);
+    }
+
+    /// A page limit wider than the collection is not an error: one page holds
+    /// the lot. Guards against the end of the range running past the slice.
+    #[test]
+    fn a_page_size_larger_than_the_total_returns_everything_on_page_one() {
+        let page = paginate(&rows(25), 1, 100);
+        assert_eq!(page.results, rows(25));
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 1);
+    }
+
+    /// Asking for a page beyond the end yields no rows rather than panicking.
+    /// This is reachable whenever a filter shrinks the result set while the
+    /// user sits on a high page, so it has to degrade to an empty table with
+    /// the real totals still attached for the pager to correct itself.
+    #[test]
+    fn a_page_past_the_end_returns_no_rows_but_keeps_the_real_totals() {
+        let page = paginate(&rows(25), 10, 10);
+        assert!(page.results.is_empty());
+        assert_eq!(page.page, 10);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 3);
+    }
+
+    /// The first page past a clean boundary. 20 rows at 10 per page has no
+    /// third page, and the range would start exactly at the end of the slice;
+    /// this must be empty rather than an out-of-range read.
+    #[test]
+    fn the_page_just_past_an_exact_boundary_is_empty() {
+        let page = paginate(&rows(20), 3, 10);
+        assert!(page.results.is_empty());
+        assert_eq!(page.total_pages, 2);
+    }
+
+    /// Pages are 1-based, so page 0 is a caller mistake. It yields nothing
+    /// rather than wrapping round to the last page or reading backwards off
+    /// the front of the slice.
+    #[test]
+    fn page_zero_returns_no_rows_rather_than_wrapping_around() {
+        let page = paginate(&rows(25), 0, 10);
+        assert!(page.results.is_empty());
+        assert_eq!(page.page, 0);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 3);
+    }
+
+    /// A negative page computes a negative start offset. Casting that to a
+    /// slice index would be a vast unsigned number and an instant panic, so
+    /// the guard has to reject it before the cast is used.
+    #[test]
+    fn a_negative_page_returns_no_rows_rather_than_panicking() {
+        let page = paginate(&rows(25), -1, 10);
+        assert!(page.results.is_empty());
+        assert_eq!(page.page, -1);
+        assert_eq!(page.total, 25);
+        assert_eq!(page.total_pages, 3);
+    }
+
+    /// An empty inventory is the first thing a new user sees. No rows, no
+    /// pages, and no panic from slicing an empty collection.
+    #[test]
+    fn an_empty_input_reports_no_items_and_no_pages() {
+        let page = paginate::<i64>(&[], 1, 10);
+        assert!(page.results.is_empty());
+        assert_eq!(page.total, 0);
+        assert_eq!(page.total_pages, 0);
+    }
+
+    /// An unlimited query over an empty collection reports one (empty) page
+    /// rather than zero, because the -1 sentinel short-circuits the page
+    /// count. Pinned deliberately: it disagrees with the limited case above,
+    /// so any UI that trusts `total_pages` has to cope with both.
+    #[test]
+    fn an_empty_input_with_no_limit_still_reports_a_single_page() {
+        let page = paginate::<i64>(&[], 1, -1);
+        assert!(page.results.is_empty());
+        assert_eq!(page.total, 0);
+        assert_eq!(page.total_pages, 1);
+    }
+
+    /// Walking every page of a collection must visit each row exactly once,
+    /// in order. This is the property an off-by-one at either edge of the
+    /// range breaks, and the one a user notices as a missing or duplicated
+    /// item somewhere in a 60-page tab.
+    #[test]
+    fn walking_every_page_in_order_reproduces_the_whole_collection() {
+        let all = rows(97);
+        let per_page = 10;
+        let total_pages = paginate(&all, 1, per_page).total_pages;
+        assert_eq!(total_pages, 10);
+
+        let mut seen = Vec::new();
+        for page in 1..=total_pages {
+            seen.extend(paginate(&all, page, per_page).results);
+        }
+        assert_eq!(seen, all);
+    }
+}
