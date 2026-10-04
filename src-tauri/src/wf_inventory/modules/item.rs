@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use entity::{dto::PaginatedResult, enums::FieldChange};
-use utils::{Error, SubType};
+use utils::Error;
 
 use crate::{
     cache::{
-        modules::{build_price_index, lookup_price},
+        modules::{build_price_index, lookup_price, PriceIndex as CachePriceIndex},
         CacheTradableItem,
     },
     helper::paginate,
@@ -302,29 +302,54 @@ pub fn max_rank_key(row: &WFInvItemBase) -> Option<crate::market_prices::PriceKe
 /// or a set has no maximum rank, and looking one up for them would be work
 /// spent to produce nothing.
 pub fn with_max_rank_prices(rows: Vec<WFInvItemBase>) -> Result<Vec<WFInvItemBase>, Error> {
-    let cache = states::cache_client()?;
-    let statistics = build_price_index(&cache.item_price().get_items()?);
-    let live = crate::market_prices::MarketPriceStore::get().all_prices();
+    let prices = PriceLookup::build()?;
 
     Ok(rows
         .into_iter()
         .map(|mut row| {
-            let price = max_rank_key(&row).and_then(|key| {
-                lookup_price(
-                    &statistics,
-                    &key.wfm_url,
-                    Some(SubType {
-                        rank: key.rank,
-                        variant: key.variant.clone(),
-                        ..Default::default()
-                    }),
-                )
-                .or_else(|| live.get(&key.id()).copied())
-            });
+            let price = max_rank_key(&row).and_then(|key| prices.price_for(&key));
             row.properties.set_property_value("max_rank_price", price);
             row
         })
         .collect())
+}
+
+/// Every price the inventory can see, however it was obtained.
+///
+/// Two sources today: the item-price cache the Quantframe API ships, and the
+/// prices this build resolves against warframe.market itself to cover what that
+/// cache leaves out - it carries about 1390 items, 86% of sets but 26% of mods.
+///
+/// Callers do not choose between them. They ask for a price and get whichever
+/// source has one, the shipped cache first because it is shared across every
+/// install and costs nobody a request. When the API serves the full set, the
+/// second source is removed here and nothing that reads a price changes.
+pub struct PriceLookup {
+    shipped: CachePriceIndex,
+    resolved: HashMap<String, f64>,
+}
+
+impl PriceLookup {
+    /// Built once per request. Both sources take a lock and clone, which is
+    /// what made doing this per row cost the whole inventory to render a page.
+    pub fn build() -> Result<Self, Error> {
+        let cache = states::cache_client()?;
+        Ok(Self {
+            shipped: build_price_index(&cache.item_price().get_items()?),
+            resolved: crate::market_prices::MarketPriceStore::get().all_prices(),
+        })
+    }
+
+    /// What this product is worth, or nothing if neither source knows.
+    pub fn price_for(&self, key: &crate::market_prices::PriceKey) -> Option<f64> {
+        lookup_price(&self.shipped, &key.wfm_url, key.as_sub_type())
+            .or_else(|| self.resolved.get(&key.id()).copied())
+    }
+
+    #[cfg(test)]
+    fn from_parts(shipped: CachePriceIndex, resolved: HashMap<String, f64>) -> Self {
+        Self { shipped, resolved }
+    }
 }
 
 /// Copy the snapshot rows and stamp each with the price known right now.
@@ -333,9 +358,7 @@ pub fn with_max_rank_prices(rows: Vec<WFInvItemBase>) -> Result<Vec<WFInvItemBas
 /// records new ones as it trades, and they must show without rebuilding
 /// every row. Both lookups are prepared once here rather than per row.
 pub fn priced_rows(rows: &[WFInvItemBase]) -> Result<Vec<WFInvItemBase>, Error> {
-    let cache = states::cache_client()?;
-    let statistics = build_price_index(&cache.item_price().get_items()?);
-    let live = crate::market_prices::MarketPriceStore::get().all_prices();
+    let prices = PriceLookup::build()?;
 
     Ok(rows
         .iter()
@@ -346,8 +369,7 @@ pub fn priced_rows(rows: &[WFInvItemBase]) -> Result<Vec<WFInvItemBase>, Error> 
                 rank: row.sub_type.as_ref().and_then(|s| s.rank),
                 variant: row.sub_type.as_ref().and_then(|s| s.variant.clone()),
             };
-            let price = lookup_price(&statistics, &row.wfm_url, row.sub_type.clone())
-                .or_else(|| live.get(&key.id()).copied());
+            let price = prices.price_for(&key);
             row.properties.set_property_value("price", price);
             row
         })
@@ -371,7 +393,7 @@ fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
 mod tests {
     use super::{
         matches_query, max_rank_key, meets_min_owned, meets_min_price, merge_rank_rows,
-        owned_counts, owned_counts_where, passes_rank_filter, rank_groups, variant_of,
+        owned_counts, owned_counts_where, passes_rank_filter, rank_groups, variant_of, PriceLookup,
     };
     use crate::cache::{CacheTradableItem, SubType as CacheSubType};
     use crate::wf_inventory::item_base::WFInvItemBase;
@@ -599,6 +621,52 @@ mod tests {
         };
         row.properties.set_property_value("max_rank", max_rank);
         row
+    }
+
+    fn lookup(shipped: &[(&str, f64)], resolved: &[(&str, f64)]) -> PriceLookup {
+        PriceLookup::from_parts(
+            shipped
+                .iter()
+                .map(|(url, price)| ((url.to_string(), None), *price))
+                .collect(),
+            resolved
+                .iter()
+                .map(|(id, price)| (id.to_string(), *price))
+                .collect(),
+        )
+    }
+
+    fn pkey(url: &str) -> crate::market_prices::PriceKey {
+        crate::market_prices::PriceKey {
+            wfm_url: url.to_string(),
+            rank: None,
+            variant: None,
+        }
+    }
+
+    /// The shipped cache is computed once for everybody, so a price it already
+    /// carries must not be answered from a figure this install paid a request
+    /// for. Reversing this would have every install prefer its own lookups and
+    /// make the shared dataset pointless.
+    #[test]
+    fn prefers_the_shipped_cache_over_a_locally_resolved_price() {
+        let prices = lookup(&[("an_item", 10.0)], &[("an_item#0#", 99.0)]);
+        assert_eq!(prices.price_for(&pkey("an_item")), Some(10.0));
+    }
+
+    /// The shipped cache covers about a quarter of mods, and falling through is
+    /// the only reason the rest of the inventory shows a price at all.
+    #[test]
+    fn falls_through_to_a_locally_resolved_price() {
+        let prices = lookup(&[], &[("an_item#0#", 99.0)]);
+        assert_eq!(prices.price_for(&pkey("an_item")), Some(99.0));
+    }
+
+    /// Neither source knowing is an honest unknown, not a zero.
+    #[test]
+    fn reports_nothing_when_no_source_has_a_price() {
+        let prices = lookup(&[], &[]);
+        assert_eq!(prices.price_for(&pkey("an_item")), None);
     }
 
     /// What an unranked mod is worth says little about what it is worth
