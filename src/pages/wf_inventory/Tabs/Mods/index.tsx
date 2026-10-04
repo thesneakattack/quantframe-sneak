@@ -6,9 +6,8 @@ import { SortPriority } from "@components/Forms/SortPriority";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
-import { useResolvedPrices } from "@hooks/useResolvedPrices.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { Group, Loader, NumberFormatter, NumberInput, SegmentedControl, Text, Tooltip } from "@mantine/core";
+import { Group, NumberFormatter, NumberInput, SegmentedControl, Text, Tooltip } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage, inventoryRowKey } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -58,7 +57,6 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
   // Queries
   const { modsQuery, refetchQueries } = useQueries({ queryData: effectiveQuery, isActive });
   const { createMutation } = useMutations({ refetchQueries, setLoadingRows });
-  const { resolvedPrice } = useResolvedPrices(modsQuery.data?.results);
   const { OpenAddToStockModal } = useModals({ createMutation });
 
   const rankFilter = (queryData.properties as { rank_filter?: string } | undefined)?.rank_filter || "all";
@@ -157,11 +155,10 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
             sortable: true,
             width: 110,
             render: (row) => {
-              const price = resolvedPrice(row);
-              // undefined means still being looked up, null means asked and
-              // nothing traded. Neither is a reason to read the row as cheap.
-              if (price === undefined) return <Loader size="xs" color="gray.6" />;
-              if (price === null)
+              const price = row.properties?.price;
+              // Never fetched on demand: the figure is whatever the shipped
+              // statistics and the live scraper have already recorded.
+              if (price == null)
                 return (
                   <Tooltip label={useTranslateCommon("datatable_columns.price_unknown")}>
                     <Text c="dimmed">?</Text>
