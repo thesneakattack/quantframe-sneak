@@ -15,7 +15,7 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     sync::{Mutex, OnceLock},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use serde::{Deserialize, Serialize};
@@ -43,11 +43,6 @@ pub const FOUND_TTL_SECS: i64 = 24 * 60 * 60;
 /// daily.
 pub const MISSING_TTL_SECS: i64 = 30 * 24 * 60 * 60;
 
-/// Spacing between requests. warframe.market tolerates a few per second; this
-/// stays well inside that while a page's worth still resolves in a couple of
-/// seconds.
-const REQUEST_SPACING: Duration = Duration::from_millis(150);
-
 /// An item as the market prices it: the same thing can trade at several ranks
 /// or refinements, each its own product.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -58,6 +53,14 @@ pub struct PriceKey {
 }
 
 impl PriceKey {
+    /// The storage key for this product.
+    ///
+    /// Built only from what the market uses to identify the thing being
+    /// traded. Nothing about owning it takes part: no inventory id, no
+    /// `uniqueName`, no owned count. A price is a fact about the item, so it
+    /// has to outlive the inventory that happened to ask for it - selling your
+    /// last copy, re-importing a profile or wiping the inventory entirely must
+    /// leave the figure intact and reusable.
     pub fn id(&self) -> String {
         format!(
             "{}#{}#{}",
@@ -338,7 +341,6 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
         Ok(statistics) => {
             let price = price_from_payload(&statistics, key);
             store.remember(key, price);
-            tokio::time::sleep(REQUEST_SPACING).await;
             price
         }
         Err(e) => {
@@ -367,6 +369,52 @@ mod tests {
             rank,
             variant: variant.map(str::to_string),
         }
+    }
+
+    /// The key is the market's identity for the product and nothing else.
+    ///
+    /// Keying on anything the inventory owns - an id, a `uniqueName`, an owned
+    /// count - would tie a price to a particular sighting of the item, so
+    /// updating or clearing the inventory would orphan every figure already
+    /// paid for. Rank and refinement are included because the market prices
+    /// those separately; they describe the product, not the owning.
+    #[test]
+    fn keys_a_price_on_market_identity_alone() {
+        assert_eq!(
+            PriceKey {
+                wfm_url: "lith_n15_relic".to_string(),
+                rank: None,
+                variant: Some("intact".to_string()),
+            }
+            .id(),
+            "lith_n15_relic#0#intact"
+        );
+        assert_eq!(
+            PriceKey {
+                wfm_url: "arcane_grace".to_string(),
+                rank: Some(5),
+                variant: None,
+            }
+            .id(),
+            "arcane_grace#5#"
+        );
+    }
+
+    /// An unranked item and one explicitly at rank 0 are the same product, and
+    /// must not end up with two entries that each pay for their own request.
+    #[test]
+    fn treats_an_absent_rank_and_rank_zero_as_one_product() {
+        let absent = PriceKey {
+            wfm_url: "an_item".to_string(),
+            rank: None,
+            variant: None,
+        };
+        let zero = PriceKey {
+            wfm_url: "an_item".to_string(),
+            rank: Some(0),
+            variant: None,
+        };
+        assert_eq!(absent.id(), zero.id());
     }
 
     /// Parts and sets carry no discriminator at all, so every bucket counts.
