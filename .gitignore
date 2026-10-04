@@ -45,3 +45,6 @@ build/
 
 # Fork-specific configuration: API endpoint and the AlecaFrame AES key/IV.
 /config.json
+
+# Windows build artifacts pulled down with `gh run download` (see docs/FORK.md)
+/dist-windows/
