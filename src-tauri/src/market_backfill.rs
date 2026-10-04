@@ -15,7 +15,10 @@
 //! known at the moment they are opened; this fills in behind them. Doing it
 //! on demand is what made sorting feel like a hang.
 
+use std::sync::Arc;
 use std::time::Duration;
+
+use tokio::sync::Semaphore;
 
 use utils::{info, LoggerOptions};
 
@@ -41,6 +44,14 @@ const PER_PASS: usize = 100;
 /// other API, applied here by hand because these calls go straight to
 /// `HTTP_CLIENT` rather than through that client and so bypass its limiter.
 const REQUESTS_PER_SECOND: u32 = 3;
+
+/// How many requests may be waiting on a reply at once.
+///
+/// The cadence sets the rate; this only bounds how far replies may fall
+/// behind it. At three a second against a half-second round trip roughly two
+/// are in flight in the steady state, so this is headroom for a latency
+/// spike rather than a target.
+const MAX_IN_FLIGHT: usize = 8;
 
 /// The gap between requests that holds the loop at `per_second`.
 ///
@@ -115,10 +126,37 @@ async fn tick() -> Result<usize, utils::Error> {
     }
 
     let wanted = due.len();
-    let spacing = request_spacing(REQUESTS_PER_SECOND);
+
+    // Issued on a fixed cadence rather than one after another. Sequentially a
+    // request costs its round trip *plus* the gap, so warframe.market's ~500ms
+    // latency capped the loop near 1.2/s however small the gap was set. Firing
+    // on the clock and letting replies overlap makes the ceiling the thing
+    // that actually limits the rate.
+    let mut cadence = tokio::time::interval(request_spacing(REQUESTS_PER_SECOND));
+    // A slow reply must not earn back the time it cost by firing a burst of
+    // catch-up requests, which is exactly when the endpoint is least able to
+    // take them.
+    cadence.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+    let in_flight = Arc::new(Semaphore::new(MAX_IN_FLIGHT));
+    let mut issued = Vec::with_capacity(wanted);
     for key in due {
-        store.refresh(&key).await;
-        tokio::time::sleep(spacing).await;
+        cadence.tick().await;
+        // Back-pressure: if replies stop coming back the permits run out and
+        // the cadence stalls with them, rather than piling requests onto an
+        // endpoint already struggling.
+        let Ok(permit) = in_flight.clone().acquire_owned().await else {
+            break;
+        };
+        issued.push(tokio::spawn(async move {
+            MarketPriceStore::get().refresh(&key).await;
+            drop(permit);
+        }));
+    }
+    for task in issued {
+        // One panicked fetch must not abandon the rest of the pass, nor the
+        // flush that makes the batch durable.
+        let _ = task.await;
     }
     store.flush();
     info(
