@@ -1,3 +1,4 @@
+use crate::config::KeyBytes;
 use crate::{utils::modules::states, wf_inventory::WarframeRootObject};
 use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, KeyIvInit};
 type DecryptThingy = cbc::Decryptor<aes::Aes128>;
@@ -216,12 +217,18 @@ fn parse_hex16(value: &str) -> Option<[u8; 16]> {
     Some(out)
 }
 
-fn env_or_setting(env: &str, setting: &str) -> Option<[u8; 16]> {
+/// One key, from the environment if it is set there and from `config.json`
+/// otherwise.
+///
+/// The environment carries hex because that is all an environment variable can
+/// carry; the config file carries the bytes themselves, so that the thing in
+/// the file is the thing the cipher uses rather than an encoding of it.
+fn env_or_config(env: &str, configured: Option<&KeyBytes>) -> Option<[u8; 16]> {
     std::env::var(env)
         .ok()
         .as_deref()
         .and_then(parse_hex16)
-        .or_else(|| parse_hex16(setting))
+        .or_else(|| configured.and_then(KeyBytes::resolve))
 }
 
 /// Key and IV from local configuration, or None to fall back to the API.
@@ -236,14 +243,8 @@ fn env_or_setting(env: &str, setting: &str) -> Option<[u8; 16]> {
 /// the 403 it was meant to avoid.
 fn local_decrypt_keys() -> Option<([u8; 16], [u8; 16])> {
     let config = crate::config::get();
-    let key = env_or_setting(
-        DECRYPT_KEY_ENV,
-        config.wf_decrypt_key.as_deref().unwrap_or_default(),
-    );
-    let iv = env_or_setting(
-        DECRYPT_IV_ENV,
-        config.wf_decrypt_iv.as_deref().unwrap_or_default(),
-    );
+    let key = env_or_config(DECRYPT_KEY_ENV, config.wf_decrypt_key.as_ref());
+    let iv = env_or_config(DECRYPT_IV_ENV, config.wf_decrypt_iv.as_ref());
     match (key, iv) {
         (Some(key), Some(iv)) => Some((key, iv)),
         (None, None) => None,
@@ -251,7 +252,8 @@ fn local_decrypt_keys() -> Option<([u8; 16], [u8; 16])> {
             warning(
                 "DecryptLastData:LocalKeys",
                 "Only one of the decryption key and IV is set (or one is not 32 hex \
-                 characters); ignoring both and falling back to the API",
+                 characters, or the configured bytes are not sixteen); ignoring both and \
+                 falling back to the API",
                 &LoggerOptions::default(),
             );
             None

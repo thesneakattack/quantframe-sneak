@@ -264,20 +264,27 @@ appear in [Sainan/warframe-api-helper](https://github.com/Sainan/warframe-api-he
 
 Two ways to use them.
 
-**Let the app decrypt (recommended).** Set both values, 32 hex characters each,
-and the AlecaFrame source stops calling the API entirely:
+**Let the app decrypt (recommended).** Set both values and the AlecaFrame
+source stops calling the API entirely. Each is the sixteen byte values of the
+key, not a hex string, so what is in the file is what the cipher uses:
 
 ```jsonc
 // config.json, in the project root (gitignored)
 {
-  "wf_decrypt_key": "...32 hex chars...",
-  "wf_decrypt_iv":  "...32 hex chars..."
+  "wf_decrypt_key": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "wf_decrypt_iv":  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 }
 ```
 
+A 32-character hex string is still accepted in either field, so an older
+`config.json` keeps working; the app decodes it on load. Anything that is not
+sixteen bytes is refused rather than padded.
+
 or, taking precedence over those, the `WF_DECRYPT_KEY` and `WF_DECRYPT_IV`
-environment variables. `scripts/set-config.py` writes the file for you from
-those same variables, so the values never reach your shell history as literals:
+environment variables, which carry hex because that is all an environment
+variable can carry. `scripts/set-config.py` writes the file for you from those
+same variables - converting the hex to bytes as it goes - so the values never
+reach your shell history as literals:
 
 ```bash
 WF_DECRYPT_KEY=... WF_DECRYPT_IV=... python3 scripts/set-config.py

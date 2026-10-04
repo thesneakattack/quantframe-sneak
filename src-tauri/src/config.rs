@@ -45,11 +45,48 @@ pub struct FileConfig {
     /// for dev builds.
     pub qf_api_url: Option<String>,
 
-    /// AES-128-CBC key and IV, 32 hex characters each, used to decrypt
-    /// AlecaFrame's `lastData.dat` locally. Absent means "ask the API", which
-    /// is the upstream behaviour and returns 403 without the entitlement.
-    pub wf_decrypt_key: Option<String>,
-    pub wf_decrypt_iv: Option<String>,
+    /// AES-128-CBC key and IV used to decrypt AlecaFrame's `lastData.dat`
+    /// locally. Absent means "ask the API", which is the upstream behaviour
+    /// and returns 403 without the entitlement.
+    pub wf_decrypt_key: Option<KeyBytes>,
+    pub wf_decrypt_iv: Option<KeyBytes>,
+}
+
+/// Sixteen key bytes, written either as the bytes themselves or as hex.
+///
+/// The byte list is the honest form: this is an encoding, not a hash, and
+/// writing it as `[76, 69, ...]` makes that plain rather than implying the
+/// value is protected. Hex is still accepted so an existing config keeps
+/// working, and because it is what every published reference uses.
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum KeyBytes {
+    Bytes(Vec<u8>),
+    Hex(String),
+}
+
+impl KeyBytes {
+    /// The sixteen bytes, or None if this is not sixteen bytes' worth.
+    ///
+    /// A wrong-length or malformed key is rejected rather than padded: it
+    /// would decrypt to rubbish, which the parser downstream reports as a
+    /// broken inventory rather than a bad key.
+    pub fn resolve(&self) -> Option<[u8; 16]> {
+        match self {
+            KeyBytes::Bytes(bytes) => bytes.as_slice().try_into().ok(),
+            KeyBytes::Hex(text) => {
+                let text = text.trim();
+                if text.len() != 32 || !text.chars().all(|c| c.is_ascii_hexdigit()) {
+                    return None;
+                }
+                let mut out = [0u8; 16];
+                for (i, byte) in out.iter_mut().enumerate() {
+                    *byte = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).ok()?;
+                }
+                Some(out)
+            }
+        }
+    }
 }
 
 /// Where the config file is, if there is one.
@@ -131,15 +168,58 @@ mod tests {
     use super::{resolve_config_path, FileConfig};
     use std::fs;
 
+    /// The byte list is the form the config is meant to use.
+    #[test]
+    fn reads_a_key_written_as_bytes() {
+        let parsed: FileConfig = serde_json::from_str(
+            r#"{"wf_decrypt_key":[76,69,79,45,65,76,69,67,9,69,79,45,65,76,69,67]}"#,
+        )
+        .expect("should parse");
+        assert_eq!(
+            parsed.wf_decrypt_key.unwrap().resolve(),
+            Some([76, 69, 79, 45, 65, 76, 69, 67, 9, 69, 79, 45, 65, 76, 69, 67])
+        );
+    }
+
+    /// Hex still works, so a config written before this keeps running.
+    #[test]
+    fn still_reads_a_key_written_as_hex() {
+        let parsed: FileConfig =
+            serde_json::from_str(r#"{"wf_decrypt_key":"000102030405060708090a0b0c0d0e0f"}"#)
+                .expect("should parse");
+        assert_eq!(
+            parsed.wf_decrypt_key.unwrap().resolve(),
+            Some([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        );
+    }
+
+    /// Anything that is not sixteen bytes is refused rather than padded; a
+    /// wrong key decrypts to rubbish, which surfaces as a broken inventory.
+    #[test]
+    fn refuses_anything_that_is_not_sixteen_bytes() {
+        for bad in [
+            r#"{"wf_decrypt_key":[1,2,3]}"#,
+            r#"{"wf_decrypt_key":"0a1b2c3d"}"#,
+            r#"{"wf_decrypt_key":"0a1b2c3d4e5f60718293a4b5c6d7e8fg"}"#,
+            r#"{"wf_decrypt_key":""}"#,
+        ] {
+            let parsed: FileConfig = serde_json::from_str(bad).expect("should parse");
+            assert!(
+                parsed.wf_decrypt_key.unwrap().resolve().is_none(),
+                "{bad} should have been refused"
+            );
+        }
+    }
+
     #[test]
     fn parses_the_three_fork_settings() {
         let parsed: FileConfig = serde_json::from_str(
-            r#"{"qf_api_url":"http://localhost:6969","wf_decrypt_key":"aa","wf_decrypt_iv":"bb"}"#,
+            r#"{"qf_api_url":"http://localhost:6969","wf_decrypt_key":[1],"wf_decrypt_iv":[2]}"#,
         )
         .expect("should parse");
         assert_eq!(parsed.qf_api_url.as_deref(), Some("http://localhost:6969"));
-        assert_eq!(parsed.wf_decrypt_key.as_deref(), Some("aa"));
-        assert_eq!(parsed.wf_decrypt_iv.as_deref(), Some("bb"));
+        assert!(parsed.wf_decrypt_key.is_some());
+        assert!(parsed.wf_decrypt_iv.is_some());
     }
 
     /// A config holding only one key must not fail the whole file; the others
