@@ -140,8 +140,7 @@ pub fn select_price(statistics: &Value, key: &PriceKey) -> Option<f64> {
     let buckets = statistics.as_array()?;
     let wanted_rank = key.rank.unwrap_or(0);
 
-    let mut total_value = 0.0;
-    let mut total_volume = 0.0;
+    let mut samples: Vec<(f64, f64)> = Vec::new();
     for bucket in buckets {
         match bucket.get("mod_rank").and_then(Value::as_i64) {
             Some(rank) if rank != wanted_rank => continue,
@@ -161,11 +160,54 @@ pub fn select_price(statistics: &Value, key: &PriceKey) -> Option<f64> {
         if volume <= 0.0 {
             continue;
         }
-        total_value += price * volume;
-        total_volume += volume;
+        samples.push((price, volume));
     }
 
+    let ceiling = outlier_ceiling(&samples)?;
+    let (total_value, total_volume) = samples
+        .iter()
+        .filter(|(price, _)| *price <= ceiling)
+        .fold((0.0, 0.0), |(value, volume), (p, v)| {
+            (value + p * v, volume + v)
+        });
+
     (total_volume > 0.0).then(|| total_value / total_volume)
+}
+
+/// Above this multiple of the window's median, a price is noise rather than
+/// market. Deliberately generous: an item that genuinely trades over a wide
+/// range must not be clipped, and only figures orders of magnitude away are
+/// being excluded.
+const OUTLIER_FACTOR: f64 = 20.0;
+
+/// The highest price still treated as a real trade.
+///
+/// warframe.market carries joke listings, and volume weighting is no defence
+/// against them in a thin market: a 90 day window for a 5p mod may hold ten
+/// trades, so one "69420" sale among them is a tenth of the weight and prices
+/// the mod at 4962p. The median is unmoved by a single absurd entry, so it is
+/// what the ceiling is measured from.
+///
+/// With only two samples the median sits between them and nothing can be
+/// identified as the outlier - which is correct, because with two points there
+/// is no way to tell a joke from a real move.
+fn outlier_ceiling(samples: &[(f64, f64)]) -> Option<f64> {
+    if samples.is_empty() {
+        return None;
+    }
+    let mut prices: Vec<f64> = samples.iter().map(|(price, _)| *price).collect();
+    prices.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let middle = prices.len() / 2;
+    let median = if prices.len().is_multiple_of(2) {
+        (prices[middle - 1] + prices[middle]) / 2.0
+    } else {
+        prices[middle]
+    };
+    // A median of zero would make the ceiling zero and discard everything.
+    if median <= 0.0 {
+        return Some(f64::INFINITY);
+    }
+    Some(median * OUTLIER_FACTOR)
 }
 
 /// Choose what to refresh next, most valuable first.
@@ -473,6 +515,33 @@ mod tests {
             Some(45.0)
         );
         assert_eq!(select_price(&stats, &key(None, None)), None);
+    }
+
+    /// warframe.market carries joke listings - a real 90 day window for
+    /// Magazine Warp, a mod worth about 5p, contains a single "69420" sale.
+    /// Volume weighting is no defence in a thin market where every bucket
+    /// holds one trade, so that one entry priced the mod at 4962p and sent it
+    /// to the top of the "most valuable" sort.
+    #[test]
+    fn discards_a_bucket_priced_absurdly_above_the_rest() {
+        let mut buckets: Vec<serde_json::Value> = (0..9)
+            .map(|_| json!({"avg_price": 5.0, "volume": 1}))
+            .collect();
+        buckets.push(json!({"avg_price": 69420.0, "volume": 1}));
+        let stats = serde_json::Value::Array(buckets);
+        assert_eq!(select_price(&stats, &key(None, None)), Some(5.0));
+    }
+
+    /// An item that genuinely trades over a wide range is not an outlier, and
+    /// clipping it would understate what it is worth. Only prices orders of
+    /// magnitude away from the rest are treated as noise.
+    #[test]
+    fn keeps_a_wide_but_believable_spread() {
+        let stats = json!([
+            {"avg_price": 10.0, "volume": 9},
+            {"avg_price": 100.0, "volume": 1},
+        ]);
+        assert_eq!(select_price(&stats, &key(None, None)), Some(19.0));
     }
 
     #[test]
