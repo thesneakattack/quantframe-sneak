@@ -17,6 +17,7 @@ import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
 import { InventoryInfoAction } from "../../InfoAction";
+import { RefreshPriceAction } from "../../RefreshPriceAction";
 
 interface PartsPanelProps {
   isActive: boolean;
@@ -218,10 +219,11 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
           {
             accessor: "actions",
             title: useTranslateCommon("datatable_columns.actions.title"),
-            width: 110,
+            width: 140,
             render: (row) => (
               <Group gap={2} wrap="nowrap">
               <InventoryInfoAction wfmUrl={row.wfm_url} subType={row.sub_type} />
+              <RefreshPriceAction wfmUrl={row.wfm_url} subType={row.sub_type} onRefreshed={refetchQueries} />
               <ActionWithTooltip
                 icon={faAdd}
                 color={row.properties?.is_in_stock ? "var(--mantine-color-green-6)" : "var(--mantine-color-red-6)"}

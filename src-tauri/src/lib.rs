@@ -395,6 +395,7 @@ pub fn run() {
             commands::wf_inventory::wf_inventory_get_relics,
             commands::wf_inventory::wf_inventory_last_updated,
             commands::wf_inventory::wf_inventory_item_details,
+            commands::wf_inventory::wf_inventory_refresh_price,
             commands::wf_inventory::wf_inventory_get_arcanes,
             commands::wf_inventory::wf_inventory_get_syndicates,
             commands::wf_inventory::wf_inventory_update,

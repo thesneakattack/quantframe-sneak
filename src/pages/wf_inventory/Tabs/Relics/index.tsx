@@ -16,6 +16,7 @@ import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
 import { InventoryInfoAction } from "../../InfoAction";
+import { RefreshPriceAction } from "../../RefreshPriceAction";
 
 interface RelicsPanelProps {
   isActive: boolean;
@@ -132,6 +133,7 @@ export const RelicsPanel = ({ isActive }: RelicsPanelProps) => {
                   </Text>
                   <Price value={tier.price} unknownLabel={priceUnknown} />
                   <InventoryInfoAction wfmUrl={record.wfm_url} subType={{ variant: tier.variant }} />
+                  <RefreshPriceAction wfmUrl={record.wfm_url} subType={{ variant: tier.variant }} onRefreshed={refetchQueries} />
                   <ActionWithTooltip
                     icon={faAdd}
                     color="var(--mantine-color-blue-6)"

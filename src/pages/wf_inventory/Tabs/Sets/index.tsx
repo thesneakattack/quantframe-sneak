@@ -17,6 +17,7 @@ import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
 import { InventoryInfoAction } from "../../InfoAction";
+import { RefreshPriceAction } from "../../RefreshPriceAction";
 
 interface SetsPanelProps {
   isActive: boolean;
@@ -220,7 +221,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
             accessor: "price",
             title: useTranslateCommon("datatable_columns.price"),
             sortable: true,
-            width: 110,
+            width: 140,
             render: (row) => {
               const price = row.properties?.price;
               // Never fetched on demand: the figure is whatever the shipped
@@ -250,6 +251,7 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
               // which component to hunt for next.
               <Box>
                 <InventoryInfoAction wfmUrl={row.wfm_url} subType={row.sub_type} />
+                <RefreshPriceAction wfmUrl={row.wfm_url} subType={row.sub_type} onRefreshed={refetchQueries} />
                 {row.complete_copies > 0 && (
                   <ActionWithTooltip
                     icon={faAdd}

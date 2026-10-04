@@ -47,6 +47,13 @@ export class WfInventoryModule {
       subType,
     });
   }
+  async refreshPrice(wfmUrl: string, subType?: TauriTypes.SubType, maxRank?: number | null): Promise<TauriTypes.WFInvRefreshedPrice> {
+    return await this.client.sendInvoke<TauriTypes.WFInvRefreshedPrice>("wf_inventory_refresh_price", {
+      wfmUrl,
+      subType,
+      maxRank,
+    });
+  }
    update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

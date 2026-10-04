@@ -2936,7 +2936,8 @@
       },
       "last_updated": "Inventory updated {{when}}",
       "last_updated_never": "Inventory not yet loaded",
-      "info_tooltip": "Market info and your trade history for this item"
+      "info_tooltip": "Market info and your trade history for this item",
+      "refresh_price_tooltip": "Re-fetch this item's price from warframe.market now"
     }
   }
 }

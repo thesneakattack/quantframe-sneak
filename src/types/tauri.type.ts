@@ -1014,6 +1014,10 @@ export namespace TauriTypes {
   export type WFInvArcanesControllerGetListData = PaginatedDto & {
     results?: WFInvItemRow[];
   };
+  export interface WFInvRefreshedPrice {
+    price?: number | null;
+    max_rank_price?: number | null;
+  }
   export interface WFInvLastUpdated {
     /** Unix seconds the inventory was last read from its source, or null if never. */
     updated_at?: number | null;

@@ -211,6 +211,48 @@ pub async fn wf_inventory_get_mods(
     Ok(json!(mods))
 }
 
+/// Re-fetch an inventory row's price from warframe.market now.
+///
+/// Prices normally stand for a day, which is right for a background trickle
+/// and wrong when you are looking at a figure you can see is stale or absurd.
+/// This ignores the TTL for one row.
+///
+/// Both figures the row shows are refreshed, because refreshing half of what
+/// is on screen would leave the two columns disagreeing about how current they
+/// are. A row already at its maximum rank resolves to one key and costs one
+/// request rather than the same request twice.
+#[tauri::command]
+pub async fn wf_inventory_refresh_price(
+    wfm_url: String,
+    sub_type: Option<utils::SubType>,
+    max_rank: Option<i64>,
+) -> Result<Value, Error> {
+    let store = crate::market_prices::MarketPriceStore::get();
+    let held = crate::market_prices::PriceKey {
+        wfm_url: wfm_url.clone(),
+        rank: sub_type.as_ref().and_then(|s| s.rank),
+        variant: sub_type.as_ref().and_then(|s| s.variant.clone()),
+    };
+    let price = store.refresh(&held).await;
+
+    let maxed = max_rank
+        .filter(|rank| *rank > 0)
+        .map(|rank| crate::market_prices::PriceKey {
+            wfm_url,
+            rank: Some(rank),
+            variant: sub_type.as_ref().and_then(|s| s.variant.clone()),
+        });
+    let max_rank_price = match maxed {
+        Some(key) if key.id() != held.id() => store.refresh(&key).await,
+        // Already maxed: one product, one figure, one request.
+        Some(_) => price,
+        None => None,
+    };
+
+    store.flush();
+    Ok(json!({ "price": price, "max_rank_price": max_rank_price }))
+}
+
 /// The market panel for an inventory row.
 ///
 /// Reuses `populate_item_market_properties`, the same function behind the
