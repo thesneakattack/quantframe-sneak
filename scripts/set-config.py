@@ -6,6 +6,14 @@ history or into the repository. config.json is gitignored.
     WF_DECRYPT_KEY=... WF_DECRYPT_IV=... python3 scripts/set-config.py
     QF_API_URL=http://localhost:6969 python3 scripts/set-config.py
 
+An installed Windows build has no project root to find config.json in, so it
+reads one from its app-data directory instead. Copy the file there with:
+
+    python3 scripts/set-config.py --install
+
+Override the detected Windows profile with LOCALAPPDATA_WSL if it picks the
+wrong one.
+
 The keys are given as 32 hex characters, the way every reference writes them,
 and stored as the sixteen byte values they stand for - so what is in the file
 is what the cipher uses rather than an encoding of it.
@@ -15,10 +23,50 @@ Only the variables you set are written; the rest of config.json is preserved.
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATH = os.path.join(HERE, "config.json")
+
+APP_ID = "dev.thesneakattack.quantframe"
+
+
+def local_appdata():
+    """%LOCALAPPDATA% as seen from WSL, the way seed-from-upstream.sh finds it."""
+    override = os.environ.get("LOCALAPPDATA_WSL")
+    if override:
+        return override
+    try:
+        user = subprocess.run(
+            ["cmd.exe", "/c", "echo %USERNAME%"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        user = ""
+    return os.path.join("/mnt/c/Users", user or os.environ.get("USER", ""), "AppData", "Local")
+
+
+def install():
+    """Put config.json where an installed build will look for it."""
+    if not os.path.exists(PATH):
+        sys.exit(f"No {PATH} to install. Write one first (see --help).")
+    target_dir = os.path.join(local_appdata(), APP_ID)
+    if not os.path.isdir(target_dir):
+        sys.exit(
+            f"{target_dir} does not exist.\n"
+            "Install and run the app once so it creates its data directory, "
+            "or set LOCALAPPDATA_WSL if the Windows profile was detected wrongly."
+        )
+    target = os.path.join(target_dir, "config.json")
+    shutil.copyfile(PATH, target)
+    print(f"  ok    {target}")
+
+
+if "--install" in sys.argv:
+    install()
+    raise SystemExit(0)
 
 KEY_FIELDS = ("wf_decrypt_key", "wf_decrypt_iv")
 ENV = {

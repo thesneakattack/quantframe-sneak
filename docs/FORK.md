@@ -138,11 +138,16 @@ directory — the same folder as `settings.json` and `quantframeV2.sqlite`:
 %LOCALAPPDATA%\dev.thesneakattack.quantframe\config.json
 ```
 
-Copy your `config.json` there after installing, or the AlecaFrame source falls
-back to the API for the decryption keys and gets the 403 the local keys exist
-to avoid — the inventory then never loads. A checkout's `config.json` still
-wins when you run from source, and `QF_CONFIG=/path/to/config.json` overrides
-both.
+Put it there with:
+
+```bash
+python3 scripts/set-config.py --install
+```
+
+Without it the AlecaFrame source falls back to the API for the decryption keys
+and gets the 403 the local keys exist to avoid — the inventory then never
+loads. A checkout's `config.json` still wins when you run from source, and
+`QF_CONFIG=/path/to/config.json` overrides both.
 
 This is safe despite `settings.json` living in the same directory and being
 re-seeded from upstream: `scripts/seed-from-upstream.sh` copies a fixed list of
