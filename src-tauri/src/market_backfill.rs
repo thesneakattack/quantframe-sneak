@@ -15,6 +15,7 @@
 //! known at the moment they are opened; this fills in behind them. Doing it
 //! on demand is what made sorting feel like a hang.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -23,7 +24,7 @@ use tokio::sync::Semaphore;
 use utils::{info, LoggerOptions};
 
 use crate::market_prices::{MarketPriceStore, PriceKey};
-use crate::wf_inventory::modules::item::priced_rows;
+use crate::wf_inventory::modules::item::{max_rank_key, priced_rows, with_max_rank_prices};
 
 static COMPONENT: &str = "MarketBackfill";
 
@@ -181,12 +182,34 @@ fn inventory_candidates() -> Result<Option<Vec<(PriceKey, Option<f64>)>>, utils:
     // Priced copies, not the bare snapshot rows: the snapshot deliberately
     // holds no prices, and value is what the ordering turns on.
     let parts = priced_rows(&rows.parts)?;
-    let mods = priced_rows(&rows.mods)?;
+    let relics = priced_rows(&rows.relics)?;
+    // The rankable tabs also show what the item is worth maxed, so these carry
+    // that second figure for the ordering below.
+    let mods = with_max_rank_prices(priced_rows(&rows.mods)?)?;
+    let arcanes = with_max_rank_prices(priced_rows(&rows.arcanes)?)?;
     let sets = priced_rows(&rows.sets.iter().map(|s| s.base.clone()).collect::<Vec<_>>())?;
 
+    // Every tab, or a tab's rows silently stop being refreshed - which is what
+    // happened when relics and arcanes were split out of parts and mods.
+    let owned = parts
+        .iter()
+        .chain(relics.iter())
+        .chain(mods.iter())
+        .chain(arcanes.iter())
+        .chain(sets.iter());
+
+    // A row already at its maximum rank yields the same key twice, and two
+    // requests for one product in a batch is budget spent for nothing.
+    let mut seen = HashSet::new();
     let mut candidates = Vec::new();
-    for row in parts.iter().chain(mods.iter()).chain(sets.iter()) {
-        candidates.push((
+    let mut push = |key: PriceKey, value: Option<f64>| {
+        if seen.insert(key.id()) {
+            candidates.push((key, value));
+        }
+    };
+
+    for row in owned {
+        push(
             PriceKey {
                 wfm_url: row.wfm_url.clone(),
                 rank: row.sub_type.as_ref().and_then(|s| s.rank),
@@ -194,7 +217,18 @@ fn inventory_candidates() -> Result<Option<Vec<(PriceKey, Option<f64>)>>, utils:
             },
             row.properties
                 .get_property_value::<Option<f64>>("price", None),
-        ));
+        );
+    }
+
+    // What a mod sells for maxed is a different product from what the copy you
+    // hold sells for, so it has its own price and must be fetched to show.
+    for row in mods.iter().chain(arcanes.iter()) {
+        if let Some(key) = max_rank_key(row) {
+            let value = row
+                .properties
+                .get_property_value::<Option<f64>>("max_rank_price", None);
+            push(key, value);
+        }
     }
     Ok(Some(candidates))
 }

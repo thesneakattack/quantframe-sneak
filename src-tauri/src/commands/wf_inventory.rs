@@ -5,8 +5,12 @@ use serde_json::{json, Value};
 use service::{StockItemQuery, StockRivenQuery};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
-use utils::Error;
+use utils::{Error, OperationSet};
+use wf_market::enums::OrderType;
 
+use crate::app::AppState;
+use crate::cache::client::CacheState;
+use crate::helper;
 use crate::wf_inventory::WFInventoryState;
 use crate::wf_inventory::WFItemPaginationDto;
 use crate::{track_event, DATABASE};
@@ -205,6 +209,59 @@ pub async fn wf_inventory_get_mods(
         item.properties.set_property_value("is_in_stock", in_stock);
     }
     Ok(json!(mods))
+}
+
+/// The market panel for an inventory row.
+///
+/// Reuses `populate_item_market_properties`, the same function behind the
+/// Stock tab's info button, so the panel is that data rather than a second
+/// implementation of it that could drift.
+///
+/// Deliberately without `ProfitabilityInfo`. Profit is computed from what you
+/// paid and what you listed at, and an item you merely own has neither, so the
+/// panel would report a margin measured against a purchase price of zero. A
+/// missing section is better than a confidently wrong number.
+#[tauri::command]
+pub async fn wf_inventory_item_details(
+    wfm_url: String,
+    sub_type: Option<utils::SubType>,
+    cache: tauri::State<'_, Mutex<CacheState>>,
+    app: tauri::State<'_, Mutex<AppState>>,
+) -> Result<entity::stock_item::Model, Error> {
+    let cache = cache.lock()?.clone();
+    let app = app.lock()?.clone();
+    let item = cache.tradable_item().get_by(&wfm_url)?;
+
+    // A stock record shape with none of a stock record's claims: no id, no
+    // purchase price, no listing. It is a carrier for the market properties,
+    // which is what the modal renders, and nothing writes it back.
+    let mut model = entity::stock_item::Model::new(
+        item.wfm_id.clone(),
+        item.wfm_url.clone(),
+        item.name.clone(),
+        item.unique_name.clone(),
+        sub_type.clone(),
+        0,
+        0,
+        false,
+        Default::default(),
+    );
+    helper::populate_item_market_properties(
+        &mut model.properties,
+        &wfm_url,
+        sub_type,
+        0,
+        None,
+        OperationSet::from(vec![
+            "MarketInfo".to_string(),
+            "TransactionInfo".to_string(),
+        ]),
+        OrderType::Sell,
+        &cache,
+        &app.wfm_client,
+    )
+    .await?;
+    Ok(model)
 }
 
 #[tauri::command]

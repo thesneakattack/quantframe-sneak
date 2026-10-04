@@ -15,6 +15,7 @@ import classes from "../../WFInventory.module.css";
 import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
+import { InventoryInfoAction } from "../../InfoAction";
 
 interface RelicsPanelProps {
   isActive: boolean;
@@ -130,6 +131,7 @@ export const RelicsPanel = ({ isActive }: RelicsPanelProps) => {
                     {tier.owned}
                   </Text>
                   <Price value={tier.price} unknownLabel={priceUnknown} />
+                  <InventoryInfoAction wfmUrl={record.wfm_url} subType={{ variant: tier.variant }} />
                   <ActionWithTooltip
                     icon={faAdd}
                     color="var(--mantine-color-blue-6)"

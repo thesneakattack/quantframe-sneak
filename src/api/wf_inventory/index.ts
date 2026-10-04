@@ -41,6 +41,12 @@ export class WfInventoryModule {
   async getLastUpdated(): Promise<TauriTypes.WFInvLastUpdated> {
     return await this.client.sendInvoke<TauriTypes.WFInvLastUpdated>("wf_inventory_last_updated");
   }
+  async getItemDetails(wfmUrl: string, subType?: TauriTypes.SubType): Promise<TauriTypes.StockItem> {
+    return await this.client.sendInvoke<TauriTypes.StockItem>("wf_inventory_item_details", {
+      wfmUrl,
+      subType,
+    });
+  }
    update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

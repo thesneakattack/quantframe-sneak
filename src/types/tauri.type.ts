@@ -1000,6 +1000,9 @@ export namespace TauriTypes {
     max_rank?: number | null;
     /** warframe.market moving average, or null when the item has no price data. */
     price?: number | null;
+    /** What the item is worth at its maximum rank - a different market product
+     *  from the copy you hold. Null when unpriced, absent when unrankable. */
+    max_rank_price?: number | null;
   };
   export type WFInvItemRow = WFInvItemBase<WFInvItemRowProperties>;
   export type WFInvPartsControllerGetListData = PaginatedDto & {

@@ -16,6 +16,7 @@ import classes from "../../WFInventory.module.css";
 import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
+import { InventoryInfoAction } from "../../InfoAction";
 
 interface ArcanesPanelProps {
   isActive: boolean;
@@ -76,7 +77,7 @@ export const ArcanesPanel = ({ isActive }: ArcanesPanelProps) => {
         filter={
           <Group gap="md" align="flex-end">
             <SortPriority
-              columns={[{ value: "name", label: useTranslateCommon("item_name.title") }, { value: "quantity", label: useTranslateDataGridColumns("owned") }, { value: "rank", label: useTranslate("filters.ranked") }, { value: "price", label: useTranslateCommon("datatable_columns.price") }]}
+              columns={[{ value: "name", label: useTranslateCommon("item_name.title") }, { value: "quantity", label: useTranslateDataGridColumns("owned") }, { value: "rank", label: useTranslate("filters.ranked") }, { value: "price", label: useTranslateCommon("datatable_columns.price") }, { value: "max_rank_price", label: useTranslateDataGridColumns("max_rank_price") }]}
               value={sorts}
               onChange={(next) => setQueryData((prev) => ({ ...prev, page: 1, sorts: next }))}
             />
@@ -214,10 +215,39 @@ export const ArcanesPanel = ({ isActive }: ArcanesPanelProps) => {
             },
           },
           {
+            accessor: "max_rank_price",
+            title: useTranslateDataGridColumns("max_rank_price"),
+            sortable: true,
+            width: 110,
+            render: (row) => {
+              const price = row.properties?.max_rank_price;
+              const maxRank = row.properties?.max_rank;
+              // An item with no ranks has no separate maxed product, so there
+              // is nothing to show rather than an unknown to chase.
+              if (maxRank == null || maxRank <= 0) return <Text c="dimmed">-</Text>;
+              if (price == null)
+                return (
+                  <Tooltip label={useTranslateCommon("datatable_columns.price_unknown")}>
+                    <Text c="dimmed">?</Text>
+                  </Tooltip>
+                );
+              return (
+                <Group gap={4}>
+                  <NumberFormatter value={Math.round(price)} thousandSeparator="." decimalSeparator="," />
+                  <Text c="dimmed" size="xs">
+                    p
+                  </Text>
+                </Group>
+              );
+            },
+          },
+          {
             accessor: "actions",
             title: useTranslateCommon("datatable_columns.actions.title"),
-            width: 80,
+            width: 110,
             render: (row) => (
+              <Group gap={2} wrap="nowrap">
+              <InventoryInfoAction wfmUrl={row.wfm_url} subType={row.sub_type} />
               <ActionWithTooltip
                 icon={faAdd}
                 color={row.properties?.is_in_stock ? "var(--mantine-color-green-6)" : "var(--mantine-color-red-6)"}
@@ -226,6 +256,7 @@ export const ArcanesPanel = ({ isActive }: ArcanesPanelProps) => {
                 tooltip={useTranslate(`stock_status.${row.properties?.is_in_stock ? "found" : "not_found"}`)}
                 onClick={() => OpenAddToStockModal(row)}
               />
+              </Group>
             ),
           },
         ]}

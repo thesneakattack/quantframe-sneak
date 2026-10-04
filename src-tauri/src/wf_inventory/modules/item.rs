@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use entity::{dto::PaginatedResult, enums::FieldChange};
-use utils::Error;
+use utils::{Error, SubType};
 
 use crate::{
     cache::{
@@ -174,7 +174,7 @@ impl ItemModule {
         query: WFItemPaginationDto,
     ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
         let rows = self.client.upgrade().unwrap().rows()?;
-        let mut items = priced_rows(&rows.mods)?;
+        let mut items = with_max_rank_prices(priced_rows(&rows.mods)?)?;
 
         let rank_filter = match &query.properties {
             FieldChange::Value(properties) => {
@@ -203,7 +203,7 @@ impl ItemModule {
         query: WFItemPaginationDto,
     ) -> Result<PaginatedResult<WFInvItemBase>, Error> {
         let rows = self.client.upgrade().unwrap().rows()?;
-        let mut items = priced_rows(&rows.arcanes)?;
+        let mut items = with_max_rank_prices(priced_rows(&rows.arcanes)?)?;
 
         let rank_filter = match &query.properties {
             FieldChange::Value(properties) => {
@@ -273,6 +273,60 @@ pub fn apply_common_filters(items: &mut Vec<WFInvItemBase>, query: &WFItemPagina
     }
 }
 
+/// The market key for this item at its maximum rank, if it has one.
+///
+/// What an unranked mod sells for says little about what it sells for maxed -
+/// that difference is the whole reason to rank one up - so the maxed figure is
+/// a separate product and is looked up as one. A row already at its maximum
+/// resolves to the key it is priced on anyway, so the two columns agree
+/// rather than disagreeing for no reason.
+pub fn max_rank_key(row: &WFInvItemBase) -> Option<crate::market_prices::PriceKey> {
+    let max_rank = row
+        .properties
+        .get_property_value::<Option<i64>>("max_rank", None)?;
+    // Rank 0 is not a separate product from unranked, so there is nothing to
+    // show in a second column.
+    if max_rank <= 0 {
+        return None;
+    }
+    Some(crate::market_prices::PriceKey {
+        wfm_url: row.wfm_url.clone(),
+        rank: Some(max_rank),
+        variant: row.sub_type.as_ref().and_then(|s| s.variant.clone()),
+    })
+}
+
+/// Stamp each row with what the item is worth at its maximum rank.
+///
+/// Separate from `priced_rows` because only the rankable tabs want it: a part
+/// or a set has no maximum rank, and looking one up for them would be work
+/// spent to produce nothing.
+pub fn with_max_rank_prices(rows: Vec<WFInvItemBase>) -> Result<Vec<WFInvItemBase>, Error> {
+    let cache = states::cache_client()?;
+    let statistics = build_price_index(&cache.item_price().get_items()?);
+    let live = crate::market_prices::MarketPriceStore::get().all_prices();
+
+    Ok(rows
+        .into_iter()
+        .map(|mut row| {
+            let price = max_rank_key(&row).and_then(|key| {
+                lookup_price(
+                    &statistics,
+                    &key.wfm_url,
+                    Some(SubType {
+                        rank: key.rank,
+                        variant: key.variant.clone(),
+                        ..Default::default()
+                    }),
+                )
+                .or_else(|| live.get(&key.id()).copied())
+            });
+            row.properties.set_property_value("max_rank_price", price);
+            row
+        })
+        .collect())
+}
+
 /// Copy the snapshot rows and stamp each with the price known right now.
 ///
 /// Prices are deliberately not baked into the snapshot: the live scraper
@@ -306,6 +360,9 @@ fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
         "quantity" => SortValue::Num(item.quantity as f64),
         "rank" => SortValue::Num(item.sub_type.as_ref().and_then(|s| s.rank).unwrap_or(0) as f64),
         "price" => SortValue::MaybeNum(item.properties.get_property_value("price", None)),
+        "max_rank_price" => {
+            SortValue::MaybeNum(item.properties.get_property_value("max_rank_price", None))
+        }
         _ => SortValue::Text(item.name.clone()),
     }
 }
@@ -313,12 +370,14 @@ fn row_value(item: &WFInvItemBase, column: &str) -> SortValue {
 #[cfg(test)]
 mod tests {
     use super::{
-        matches_query, meets_min_owned, meets_min_price, merge_rank_rows, owned_counts,
-        owned_counts_where, passes_rank_filter, rank_groups, variant_of,
+        matches_query, max_rank_key, meets_min_owned, meets_min_price, merge_rank_rows,
+        owned_counts, owned_counts_where, passes_rank_filter, rank_groups, variant_of,
     };
     use crate::cache::{CacheTradableItem, SubType as CacheSubType};
+    use crate::wf_inventory::item_base::WFInvItemBase;
     use crate::wf_inventory::WFInvItemRaw;
     use std::collections::HashMap;
+    use utils::SubType;
 
     fn raw(unique_name: &str, quantity: i64) -> WFInvItemRaw {
         WFInvItemRaw {
@@ -527,6 +586,45 @@ mod tests {
         merged.sort();
         assert_eq!(merged.len(), 2);
         let _ = HashMap::<String, i64>::new();
+    }
+
+    fn ranked_row(max_rank: Option<i64>, rank: Option<i64>) -> WFInvItemBase {
+        let mut row = WFInvItemBase {
+            wfm_url: "serration".to_string(),
+            sub_type: rank.map(|r| SubType {
+                rank: Some(r),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        row.properties.set_property_value("max_rank", max_rank);
+        row
+    }
+
+    /// What an unranked mod is worth says little about what it is worth
+    /// maxed - the whole reason to rank one up is the difference - so the
+    /// max-rank figure is looked up as its own product.
+    #[test]
+    fn looks_up_the_maximum_rank_as_a_separate_product() {
+        let key = max_rank_key(&ranked_row(Some(10), None)).unwrap();
+        assert_eq!(key.wfm_url, "serration");
+        assert_eq!(key.rank, Some(10));
+    }
+
+    /// A row already at its maximum resolves to the same key it is priced on,
+    /// so both columns agree rather than disagreeing for no reason.
+    #[test]
+    fn resolves_a_maxed_row_to_its_own_key() {
+        let row = ranked_row(Some(10), Some(10));
+        let key = max_rank_key(&row).unwrap();
+        assert_eq!(key.rank, Some(10));
+    }
+
+    /// An item with no ranks has no separate maxed product to price.
+    #[test]
+    fn reports_no_max_rank_key_for_an_unrankable_item() {
+        assert_eq!(max_rank_key(&ranked_row(None, None)), None);
+        assert_eq!(max_rank_key(&ranked_row(Some(0), None)), None);
     }
 
     /// The price column exists to pick out what is worth listing, so the

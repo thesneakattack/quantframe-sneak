@@ -16,6 +16,7 @@ import classes from "../../WFInventory.module.css";
 import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
+import { InventoryInfoAction } from "../../InfoAction";
 
 interface SetsPanelProps {
   isActive: boolean;
@@ -243,11 +244,12 @@ export const SetsPanel = ({ isActive }: SetsPanelProps) => {
           {
             accessor: "actions",
             title: useTranslateCommon("datatable_columns.actions.title"),
-            width: 80,
+            width: 110,
             render: (row) => (
               // Only complete sets can be listed; partials are here to show
               // which component to hunt for next.
               <Box>
+                <InventoryInfoAction wfmUrl={row.wfm_url} subType={row.sub_type} />
                 {row.complete_copies > 0 && (
                   <ActionWithTooltip
                     icon={faAdd}

@@ -16,6 +16,7 @@ import classes from "../../WFInventory.module.css";
 import { useModals } from "./modals";
 import { useMutations } from "./mutations";
 import { useQueries } from "./queries";
+import { InventoryInfoAction } from "../../InfoAction";
 
 interface PartsPanelProps {
   isActive: boolean;
@@ -217,8 +218,10 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
           {
             accessor: "actions",
             title: useTranslateCommon("datatable_columns.actions.title"),
-            width: 80,
+            width: 110,
             render: (row) => (
+              <Group gap={2} wrap="nowrap">
+              <InventoryInfoAction wfmUrl={row.wfm_url} subType={row.sub_type} />
               <ActionWithTooltip
                 icon={faAdd}
                 color={row.properties?.is_in_stock ? "var(--mantine-color-green-6)" : "var(--mantine-color-red-6)"}
@@ -227,6 +230,7 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
                 tooltip={useTranslate(`stock_status.${row.properties?.is_in_stock ? "found" : "not_found"}`)}
                 onClick={() => OpenAddToStockModal(row)}
               />
+              </Group>
             ),
           },
         ]}
