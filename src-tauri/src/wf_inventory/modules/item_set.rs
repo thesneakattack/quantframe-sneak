@@ -59,6 +59,7 @@ impl SetsModule {
                     have: counts.get(&member.unique_name).copied().unwrap_or(0),
                     required: member.required,
                     is_main_blueprint: member.is_main_blueprint,
+                    shared_with: member.shared_with.clone(),
                 })
                 .collect();
 

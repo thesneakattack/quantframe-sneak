@@ -2886,7 +2886,8 @@
           "filters": {
             "complete_only": "Complete sets only",
             "min_price": "Min price"
-          }
+          },
+          "shared_member": "Also counted toward {{sets}} — one copy cannot complete both"
         }
       }
     }

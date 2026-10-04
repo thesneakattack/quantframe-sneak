@@ -1019,6 +1019,8 @@ export namespace TauriTypes {
     have: number;
     required: number;
     is_main_blueprint: boolean;
+    /** Other sets counting this same copy. */
+    shared_with: string[];
   }
   export type WFInvSet = WFInvItemRow & {
     members: WFInvSetMember[];
