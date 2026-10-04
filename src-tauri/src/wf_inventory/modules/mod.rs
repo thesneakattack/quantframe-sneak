@@ -9,3 +9,6 @@ pub use syndicate::*;
 
 pub mod item_set;
 pub use item_set::*;
+
+pub mod relic;
+pub use relic::*;

@@ -6,6 +6,7 @@ import { RivenPanel } from "./Tabs/Rivens";
 import { PartsPanel } from "./Tabs/Parts";
 import { ModsPanel } from "./Tabs/Mods";
 import { SetsPanel } from "./Tabs/Sets";
+import { RelicsPanel } from "./Tabs/Relics";
 import { useState } from "react";
 export default function WfInventoryPage() {
   // Translate general
@@ -18,6 +19,7 @@ export default function WfInventoryPage() {
     { label: useTranslateTabs("parts.title"), component: (isActive: boolean) => <PartsPanel isActive={isActive} />, id: "parts" },
     { label: useTranslateTabs("mods.title"), component: (isActive: boolean) => <ModsPanel isActive={isActive} />, id: "mods" },
     { label: useTranslateTabs("sets.title"), component: (isActive: boolean) => <SetsPanel isActive={isActive} />, id: "sets" },
+    { label: useTranslateTabs("relics.title"), component: (isActive: boolean) => <RelicsPanel isActive={isActive} />, id: "relics" },
   ];
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   return (

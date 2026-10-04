@@ -187,6 +187,25 @@ pub async fn wf_inventory_get_mods(
 }
 
 #[tauri::command]
+pub async fn wf_inventory_get_relics(
+    query: WFItemPaginationDto,
+    wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
+) -> Result<Value, Error> {
+    let wf_inventory = wf_inventory.lock()?.clone();
+    let listed = listed_stock().await?;
+
+    let mut relics = wf_inventory.relics().get_relics(query)?;
+    for relic in relics.results.iter_mut() {
+        let in_stock = listed.has_url(&relic.base.wfm_url);
+        relic
+            .base
+            .properties
+            .set_property_value("is_in_stock", in_stock);
+    }
+    Ok(json!(relics))
+}
+
+#[tauri::command]
 pub async fn wf_inventory_get_sets(
     query: WFItemPaginationDto,
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,

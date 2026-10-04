@@ -7,6 +7,7 @@ use utils::{Error, SubType};
 
 use crate::utils::modules::states;
 use crate::wf_inventory::{
+    is_relic,
     item_base::WFInvItemBase,
     modules::item::{merge_rank_rows, owned_counts, rank_groups, variant_of},
     WFInvItemRaw, WFInvSet, WFInvSetMember, WarframeRootObject,
@@ -27,6 +28,10 @@ use crate::wf_inventory::{
 #[derive(Debug, Default)]
 pub struct InventorySnapshot {
     pub parts: Vec<WFInvItemBase>,
+    /// One row per relic *and refinement*: that is how the inventory stores
+    /// them and how warframe.market prices them. The Relics tab groups them
+    /// for reading, at query time, once prices are known.
+    pub relics: Vec<WFInvItemBase>,
     pub mods: Vec<WFInvItemBase>,
     pub sets: Vec<WFInvSet>,
 }
@@ -43,6 +48,7 @@ impl InventorySnapshot {
         // Parts: the Recipes and MiscItems buckets, kept where the
         // tradable-items cache knows the entry.
         let mut parts: Vec<WFInvItemBase> = Vec::new();
+        let mut relics: Vec<WFInvItemBase> = Vec::new();
         for (unique_name, quantity) in owned_counts(&[&root.recipes, &root.misc_items]) {
             let Ok(item) = tradable.get_by(&unique_name) else {
                 continue;
@@ -87,7 +93,14 @@ impl InventorySnapshot {
                 ),
             );
             row.unique_name = unique_name;
-            parts.push(row);
+            // Relics share the Recipes/MiscItems buckets with parts but are a
+            // different thing to trade: they carry a refinement rather than a
+            // parent set, so they get their own tab rather than diluting Parts.
+            if is_relic(&item.tags) {
+                relics.push(row);
+            } else {
+                parts.push(row);
+            }
         }
 
         // Mods: unranked stacks plus ranked instances grouped by rank.
@@ -179,7 +192,12 @@ impl InventorySnapshot {
             });
         }
 
-        Ok(Self { parts, mods, sets })
+        Ok(Self {
+            parts,
+            relics,
+            mods,
+            sets,
+        })
     }
 }
 

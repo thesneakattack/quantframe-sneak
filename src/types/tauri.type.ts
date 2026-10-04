@@ -1024,6 +1024,20 @@ export namespace TauriTypes {
   export type WFInvSetsControllerGetListData = PaginatedDto & {
     results?: WFInvSet[];
   };
+  export interface WFInvRelicRefinement {
+    /** intact | exceptional | flawless | radiant */
+    variant: string;
+    owned: number;
+    /** warframe.market average for this refinement, or null when unpriced. */
+    price?: number | null;
+  }
+  export type WFInvRelic = WFInvItemRow & {
+    refinements: WFInvRelicRefinement[];
+    total_owned: number;
+  };
+  export type WFInvRelicsControllerGetListData = PaginatedDto & {
+    results?: WFInvRelic[];
+  };
 
   //--------------------------------------------------------------------------------
   //  EE Log

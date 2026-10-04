@@ -2895,6 +2895,20 @@
             "unvaulted_only": "Unvaulted only",
             "mastered_only": "Mastered only"
           }
+        },
+        "relics": {
+          "title": "Relics",
+          "add_refinement": "Add this refinement to stock",
+          "datatable": {
+            "columns": {
+              "owned": "Owned",
+              "refinements": "Refinements",
+              "best_price": "Best"
+            }
+          },
+          "filters": {
+            "min_owned": "Min owned"
+          }
         }
       }
     }

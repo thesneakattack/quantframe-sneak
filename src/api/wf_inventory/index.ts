@@ -28,6 +28,11 @@ export class WfInventoryModule {
       query: this.client.convertToTauriQuery(query),
     });
   }
+  async getRelicsPagination(query: TauriTypes.WFItemControllerGetListParams): Promise<TauriTypes.WFInvRelicsControllerGetListData> {
+    return await this.client.sendInvoke<TauriTypes.WFInvRelicsControllerGetListData>("wf_inventory_get_relics", {
+      query: this.client.convertToTauriQuery(query),
+    });
+  }
    update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

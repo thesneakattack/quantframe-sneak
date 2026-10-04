@@ -14,6 +14,7 @@ pub struct WFInventoryState {
     riven_module: OnceLock<Arc<RivenModule>>,
     syndicate_module: OnceLock<Arc<SyndicateModule>>,
     sets_module: OnceLock<Arc<SetsModule>>,
+    relics_module: OnceLock<Arc<RelicsModule>>,
     /// The derived rows and the fingerprint of the inventory they came from.
     snapshot: Mutex<Option<(u64, Arc<InventorySnapshot>)>>,
 }
@@ -33,6 +34,7 @@ impl WFInventoryState {
             riven_module: OnceLock::new(),
             syndicate_module: OnceLock::new(),
             sets_module: OnceLock::new(),
+            relics_module: OnceLock::new(),
             snapshot: Mutex::new(None),
         });
 
@@ -90,6 +92,15 @@ impl WFInventoryState {
             .get_or_init(|| SyndicateModule::new(self.clone()));
         self.sets_module
             .get_or_init(|| SetsModule::new(self.clone()));
+        self.relics_module
+            .get_or_init(|| RelicsModule::new(self.clone()));
+    }
+
+    pub fn relics(&self) -> Arc<RelicsModule> {
+        self.relics_module
+            .get()
+            .expect("RelicsModule not initialized")
+            .clone()
     }
 
     pub fn item(&self) -> Arc<ItemModule> {
