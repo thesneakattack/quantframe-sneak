@@ -34,14 +34,6 @@ pub const FOUND_TTL_SECS: i64 = 60 * 60;
 /// request budget re-confirming it.
 pub const MISSING_TTL_SECS: i64 = 24 * 60 * 60;
 
-/// Most a single call will fetch in front of the user, so one page view
-/// cannot turn into a flood.
-pub const MAX_PER_CALL: usize = 40;
-
-/// Most a single call will renew in the background. Refreshing is never
-/// urgent - the old price is already on screen - so this stays small.
-pub const MAX_REFRESH_PER_CALL: usize = 10;
-
 /// Spacing between requests. warframe.market tolerates a few per second; this
 /// stays well inside that while a page's worth still resolves in a couple of
 /// seconds.
@@ -75,39 +67,6 @@ pub struct CachedPrice {
     pub price: Option<f64>,
     #[serde(default)]
     pub fetched_at: i64,
-
-    /// The lowest in-game sell order, as seen by the live scraper while it
-    /// was pricing this item. Costs nothing: the scraper has already made the
-    /// request. Defaulted so files written before this existed still load.
-    #[serde(default)]
-    pub live_price: Option<f64>,
-    #[serde(default)]
-    pub live_at: i64,
-}
-
-/// The better of the two observations: whichever was seen more recently.
-///
-/// The live ask is what you would have to match to sell right now, and it is
-/// what the scraper itself lists at, so when it is the newer of the two it is
-/// the more useful answer. The 48 hour average carries the rest.
-pub fn best_price(entry: &CachedPrice) -> Option<f64> {
-    match (entry.price, entry.live_price) {
-        (Some(history), Some(live)) => Some(if entry.live_at >= entry.fetched_at {
-            live
-        } else {
-            history
-        }),
-        (Some(history), None) => Some(history),
-        (None, live) => live,
-    }
-}
-
-/// A live lowest-price reading, or None when there is nothing to read.
-///
-/// An item nobody is selling reports a lowest price of zero. That is an empty
-/// order book, not a free item.
-pub fn live_observation(lowest_price: i64) -> Option<f64> {
-    (lowest_price > 0).then_some(lowest_price as f64)
 }
 
 fn now_secs() -> i64 {
@@ -168,56 +127,6 @@ pub fn select_price(statistics: &Value, key: &PriceKey) -> Option<f64> {
     }
 
     (total_volume > 0.0).then(|| total_value / total_volume)
-}
-
-/// What a resolution call should do with each key it was handed.
-#[derive(Debug, Default)]
-pub struct ResolutionPlan {
-    /// Answers already in memory, served immediately whatever their age.
-    pub serve: HashMap<String, Option<f64>>,
-    /// Never seen before, so the row has nothing to show until we look.
-    pub fetch_now: Vec<PriceKey>,
-    /// Served from memory but past its age; renewed out of the way.
-    pub refresh_later: Vec<PriceKey>,
-}
-
-/// Decide what to serve, what to look up now, and what to renew quietly.
-///
-/// A remembered price is served however old it is. An out-of-date price is
-/// still a far better answer than "unknown": it keeps the row out of "?" and
-/// keeps the minimum-price filter able to judge it, whereas treating staleness
-/// as ignorance would make rows flicker back to unknown and escape the filter.
-/// Only a key never seen before is worth making the user wait for.
-pub fn plan_resolution(
-    keys: Vec<PriceKey>,
-    known: &HashMap<String, CachedPrice>,
-    now: i64,
-) -> ResolutionPlan {
-    let mut plan = ResolutionPlan::default();
-    let mut stale: Vec<(i64, PriceKey)> = Vec::new();
-
-    for key in keys {
-        match known.get(&key.id()) {
-            Some(entry) => {
-                plan.serve.insert(key.id(), best_price(entry));
-                if !is_fresh(entry.fetched_at, now, entry.price.is_some()) {
-                    stale.push((entry.fetched_at, key));
-                }
-            }
-            None if plan.fetch_now.len() < MAX_PER_CALL => plan.fetch_now.push(key),
-            None => {}
-        }
-    }
-
-    // Oldest first, so the prices least likely to still hold are the ones
-    // renewed when only a few slots are available.
-    stale.sort_by_key(|(fetched_at, _)| *fetched_at);
-    plan.refresh_later = stale
-        .into_iter()
-        .take(MAX_REFRESH_PER_CALL)
-        .map(|(_, key)| key)
-        .collect();
-    plan
 }
 
 /// Choose what to refresh next, most valuable first.
@@ -310,22 +219,8 @@ impl MarketPriceStore {
             .lock()
             .unwrap()
             .iter()
-            .filter_map(|(id, entry)| best_price(entry).map(|price| (id.clone(), price)))
+            .filter_map(|(id, entry)| entry.price.map(|price| (id.clone(), price)))
             .collect()
-    }
-
-    /// Record what the live scraper saw while pricing this item.
-    ///
-    /// The scraper has already paid for the request, so this is free market
-    /// data for the inventory tabs - and the freshest available.
-    pub fn record_live(&self, key: &PriceKey, lowest_price: i64) {
-        let Some(live) = live_observation(lowest_price) else {
-            return;
-        };
-        let mut entries = self.entries.lock().unwrap();
-        let entry = entries.entry(key.id()).or_default();
-        entry.live_price = Some(live);
-        entry.live_at = now_secs();
     }
 
     /// What to refresh next, most valuable first.
@@ -343,7 +238,7 @@ impl MarketPriceStore {
         fetch_and_remember(self, key).await
     }
 
-    /// Persist what the scraper has recorded since the last write.
+    /// Write the batch just fetched to disk, so prices survive a restart.
     pub fn flush(&self) {
         self.save();
     }
@@ -403,46 +298,6 @@ async fn fetch_statistics(wfm_url: &str) -> Result<Value, Error> {
         .unwrap_or(Value::Array(vec![])))
 }
 
-/// Resolve prices for the given keys, using what is remembered and asking
-/// warframe.market only for the rest.
-///
-/// A key that cannot be resolved maps to None, which the caller shows as
-/// "unknown" - never as zero, and never as a reason to hide the row.
-pub async fn resolve(keys: Vec<PriceKey>) -> HashMap<String, Option<f64>> {
-    let store = MarketPriceStore::get();
-    let plan = {
-        let entries = store.entries.lock().unwrap();
-        plan_resolution(keys, &entries, now_secs())
-    };
-
-    let mut resolved = plan.serve;
-    for key in plan.fetch_now {
-        let price = fetch_and_remember(store, &key).await;
-        resolved.insert(key.id(), price);
-    }
-
-    // Renewal is never urgent, because the previous answer is already on
-    // screen. Let it run after the response rather than in front of it.
-    if !plan.refresh_later.is_empty() {
-        let stale = plan.refresh_later;
-        tokio::spawn(async move {
-            let store = MarketPriceStore::get();
-            let count = stale.len();
-            for key in stale {
-                fetch_and_remember(store, &key).await;
-            }
-            store.save();
-            info(
-                format!("{}:Refresh", COMPONENT),
-                format!("Renewed {count} prices in the background"),
-                &LoggerOptions::default(),
-            );
-        });
-    }
-
-    resolved
-}
-
 /// Ask warframe.market about one key and remember the answer.
 ///
 /// A request that fails is not remembered, so it is retried next time rather
@@ -468,11 +323,7 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        best_price, is_fresh, live_observation, plan_backfill, plan_resolution, select_price,
-        CachedPrice, PriceKey, FOUND_TTL_SECS, MAX_PER_CALL, MAX_REFRESH_PER_CALL,
-        MISSING_TTL_SECS,
-    };
+    use super::{is_fresh, plan_backfill, select_price, CachedPrice, PriceKey, FOUND_TTL_SECS};
     use serde_json::json;
     use std::collections::HashMap;
 
@@ -554,60 +405,6 @@ mod tests {
         assert_eq!(select_price(&stats, &key(None, None)), None);
     }
 
-    /// The live ask is the number you would have to match to sell right now,
-    /// and it is what the scraper itself lists at, so when it is the newer
-    /// observation it is the better answer.
-    #[test]
-    fn prefers_the_live_ask_when_it_is_the_newer_observation() {
-        let entry = CachedPrice {
-            price: Some(40.0),
-            fetched_at: 100,
-            live_price: Some(31.0),
-            live_at: 200,
-        };
-        assert_eq!(best_price(&entry), Some(31.0));
-    }
-
-    #[test]
-    fn prefers_the_historical_average_when_the_live_ask_is_older() {
-        let entry = CachedPrice {
-            price: Some(40.0),
-            fetched_at: 300,
-            live_price: Some(31.0),
-            live_at: 200,
-        };
-        assert_eq!(best_price(&entry), Some(40.0));
-    }
-
-    /// Either source alone is still an answer.
-    #[test]
-    fn uses_whichever_source_is_present() {
-        let only_live = CachedPrice {
-            price: None,
-            fetched_at: 0,
-            live_price: Some(31.0),
-            live_at: 200,
-        };
-        assert_eq!(best_price(&only_live), Some(31.0));
-
-        let only_history = CachedPrice {
-            price: Some(40.0),
-            fetched_at: 300,
-            live_price: None,
-            live_at: 0,
-        };
-        assert_eq!(best_price(&only_history), Some(40.0));
-    }
-
-    /// An item nobody is selling reports a lowest price of zero. That is an
-    /// empty order book, not a free item, and must never reach the column.
-    #[test]
-    fn an_empty_order_book_is_not_a_price_of_zero() {
-        assert_eq!(live_observation(0), None);
-        assert_eq!(live_observation(-1), None);
-        assert_eq!(live_observation(31), Some(31.0));
-    }
-
     fn candidate(name: &str, value: Option<f64>) -> (PriceKey, Option<f64>) {
         (
             PriceKey {
@@ -684,92 +481,7 @@ mod tests {
     }
 
     fn known(price: Option<f64>, fetched_at: i64) -> CachedPrice {
-        CachedPrice {
-            price,
-            fetched_at,
-            ..Default::default()
-        }
-    }
-
-    /// Never asked about: the row shows "?" until we go and look, so this is
-    /// the only case worth making the user wait for.
-    #[test]
-    fn a_key_never_seen_before_is_fetched_now() {
-        let plan = plan_resolution(vec![key(None, None)], &HashMap::new(), 1_000);
-        assert!(plan.serve.is_empty());
-        assert_eq!(plan.fetch_now.len(), 1);
-        assert!(plan.refresh_later.is_empty());
-    }
-
-    #[test]
-    fn a_fresh_price_is_served_and_left_alone() {
-        let k = key(None, None);
-        let kn = HashMap::from([(k.id(), known(Some(12.0), 1_000))]);
-        let plan = plan_resolution(vec![k.clone()], &kn, 1_000 + 60);
-        assert_eq!(plan.serve.get(&k.id()), Some(&Some(12.0)));
-        assert!(plan.fetch_now.is_empty());
-        assert!(plan.refresh_later.is_empty());
-    }
-
-    /// The point of the whole policy: an old price is still a price. Serving
-    /// it keeps the row out of "?" and keeps the minimum-price filter able to
-    /// judge it, while the refresh happens out of the way.
-    #[test]
-    fn a_stale_price_is_served_from_memory_and_refreshed_in_the_background() {
-        let k = key(None, None);
-        let kn = HashMap::from([(k.id(), known(Some(12.0), 1_000))]);
-        let plan = plan_resolution(vec![k.clone()], &kn, 1_000 + FOUND_TTL_SECS + 1);
-        assert_eq!(plan.serve.get(&k.id()), Some(&Some(12.0)));
-        assert!(plan.fetch_now.is_empty(), "must not make the user wait");
-        assert_eq!(plan.refresh_later.len(), 1);
-    }
-
-    /// A remembered "nothing traded" is also an answer, so it is served
-    /// rather than re-asked in front of the user.
-    #[test]
-    fn a_stale_known_absent_price_is_also_served_rather_than_refetched() {
-        let k = key(None, None);
-        let kn = HashMap::from([(k.id(), known(None, 1_000))]);
-        let plan = plan_resolution(vec![k.clone()], &kn, 1_000 + MISSING_TTL_SECS + 1);
-        assert_eq!(plan.serve.get(&k.id()), Some(&None));
-        assert!(plan.fetch_now.is_empty());
-        assert_eq!(plan.refresh_later.len(), 1);
-    }
-
-    /// One page view cannot turn into a flood, however many rows are new.
-    #[test]
-    fn the_number_fetched_in_front_of_the_user_is_capped() {
-        let keys: Vec<PriceKey> = (0..MAX_PER_CALL + 25)
-            .map(|i| PriceKey {
-                wfm_url: format!("item_{i}"),
-                rank: None,
-                variant: None,
-            })
-            .collect();
-        let plan = plan_resolution(keys, &HashMap::new(), 1_000);
-        assert_eq!(plan.fetch_now.len(), MAX_PER_CALL);
-    }
-
-    /// Background refresh is capped too, and takes the stalest first so the
-    /// oldest prices are the ones that get renewed.
-    #[test]
-    fn background_refresh_is_capped_and_takes_the_stalest_first() {
-        let now = 1_000_000;
-        let mut kn = HashMap::new();
-        let mut keys = Vec::new();
-        for i in 0..(MAX_REFRESH_PER_CALL + 5) {
-            let k = PriceKey {
-                wfm_url: format!("item_{i}"),
-                rank: None,
-                variant: None,
-            };
-            // item_0 is the oldest, item_N the most recent.
-            kn.insert(k.id(), known(Some(5.0), i as i64));
-            keys.push(k);
-        }
-        let plan = plan_resolution(keys, &kn, now);
-        assert_eq!(plan.refresh_later.len(), MAX_REFRESH_PER_CALL);
-        assert_eq!(plan.refresh_later[0].wfm_url, "item_0");
+        CachedPrice { price, fetched_at }
     }
 
     #[test]

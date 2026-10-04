@@ -219,18 +219,6 @@ impl ItemModule {
             // Add Market Info to ItemEntry
             item_entry.apply_market_info(&orders);
 
-            // The orders above are already filtered to in-game sellers, so
-            // their lowest sell price is exactly what the WF Inventory tabs
-            // want and costs no extra request. Hand it over.
-            crate::market_prices::MarketPriceStore::get().record_live(
-                &crate::market_prices::PriceKey {
-                    wfm_url: item_entry.wfm_url.clone(),
-                    rank: item_entry.sub_type.as_ref().and_then(|s| s.rank),
-                    variant: item_entry.sub_type.as_ref().and_then(|s| s.variant.clone()),
-                },
-                item_entry.sell_market_info.lowest_price,
-            );
-
             info(
                 comp("ProcessItem"),
                 format!(

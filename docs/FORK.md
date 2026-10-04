@@ -145,10 +145,9 @@ behaviour matches upstream out of the box.
 
 This makes two things possible that were not before:
 
-- **Run a dev build against the real API.** Useful because some UI is gated on
-  `import.meta.env.DEV` — the WF Inventory panel, for instance, only appears in a
-  dev build. Previously that meant choosing between the panel and a working
-  backend.
+- **Run a dev build against the real API.** Previously a dev build could only
+  talk to `localhost:6969`, so trying anything against real market data meant
+  building in release mode.
 - **Point at a self-hosted API** without touching source. See the
   [self-hosting research](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md);
   the `#[ignore]`d `qf_api` tests already target `localhost:6969`.
@@ -445,7 +444,7 @@ Deliberately deferred, recorded so it stays visible:
 | `clippy::result_large_err` | ~490 | `utils::Error` is 136+ bytes and returned by value from nearly every fallible function. Satisfying it means boxing the error type across every signature in the workspace - a real refactor. Allowed in `src-tauri/Cargo.toml` with this reasoning |
 | `@typescript-eslint/no-explicit-any` | ~600 | `any` is used pervasively. Typing it properly is its own project and wants test coverage first |
 | `react-hooks/rules-of-hooks` | ~455 | One pattern, not 455 defects: every module under `src/api/` is a class whose methods call `useQuery`/`useMutation`. Since the methods are not named `use*`, nothing stops a caller invoking one from an event handler or a conditional - it works only because callers happen to use them during render |
-| Test coverage | - | There are no meaningful tests. Every suite reports 0 passed. `ddev check` verifies that the code compiles, lints and formats cleanly; it does **not** verify that it behaves correctly |
+| Test coverage outside WF Inventory | - | The WF Inventory work added tests as it went and those run in `ddev check`. The rest of the tree still has essentially none, so for everything else `ddev check` verifies that the code compiles, lints and formats cleanly, not that it behaves correctly |
 
 Eight further clippy lints covering design and API shape (`too_many_arguments`,
 `module_inception`, `type_complexity` and similar) are allowed at workspace level
@@ -464,58 +463,3 @@ which need a Quantframe API server on `http://localhost:6969`.
 
 CI (`.github/workflows/pr-build-check.yml`) only builds; it runs no tests, no
 linting and no formatting check. `ddev check` is substantially stricter.
-
-## Activating the updater
-
-The updater is deliberately a stub: registered as a plugin, granted its
-capabilities, but with an empty `pubkey` and an endpoint that 404s. `check()`
-fails and the app treats that as "no update available". To turn it on:
-
-1. Generate a signing keypair — the private key must never be committed:
-
-   ```bash
-   ddev tauri signer generate -w ~/.quantframe-sneak-updater.key
-   ```
-
-2. Put the printed **public** key in `src-tauri/tauri.conf.json` under
-   `plugins.updater.pubkey`.
-
-3. Set `bundle.createUpdaterArtifacts` to `true` in the same file.
-
-4. Add the private key and its password to this repository's GitHub Actions
-   secrets as `TAURI_PRIVATE_KEY` and `TAURI_KEY_PASSWORD`, and restore the
-   `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` env block in
-   `.github/workflows/build.yml`.
-
-The endpoint in `tauri.conf.json` already points at this repository's
-`releases/latest/download/latest.json`, which `tauri-action` produces once
-updater artifacts are enabled. No code changes are needed.
-
-## Research
-
-- [Self-hosting the Quantframe API](superpowers/research/2026-10-03-self-hosting-the-quantframe-api.md)
-  — feasibility study of replacing `api.quantframe.app`. Concludes it is doable
-  incrementally; explains why the two "broken" `qf_api` tests should be kept.
-
-## Inherited problems
-
-These are all pre-existing in the upstream tree, not caused by the fork. They are
-recorded here so nobody re-diagnoses them, and so it is clear why `ddev check`
-treats some things as advisory rather than fatal.
-
-| Problem | Detail |
-| --- | --- |
-| `pnpm lint` does not run | `package.json` defines a `lint` script, but the repo contains no eslint config and does not declare `eslint` as a dependency (8.57.0 only resolves transitively via `@typescript-eslint/*`). Exits 2 on a clean checkout. |
-| The tree is not rustfmt-clean | `cargo fmt --all -- --check` reports diffs across many files. Running `cargo fmt` would produce an enormous, review-hostile commit, so it has been left alone. |
-| The tree is not clippy-clean | `cargo check` alone emits 58 warnings, mostly dead code and unused variables. |
-| Two `qf_api` tests cannot pass | `tests::client::print_token` asserts a real user token is present in the environment; `tests::client::test_cache_extract` expects upstream's development backend on `http://localhost:6969`. Both are environment tests mislabelled as unit tests and fail on any clean checkout. |
-| 26 doctests fail to compile | Doc examples in `src-tauri/utils` (`helper.rs`, `options.rs`, `zip_folder.rs`) reference functions and types without importing them, so `cargo test --doc` fails. The gate uses `--all-targets`, which excludes doctests. |
-| No test coverage to speak of | Every other crate reports `0 tests`. `src-tauri/service/tests/mock.rs` exists but defines no test cases. |
-
-`ddev check` runs the hard gates (frontend build, `cargo check --workspace`,
-`cargo test --workspace --exclude qf_api --all-targets`) as blocking, and the rest as advisory.
-`ddev check --strict` makes everything blocking — useful once a cleanup actually
-happens.
-
-Note that CI (`.github/workflows/pr-build-check.yml`) does not run tests at all; it
-only builds. So `ddev check` is already a stricter gate than CI.

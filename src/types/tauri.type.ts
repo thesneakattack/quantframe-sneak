@@ -991,12 +991,7 @@ export namespace TauriTypes {
     by: string;
     direction: "asc" | "desc";
   }
-  export interface MarketPriceKey {
-    wfm_url: string;
-    rank: number | null;
-    variant: string | null;
-  }
-  export type WFInvItemRowProperties = {
+   export type WFInvItemRowProperties = {
     is_in_stock: boolean;
     tags: string[];
     in_sets?: string[];

@@ -392,7 +392,6 @@ pub fn run() {
             commands::wf_inventory::wf_inventory_get_parts,
             commands::wf_inventory::wf_inventory_get_mods,
             commands::wf_inventory::wf_inventory_get_sets,
-            commands::wf_inventory::wf_inventory_resolve_prices,
             commands::wf_inventory::wf_inventory_get_syndicates,
             commands::wf_inventory::wf_inventory_update,
         ])

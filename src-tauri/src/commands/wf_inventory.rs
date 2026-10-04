@@ -204,18 +204,6 @@ pub async fn wf_inventory_get_sets(
     Ok(json!(sets))
 }
 
-/// Resolve prices warframe.market knows but the bundled cache does not.
-///
-/// Called with the rows currently on screen that have no price, so the cost
-/// is bounded by what the user looks at. Answers are remembered, including
-/// "nothing traded", so revisiting a page is free.
-#[tauri::command]
-pub async fn wf_inventory_resolve_prices(
-    keys: Vec<crate::market_prices::PriceKey>,
-) -> Result<Value, Error> {
-    Ok(json!(crate::market_prices::resolve(keys).await))
-}
-
 #[cfg(test)]
 mod tests {
     use super::{stock_key, ListedStock};
