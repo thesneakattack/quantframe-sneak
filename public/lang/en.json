@@ -2847,7 +2847,10 @@
           },
           "filters": {
             "in_set_only": "Set components only",
-            "min_price": "Min price"
+            "min_price": "Min price",
+            "min_owned": "Min owned",
+            "unvaulted_only": "Unvaulted only",
+            "mastered_only": "Mastered only"
           }
         },
         "mods": {
@@ -2865,7 +2868,10 @@
             "all": "All",
             "unranked": "Unranked",
             "ranked": "Ranked",
-            "min_price": "Min price"
+            "min_price": "Min price",
+            "min_owned": "Min owned",
+            "unvaulted_only": "Unvaulted only",
+            "mastered_only": "Mastered only"
           }
         },
         "sets": {
@@ -2884,7 +2890,10 @@
           },
           "filters": {
             "complete_only": "Complete sets only",
-            "min_price": "Min price"
+            "min_price": "Min price",
+            "min_owned": "Min owned",
+            "unvaulted_only": "Unvaulted only",
+            "mastered_only": "Mastered only"
           }
         }
       }

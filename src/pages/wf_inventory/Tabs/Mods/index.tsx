@@ -7,7 +7,7 @@ import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
-import { Group, NumberFormatter, NumberInput, SegmentedControl, Text, Tooltip } from "@mantine/core";
+import { Group, NumberFormatter, NumberInput, SegmentedControl, Switch, Text, Tooltip } from "@mantine/core";
 import { useLocalStorage } from "@mantine/hooks";
 import { getSafePage, inventoryRowKey } from "@utils/helper";
 import { DataTable } from "mantine-datatable";
@@ -46,6 +46,9 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
   // the scraper has the check disabled, which is no threshold here either.
   const settingMinProfit = settings?.live_scraper.items.wts.min_profit ?? 0;
   const storedMinPrice = (queryData.properties as { min_price?: number } | undefined)?.min_price;
+  const minOwned = Number((queryData.properties as { min_owned?: number } | undefined)?.min_owned ?? 0);
+  const unvaultedOnly = Boolean((queryData.properties as { unvaulted_only?: boolean } | undefined)?.unvaulted_only);
+  const masteredOnly = Boolean((queryData.properties as { mastered_only?: boolean } | undefined)?.mastered_only);
   const minPrice = Number(storedMinPrice ?? Math.max(settingMinProfit, 0));
   const sorts = queryData.sorts ?? [];
   // The stored query may not carry the threshold yet, so send the effective one.
@@ -103,6 +106,42 @@ export const ModsPanel = ({ isActive }: ModsPanelProps) => {
                   ...prev,
                   page: 1,
                   properties: { ...(prev.properties as object), min_price: Number(value) || 0 },
+                }))
+              }
+            />
+            <NumberInput
+              w={120}
+              min={0}
+              step={1}
+              label={useTranslate("filters.min_owned")}
+              value={minOwned}
+              onChange={(value) =>
+                setQueryData((prev) => ({
+                  ...prev,
+                  page: 1,
+                  properties: { ...(prev.properties as object), min_owned: Number(value) || 0 },
+                }))
+              }
+            />
+            <Switch
+              label={useTranslate("filters.unvaulted_only")}
+              checked={unvaultedOnly}
+              onChange={(event) =>
+                setQueryData((prev) => ({
+                  ...prev,
+                  page: 1,
+                  properties: { ...(prev.properties as object), unvaulted_only: event.currentTarget.checked },
+                }))
+              }
+            />
+            <Switch
+              label={useTranslate("filters.mastered_only")}
+              checked={masteredOnly}
+              onChange={(event) =>
+                setQueryData((prev) => ({
+                  ...prev,
+                  page: 1,
+                  properties: { ...(prev.properties as object), mastered_only: event.currentTarget.checked },
                 }))
               }
             />
