@@ -27,12 +27,21 @@ use crate::helper;
 static COMPONENT: &str = "MarketPrices";
 
 /// How long a resolved price stands before being asked again.
-pub const FOUND_TTL_SECS: i64 = 60 * 60;
+///
+/// Daily, not hourly. The figure describes a 48 hour window, so re-reading it
+/// every hour re-confirms what it already said, and that cadence was
+/// self-defeating: refreshing ~900 known prices every hour consumed the entire
+/// request budget, leaving rows with no price at all queued behind it
+/// indefinitely. A day keeps the figure well inside the window it describes
+/// and frees the budget to finish the dataset.
+pub const FOUND_TTL_SECS: i64 = 24 * 60 * 60;
 
 /// How long "warframe.market has no trades for this" stands. Silence does not
-/// turn into a price quickly, and re-asking hourly would spend most of the
-/// request budget re-confirming it.
-pub const MISSING_TTL_SECS: i64 = 24 * 60 * 60;
+/// turn into a price quickly, and re-asking would spend the request budget
+/// re-confirming it. Deliberately longer than `FOUND_TTL_SECS`: an item with
+/// no trades in a month is less likely to have moved than one that trades
+/// daily.
+pub const MISSING_TTL_SECS: i64 = 30 * 24 * 60 * 60;
 
 /// Spacing between requests. warframe.market tolerates a few per second; this
 /// stays well inside that while a page's worth still resolves in a couple of
@@ -88,6 +97,33 @@ pub fn is_fresh(fetched_at: i64, now: i64, found: bool) -> bool {
         MISSING_TTL_SECS
     };
     now - fetched_at < ttl
+}
+
+/// One named window of buckets from a statistics response.
+///
+/// The response carries both `48hours` and `90days`. A window it does not
+/// carry yields an empty one rather than failing the tick that asked for it.
+pub fn window_from_payload(body: &Value, window: &str) -> Value {
+    body.get("payload")
+        .and_then(|p| p.get("statistics_closed"))
+        .and_then(|c| c.get(window))
+        .cloned()
+        .unwrap_or(Value::Array(vec![]))
+}
+
+/// The price for a key, taken from the freshest window that actually has
+/// trades.
+///
+/// A 48 hour average says what an item is going for now, so it wins whenever
+/// it exists. But most of the inventory does not trade every two days: over a
+/// sample of 25 rows carrying no price, the 48 hour window could price 3 where
+/// the 90 day window could price 21. Falling through is the difference between
+/// a figure and a permanent "unknown" for mods and relics. When neither window
+/// has trades for the rank or refinement we hold, the answer stays unknown
+/// rather than borrowing another product's price.
+pub fn price_from_payload(body: &Value, key: &PriceKey) -> Option<f64> {
+    select_price(&window_from_payload(body, "48hours"), key)
+        .or_else(|| select_price(&window_from_payload(body, "90days"), key))
 }
 
 /// The volume-weighted average price across the buckets that describe the item
@@ -290,12 +326,7 @@ async fn fetch_statistics(wfm_url: &str) -> Result<Value, Error> {
             utils::get_location!(),
         )
     })?;
-    Ok(body
-        .get("payload")
-        .and_then(|p| p.get("statistics_closed"))
-        .and_then(|c| c.get("48hours"))
-        .cloned()
-        .unwrap_or(Value::Array(vec![])))
+    Ok(body)
 }
 
 /// Ask warframe.market about one key and remember the answer.
@@ -305,7 +336,7 @@ async fn fetch_statistics(wfm_url: &str) -> Result<Value, Error> {
 async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<f64> {
     match fetch_statistics(&key.wfm_url).await {
         Ok(statistics) => {
-            let price = select_price(&statistics, key);
+            let price = price_from_payload(&statistics, key);
             store.remember(key, price);
             tokio::time::sleep(REQUEST_SPACING).await;
             price
@@ -323,7 +354,10 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use super::{is_fresh, plan_backfill, select_price, CachedPrice, PriceKey, FOUND_TTL_SECS};
+    use super::{
+        is_fresh, plan_backfill, price_from_payload, select_price, window_from_payload,
+        CachedPrice, PriceKey, FOUND_TTL_SECS,
+    };
     use serde_json::json;
     use std::collections::HashMap;
 
@@ -405,6 +439,83 @@ mod tests {
         assert_eq!(select_price(&stats, &key(None, None)), None);
     }
 
+    const DAY: i64 = 24 * 60 * 60;
+
+    /// An item that trades daily has a 48 hour figure, and that is the one
+    /// worth showing: it says what the thing is going for now.
+    #[test]
+    fn prefers_the_forty_eight_hour_price_when_that_window_has_trades() {
+        let body = json!({"payload": {"statistics_closed": {
+            "48hours": [{"avg_price": 99.0, "volume": 1}],
+            "90days": [{"avg_price": 11.0, "volume": 1}],
+        }}});
+        assert_eq!(price_from_payload(&body, &key(None, None)), Some(99.0));
+    }
+
+    /// Most mods and relics do not trade every two days, so their 48 hour
+    /// window is empty. Measured over a sample of the inventory rows with no
+    /// price, 48 hours could price 3 in 25 where 90 days could price 21, so
+    /// widening is the difference between a figure and a permanent "unknown".
+    #[test]
+    fn falls_back_to_the_ninety_day_price_when_the_short_window_is_empty() {
+        let body = json!({"payload": {"statistics_closed": {
+            "48hours": [],
+            "90days": [{"avg_price": 11.0, "volume": 1}],
+        }}});
+        assert_eq!(price_from_payload(&body, &key(None, None)), Some(11.0));
+    }
+
+    /// A short window carrying only another rank is no evidence about the rank
+    /// we hold, so it must fall through rather than report unknown.
+    #[test]
+    fn falls_back_when_the_short_window_has_no_bucket_for_our_rank() {
+        let body = json!({"payload": {"statistics_closed": {
+            "48hours": [{"avg_price": 99.0, "volume": 1, "mod_rank": 10}],
+            "90days": [{"avg_price": 11.0, "volume": 1, "mod_rank": 0}],
+        }}});
+        assert_eq!(price_from_payload(&body, &key(Some(0), None)), Some(11.0));
+    }
+
+    /// Nothing in either window is an honest unknown, not a zero.
+    #[test]
+    fn reports_nothing_when_neither_window_has_trades() {
+        let body = json!({"payload": {"statistics_closed": {"48hours": [], "90days": []}}});
+        assert_eq!(price_from_payload(&body, &key(None, None)), None);
+    }
+
+    /// The response carries both a 48 hour series and a 90 day one. The short
+    /// window is the one that describes what an item trades for right now,
+    /// which is what the inventory tabs are read for.
+    #[test]
+    fn reads_the_forty_eight_hour_series_from_the_payload() {
+        let body = json!({
+            "payload": {
+                "statistics_closed": {
+                    "48hours": [{"avg_price": 99.0, "volume": 1}],
+                    "90days": [{"avg_price": 11.0, "volume": 1}],
+                }
+            }
+        });
+        assert_eq!(prices(&window_from_payload(&body, "48hours")), vec![99.0]);
+    }
+
+    /// A response shaped differently than expected carries no prices, and must
+    /// not fail the tick that asked for it.
+    #[test]
+    fn reports_an_empty_window_when_the_payload_has_no_series() {
+        let window = window_from_payload(&json!({"payload": {}}), "48hours");
+        assert_eq!(window.as_array().unwrap().len(), 0);
+    }
+
+    fn prices(window: &serde_json::Value) -> Vec<f64> {
+        window
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| b.get("avg_price").unwrap().as_f64().unwrap())
+            .collect()
+    }
+
     fn candidate(name: &str, value: Option<f64>) -> (PriceKey, Option<f64>) {
         (
             PriceKey {
@@ -482,6 +593,17 @@ mod tests {
 
     fn known(price: Option<f64>, fetched_at: i64) -> CachedPrice {
         CachedPrice { price, fetched_at }
+    }
+
+    /// A 48 hour average is worth re-reading daily, not hourly. The hourly
+    /// cadence was self-defeating: refreshing every known price every hour
+    /// consumed the entire request budget, so rows with no price at all stayed
+    /// queued behind it indefinitely. A day is still well inside the window
+    /// the figure describes.
+    #[test]
+    fn a_found_price_stands_for_a_day_not_an_hour() {
+        assert!(is_fresh(1_000, 1_000 + 12 * 3_600, true));
+        assert!(!is_fresh(1_000, 1_000 + 2 * DAY, true));
     }
 
     #[test]
