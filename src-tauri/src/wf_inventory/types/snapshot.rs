@@ -79,8 +79,13 @@ impl InventorySnapshot {
             row.properties.set_property_value("tags", item.tags.clone());
             row.properties
                 .set_property_value("is_unvaulted", unvaulted.contains(&unique_name));
-            row.properties
-                .set_property_value("is_mastered", mastered.contains(&unique_name));
+            row.properties.set_property_value(
+                "is_mastered",
+                builds_something_mastered(
+                    parent_sets.iter().map(|s| s.set.unique_name.as_str()),
+                    &mastered,
+                ),
+            );
             row.unique_name = unique_name;
             parts.push(row);
         }
@@ -217,6 +222,22 @@ fn mastered_items(root: &WarframeRootObject) -> HashSet<String> {
         .collect()
 }
 
+/// Whether the item a part builds has already been mastered.
+///
+/// A part's own unique name is a recipe path - `/Lotus/Types/Recipes/...` -
+/// and mastery is recorded against the equippable item, so the two never
+/// meet: matching a part against the mastery table directly leaves every part
+/// unmastered. A set is keyed by exactly that equippable item, so the sets a
+/// part belongs to are the bridge between the two.
+fn builds_something_mastered<'a>(
+    parent_set_keys: impl IntoIterator<Item = &'a str>,
+    mastered: &HashSet<String>,
+) -> bool {
+    parent_set_keys
+        .into_iter()
+        .any(|key| mastered.contains(key))
+}
+
 /// The experience a type needs for rank 30. Warframes, companions and
 /// archwings level half as fast as weapons, so they need twice the total.
 fn mastery_cap(unique_name: &str) -> i64 {
@@ -261,8 +282,9 @@ pub fn root_fingerprint(root: &WarframeRootObject) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{root_fingerprint, WarframeRootObject};
+    use super::{builds_something_mastered, root_fingerprint, WarframeRootObject};
     use crate::wf_inventory::WFInvItemRaw;
+    use std::collections::HashSet;
 
     fn raw(unique_name: &str, quantity: i64, fingerprint: Option<&str>) -> WFInvItemRaw {
         WFInvItemRaw {
@@ -324,5 +346,47 @@ mod tests {
             root_fingerprint(&in_recipes),
             root_fingerprint(&in_upgrades)
         );
+    }
+
+    /// The defect this guards: a part was matched against the mastery table
+    /// by its own unique name, which is a recipe path and never appears
+    /// there, so "already mastered" matched nothing at all.
+    #[test]
+    fn a_part_counts_as_mastered_when_the_item_it_builds_is() {
+        let mastered: HashSet<String> = ["/Lotus/Powersuits/Jade/NyxPrime".to_string()]
+            .into_iter()
+            .collect();
+        assert!(builds_something_mastered(
+            ["/Lotus/Powersuits/Jade/NyxPrime"],
+            &mastered
+        ));
+    }
+
+    #[test]
+    fn a_part_of_nothing_mastered_does_not_count() {
+        let mastered: HashSet<String> = ["/Lotus/Powersuits/Jade/NyxPrime".to_string()]
+            .into_iter()
+            .collect();
+        assert!(!builds_something_mastered(
+            ["/Lotus/Powersuits/Mag/MagPrime"],
+            &mastered
+        ));
+        assert!(!builds_something_mastered([], &mastered));
+    }
+
+    /// A part can belong to more than one set; mastering any of them means
+    /// the part's only remaining value is its sale price.
+    #[test]
+    fn one_mastered_parent_set_is_enough() {
+        let mastered: HashSet<String> = ["/Lotus/Powersuits/Jade/NyxPrime".to_string()]
+            .into_iter()
+            .collect();
+        assert!(builds_something_mastered(
+            [
+                "/Lotus/Weapons/Tenno/Rifle/SomethingElse",
+                "/Lotus/Powersuits/Jade/NyxPrime"
+            ],
+            &mastered
+        ));
     }
 }
