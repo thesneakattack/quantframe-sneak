@@ -10,8 +10,10 @@
 //! Precedence for every value, highest first:
 //!
 //! 1. the environment variable (`QF_API_URL`, `WF_DECRYPT_KEY`, `WF_DECRYPT_IV`)
-//! 2. `config.json` in the project root
-//! 3. the compiled default
+//! 2. `config.json` in the project root, for a checkout
+//! 3. `config.json` in the app-data directory, for an installed build, which
+//!    has no project root to walk up to
+//! 4. the compiled default
 //!
 //! `config.json` is gitignored: it holds the AlecaFrame AES key and IV, which
 //! are not shipped in this repository.
@@ -91,21 +93,43 @@ impl KeyBytes {
 
 /// Where the config file is, if there is one.
 ///
-/// `explicit` short-circuits the search; otherwise walk up from `start`
-/// looking for `config.json`.
-fn resolve_config_path(start: &Path, explicit: Option<PathBuf>) -> Option<PathBuf> {
+/// `explicit` short-circuits the search. Otherwise walk up from `start` for a
+/// project root, then fall back to `app_data`.
+///
+/// The fallback is what makes an installed build work at all: it runs from
+/// wherever its shortcut points, with no checkout above it, so the walk finds
+/// nothing. Without somewhere else to look it would use no config, ask the API
+/// for the AlecaFrame keys and get the 403 the local keys exist to avoid.
+///
+/// A checkout still wins, so running from source behaves as before. Putting
+/// the installed copy's config in the app-data directory is safe even though
+/// `settings.json` there is re-seeded from upstream Quantframe:
+/// `scripts/seed-from-upstream.sh` copies a fixed list of files and
+/// `config.json` is not one of them.
+fn resolve_config_path(
+    start: &Path,
+    explicit: Option<PathBuf>,
+    app_data: Option<&Path>,
+) -> Option<PathBuf> {
     if let Some(path) = explicit {
         return if path.is_file() { Some(path) } else { None };
     }
+    // Walking off the top of the filesystem ends the walk, not the search:
+    // the app-data fallback below is the whole point for an installed build,
+    // which is exactly the case where the walk finds nothing.
     let mut dir = Some(start);
     for _ in 0..=MAX_ASCENT {
-        let candidate = dir?.join(CONFIG_FILE_NAME);
+        let Some(current) = dir else {
+            break;
+        };
+        let candidate = current.join(CONFIG_FILE_NAME);
         if candidate.is_file() {
             return Some(candidate);
         }
-        dir = dir?.parent();
+        dir = current.parent();
     }
-    None
+    let candidate = app_data?.join(CONFIG_FILE_NAME);
+    candidate.is_file().then_some(candidate)
 }
 
 fn load() -> FileConfig {
@@ -113,7 +137,8 @@ fn load() -> FileConfig {
     let explicit_was_set = explicit.is_some();
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-    let Some(path) = resolve_config_path(&cwd, explicit) else {
+    let app_data = crate::helper::get_app_storage_path();
+    let Some(path) = resolve_config_path(&cwd, explicit, Some(app_data.as_path())) else {
         if explicit_was_set {
             warning(
                 format!("{}:Load", COMPONENT),
@@ -252,7 +277,8 @@ mod tests {
         let config = root.path().join("config.json");
         fs::write(&config, "{}").expect("write");
 
-        let found = resolve_config_path(&src_tauri, None).expect("should find the parent config");
+        let found =
+            resolve_config_path(&src_tauri, None, None).expect("should find the parent config");
         assert_eq!(found, config);
     }
 
@@ -262,7 +288,7 @@ mod tests {
         let here = root.path().join("config.json");
         fs::write(&here, "{}").expect("write");
 
-        let found = resolve_config_path(root.path(), None).expect("should find it");
+        let found = resolve_config_path(root.path(), None, None).expect("should find it");
         assert_eq!(found, here);
     }
 
@@ -275,17 +301,54 @@ mod tests {
         let explicit = root.path().join("elsewhere.json");
         fs::write(&explicit, "{}").expect("write");
 
-        let found = resolve_config_path(root.path(), Some(explicit.clone())).expect("should find");
+        let found =
+            resolve_config_path(root.path(), Some(explicit.clone()), None).expect("should find");
         assert_eq!(found, explicit);
     }
 
-    /// No config at all is the normal case for a packaged build: it must be
-    /// absent, not an error.
+    /// No config anywhere is not an error.
     #[test]
     fn returns_none_when_no_config_exists() {
         let root = tempfile::tempdir().expect("tempdir");
         let empty = root.path().join("nothing");
         fs::create_dir(&empty).expect("mkdir");
-        assert!(resolve_config_path(&empty, None).is_none());
+        assert!(resolve_config_path(&empty, None, None).is_none());
+    }
+
+    /// An installed build has no project root to walk up from - it runs from
+    /// wherever the shortcut points. Without this it would find no config,
+    /// fall back to the API for the AlecaFrame keys and get the 403 the local
+    /// keys exist to avoid, so the inventory would never load.
+    #[test]
+    fn finds_the_config_an_installed_build_keeps_beside_its_data() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let elsewhere = root.path().join("program files");
+        let app_data = root.path().join("app data");
+        fs::create_dir_all(&elsewhere).expect("mkdir");
+        fs::create_dir_all(&app_data).expect("mkdir");
+        fs::write(app_data.join("config.json"), "{}").expect("write");
+
+        assert_eq!(
+            resolve_config_path(&elsewhere, None, Some(app_data.as_path())),
+            Some(app_data.join("config.json"))
+        );
+    }
+
+    /// A checkout is what you are working on, so it wins over whatever the
+    /// installed copy happens to have beside it.
+    #[test]
+    fn a_project_config_wins_over_the_installed_one() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let project = root.path().join("project");
+        let app_data = root.path().join("app data");
+        fs::create_dir_all(&project).expect("mkdir");
+        fs::create_dir_all(&app_data).expect("mkdir");
+        fs::write(project.join("config.json"), "{}").expect("write");
+        fs::write(app_data.join("config.json"), "{}").expect("write");
+
+        assert_eq!(
+            resolve_config_path(&project, None, Some(app_data.as_path())),
+            Some(project.join("config.json"))
+        );
     }
 }

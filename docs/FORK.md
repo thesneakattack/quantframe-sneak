@@ -129,8 +129,24 @@ the upstream app's. Keeping deployment config in the repo keeps the two apps
 independent.
 
 `config.json` is found by walking up from the working directory, so it works
-whether you run from the project root or from `src-tauri/`. A packaged build
-with no project root can be pointed at one with `QF_CONFIG=/path/to/config.json`.
+whether you run from the project root or from `src-tauri/`.
+
+**An installed build has no project root**, so it also looks in its app-data
+directory — the same folder as `settings.json` and `quantframeV2.sqlite`:
+
+```
+%APPDATA%\dev.thesneakattack.quantframe\config.json
+```
+
+Copy your `config.json` there after installing, or the AlecaFrame source falls
+back to the API for the decryption keys and gets the 403 the local keys exist
+to avoid — the inventory then never loads. A checkout's `config.json` still
+wins when you run from source, and `QF_CONFIG=/path/to/config.json` overrides
+both.
+
+This is safe despite `settings.json` living in the same directory and being
+re-seeded from upstream: `scripts/seed-from-upstream.sh` copies a fixed list of
+files, and `config.json` is not one of them.
 
 This fork resolves the base URL at runtime. Highest precedence first:
 
