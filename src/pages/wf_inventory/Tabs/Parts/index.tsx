@@ -4,8 +4,7 @@ import { ItemName } from "@components/DataDisplay/ItemName";
 import { SearchField } from "@components/Forms/SearchField";
 import { SortPriority } from "@components/Forms/SortPriority";
 import { ActionWithTooltip } from "@components/Shared/ActionWithTooltip";
-import { faAdd, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faAdd } from "@fortawesome/free-solid-svg-icons";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
 import { useResolvedPrices } from "@hooks/useResolvedPrices.hook";
 import { useTranslateCommon, useTranslatePages } from "@hooks/useTranslate.hook";
@@ -140,18 +139,7 @@ export const PartsPanel = ({ isActive }: PartsPanelProps) => {
             accessor: "name",
             title: useTranslateCommon("item_name.title"),
             sortable: true,
-            render: (row) => (
-              <Group gap={6}>
-                <ItemName color="gray.4" size="md" value={row} hideQuantity />
-                {(row.properties?.in_stock_sets?.length || 0) > 0 && (
-                  <Tooltip label={useTranslate("stock_set_conflict", { sets: (row.properties?.in_stock_sets || []).join(", ") })}>
-                    <Text c="yellow.7" component="span">
-                      <FontAwesomeIcon icon={faTriangleExclamation} />
-                    </Text>
-                  </Tooltip>
-                )}
-              </Group>
-            ),
+            render: (row) => <ItemName color="gray.4" size="md" value={row} hideQuantity />,
           },
           {
             accessor: "quantity",

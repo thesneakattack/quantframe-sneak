@@ -2835,7 +2835,6 @@
         },
         "parts": {
           "title": "Parts",
-          "stock_set_conflict": "Already in stock as part of: {{sets}}",
           "stock_status": {
             "found": "Already in stock",
             "not_found": "Not in stock"
