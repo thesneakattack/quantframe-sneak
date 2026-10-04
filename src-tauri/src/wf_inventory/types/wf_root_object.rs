@@ -4,6 +4,15 @@ use crate::wf_inventory::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WarframeRootObject {
+    /// Unix seconds when this inventory was last read from its source.
+    ///
+    /// Not part of the payload - the sources carry no such field, and a stamp
+    /// read out of the data would describe when the export was made rather
+    /// than when this build last saw it. Skipped on the way in so a reload
+    /// cannot inherit a stale one, and set by `adopt`.
+    #[serde(skip)]
+    pub updated_at: Option<i64>,
+
     #[serde(rename = "PlayerLevel", default)]
     pub mastery_rank: i64,
 
@@ -73,6 +82,23 @@ pub struct WarframeRootObject {
     /// Experience earned per item type, which is how mastery is recorded.
     #[serde(rename = "XPInfo", default)]
     pub xp_info: Vec<WFInvXpEntry>,
+}
+
+impl WarframeRootObject {
+    /// Take freshly read inventory data, recording when it arrived.
+    ///
+    /// Every source replaces the root wholesale, so the stamp has to be
+    /// applied after the replacement or it is thrown away with the old value.
+    /// Keeping that rule here means a new source cannot forget it.
+    pub fn adopt(&mut self, parsed: WarframeRootObject) {
+        *self = parsed;
+        self.updated_at = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0),
+        );
+    }
 }
 
 /// One item type's lifetime experience.

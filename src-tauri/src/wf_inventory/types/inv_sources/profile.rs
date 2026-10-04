@@ -59,7 +59,7 @@ impl InventorySource for WFInvProfileSource {
             "Profile data updated",
             &LoggerOptions::default(),
         );
-        *root = parsed;
+        root.adopt(parsed);
         Ok(())
     }
 

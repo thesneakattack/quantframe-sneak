@@ -67,7 +67,7 @@ impl InventorySource for WFInvAlecaframeSource {
             "Data file modified - root updated",
             &LoggerOptions::default(),
         );
-        *root = parsed;
+        root.adopt(parsed);
         Ok(())
     }
 

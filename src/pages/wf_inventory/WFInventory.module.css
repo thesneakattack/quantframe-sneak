@@ -4,6 +4,16 @@
   }
 }
 
+/* The search field and table used to sit flush against the panel edge and
+   against the tab strip. */
+.tabPanel {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md) var(--mantine-spacing-xs);
+}
+
+.lastUpdated {
+  padding: 0 var(--mantine-spacing-md) 4px;
+}
+
 .veiledRivens {
   height: calc(100vh - 300px);
 }
@@ -15,20 +25,20 @@
  * The offset covers the app header, the search field and the footer.
  */
 .inventoryTable {
-  --offset: 175px;
+  --offset: 217px;
   height: calc(100vh - var(--offset)) !important;
 
   &.alert {
-    --offset: 205px;
+    --offset: 247px;
   }
 
   /* The filter panel expands above the table and would otherwise push the
      pagination footer off the bottom of the window. */
   &.filterOpen {
-    --offset: 250px;
+    --offset: 292px;
   }
 
   &.alert.filterOpen {
-    --offset: 280px;
+    --offset: 322px;
   }
 }

@@ -1,4 +1,4 @@
-import { Container, Tabs } from "@mantine/core";
+import { Container, Group, Tabs, Text, Tooltip } from "@mantine/core";
 import { useTranslatePages } from "@hooks/useTranslate.hook";
 import classes from "./WFInventory.module.css";
 import { useHasAlert } from "@hooks/useHasAlert.hook";
@@ -9,6 +9,13 @@ import { SetsPanel } from "./Tabs/Sets";
 import { RelicsPanel } from "./Tabs/Relics";
 import { ArcanesPanel } from "./Tabs/Arcanes";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "@api/index";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
+
 export default function WfInventoryPage() {
   // Translate general
   const useTranslate = (key: string, context?: { [key: string]: any }, i18Key?: boolean) =>
@@ -24,8 +31,36 @@ export default function WfInventoryPage() {
     { label: useTranslateTabs("arcanes.title"), component: (isActive: boolean) => <ArcanesPanel isActive={isActive} />, id: "arcanes" },
   ];
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+
+  // The inventory refreshes on its own - AlecaFrame writes a file, the profile
+  // source polls - so the page cannot know when it happened without asking.
+  // Polling keeps the relative time honest as it ages, too.
+  const lastUpdatedQuery = useQuery({
+    queryKey: ["wf_inventory_last_updated"],
+    queryFn: () => api.wf_inventory.getLastUpdated(),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const updatedAt = lastUpdatedQuery.data?.updated_at;
+
   return (
     <Container p={0} fluid className={`${classes.container} ${useHasAlert() ? classes.alert : ""}`}>
+      <Group justify="flex-end" className={classes.lastUpdated}>
+        {updatedAt ? (
+          // The exact time sits in the tooltip: "3 minutes ago" is what you
+          // want at a glance, but not what you want when deciding whether a
+          // sync actually ran.
+          <Tooltip label={dayjs.unix(updatedAt).format("YYYY-MM-DD HH:mm:ss")}>
+            <Text size="xs" c="dimmed">
+              {useTranslate("last_updated", { when: dayjs.unix(updatedAt).fromNow() })}
+            </Text>
+          </Tooltip>
+        ) : (
+          <Text size="xs" c="dimmed">
+            {useTranslate("last_updated_never")}
+          </Text>
+        )}
+      </Group>
       <Tabs value={activeTab} onChange={(value) => setActiveTab(value || tabs[0].id)} orientation="vertical">
         <Tabs.List>
           {tabs.map((tab) => (
@@ -35,7 +70,7 @@ export default function WfInventoryPage() {
           ))}
         </Tabs.List>
         {tabs.map((tab) => (
-          <Tabs.Panel value={tab.id} key={tab.id}>
+          <Tabs.Panel value={tab.id} key={tab.id} className={classes.tabPanel}>
             {tab.component(activeTab === tab.id)}
           </Tabs.Panel>
         ))}

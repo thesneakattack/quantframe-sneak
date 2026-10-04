@@ -1011,6 +1011,10 @@ export namespace TauriTypes {
   export type WFInvArcanesControllerGetListData = PaginatedDto & {
     results?: WFInvItemRow[];
   };
+  export interface WFInvLastUpdated {
+    /** Unix seconds the inventory was last read from its source, or null if never. */
+    updated_at?: number | null;
+  }
   export interface WFInvSetMember {
     unique_name: string;
     name: string;

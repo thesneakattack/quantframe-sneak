@@ -38,6 +38,9 @@ export class WfInventoryModule {
       query: this.client.convertToTauriQuery(query),
     });
   }
+  async getLastUpdated(): Promise<TauriTypes.WFInvLastUpdated> {
+    return await this.client.sendInvoke<TauriTypes.WFInvLastUpdated>("wf_inventory_last_updated");
+  }
    update() {
     return useMutation({
       mutationFn: () => this.client.sendInvoke<void>("wf_inventory_update"),

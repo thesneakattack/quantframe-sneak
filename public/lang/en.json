@@ -2931,7 +2931,9 @@
             "mastered_only": "Mastered only"
           }
         }
-      }
+      },
+      "last_updated": "Inventory updated {{when}}",
+      "last_updated_never": "Inventory not yet loaded"
     }
   }
 }

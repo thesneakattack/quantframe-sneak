@@ -56,7 +56,7 @@ impl InventorySource for WFInvFileSource {
             "Data file read - root updated",
             &LoggerOptions::default(),
         );
-        *root = parsed;
+        root.adopt(parsed);
         Ok(())
     }
 

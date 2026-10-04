@@ -208,6 +208,16 @@ pub async fn wf_inventory_get_mods(
 }
 
 #[tauri::command]
+pub async fn wf_inventory_last_updated(
+    wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
+) -> Result<Value, Error> {
+    let wf_inventory = wf_inventory.lock()?.clone();
+    // None until a source has read something: the page says "never" rather
+    // than claiming an update that has not happened.
+    Ok(json!({ "updated_at": wf_inventory.get_root().updated_at }))
+}
+
+#[tauri::command]
 pub async fn wf_inventory_get_relics(
     query: WFItemPaginationDto,
     wf_inventory: tauri::State<'_, Mutex<Arc<WFInventoryState>>>,
