@@ -220,6 +220,50 @@ pub fn plan_resolution(
     plan
 }
 
+/// Choose what to refresh next, most valuable first.
+///
+/// A hundred-platinum set drifting costs a bad decision; a two-platinum mod
+/// drifting costs nothing, so value leads and staleness breaks ties. Items
+/// with no price at all cannot be ranked by value and queue behind the rest.
+/// They are still queued, and that is what completes the dataset: a refreshed
+/// item goes fresh and leaves the queue, so the backlog drains and the
+/// unknowns are reached rather than starved.
+///
+/// Fresh entries are skipped entirely - the point is to spend the request
+/// budget only where the figure has actually aged.
+pub fn plan_backfill(
+    candidates: Vec<(PriceKey, Option<f64>)>,
+    known: &HashMap<String, CachedPrice>,
+    now: i64,
+    limit: usize,
+) -> Vec<PriceKey> {
+    let mut due: Vec<(bool, i64, i64, PriceKey)> = candidates
+        .into_iter()
+        .filter_map(|(key, value)| {
+            let fetched_at = match known.get(&key.id()) {
+                Some(entry) => {
+                    if is_fresh(entry.fetched_at, now, entry.price.is_some()) {
+                        return None;
+                    }
+                    entry.fetched_at
+                }
+                // Never asked: as overdue as anything can be.
+                None => 0,
+            };
+            // Negated and scaled so a plain ascending sort puts the dearest
+            // first; platinum prices never need sub-unit precision here.
+            let rank = value.map(|v| -(v * 1000.0) as i64).unwrap_or(0);
+            Some((value.is_none(), rank, fetched_at, key))
+        })
+        .collect();
+
+    due.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
+    due.into_iter()
+        .take(limit)
+        .map(|(_, _, _, key)| key)
+        .collect()
+}
+
 #[derive(Debug, Default)]
 pub struct MarketPriceStore {
     entries: Mutex<HashMap<String, CachedPrice>>,
@@ -282,6 +326,21 @@ impl MarketPriceStore {
         let entry = entries.entry(key.id()).or_default();
         entry.live_price = Some(live);
         entry.live_at = now_secs();
+    }
+
+    /// What to refresh next, most valuable first.
+    pub fn plan_next_batch(
+        &self,
+        candidates: Vec<(PriceKey, Option<f64>)>,
+        limit: usize,
+    ) -> Vec<PriceKey> {
+        let entries = self.entries.lock().unwrap();
+        plan_backfill(candidates, &entries, now_secs(), limit)
+    }
+
+    /// Ask warframe.market about one key and remember the answer.
+    pub async fn refresh(&self, key: &PriceKey) -> Option<f64> {
+        fetch_and_remember(self, key).await
     }
 
     /// Persist what the scraper has recorded since the last write.
@@ -410,8 +469,9 @@ async fn fetch_and_remember(store: &MarketPriceStore, key: &PriceKey) -> Option<
 #[cfg(test)]
 mod tests {
     use super::{
-        best_price, is_fresh, live_observation, plan_resolution, select_price, CachedPrice,
-        PriceKey, FOUND_TTL_SECS, MAX_PER_CALL, MAX_REFRESH_PER_CALL, MISSING_TTL_SECS,
+        best_price, is_fresh, live_observation, plan_backfill, plan_resolution, select_price,
+        CachedPrice, PriceKey, FOUND_TTL_SECS, MAX_PER_CALL, MAX_REFRESH_PER_CALL,
+        MISSING_TTL_SECS,
     };
     use serde_json::json;
     use std::collections::HashMap;
@@ -546,6 +606,81 @@ mod tests {
         assert_eq!(live_observation(0), None);
         assert_eq!(live_observation(-1), None);
         assert_eq!(live_observation(31), Some(31.0));
+    }
+
+    fn candidate(name: &str, value: Option<f64>) -> (PriceKey, Option<f64>) {
+        (
+            PriceKey {
+                wfm_url: name.to_string(),
+                rank: None,
+                variant: None,
+            },
+            value,
+        )
+    }
+
+    /// A hundred-platinum set drifting is worth a request long before a
+    /// two-platinum mod is.
+    #[test]
+    fn the_most_valuable_stale_item_is_refreshed_first() {
+        let cheap = candidate("cheap", Some(2.0));
+        let dear = candidate("dear", Some(120.0));
+        let middling = candidate("middling", Some(40.0));
+        let kn = HashMap::from([
+            (cheap.0.id(), known(Some(2.0), 0)),
+            (dear.0.id(), known(Some(120.0), 0)),
+            (middling.0.id(), known(Some(40.0), 0)),
+        ]);
+        let plan = plan_backfill(vec![cheap, dear, middling], &kn, 10_000_000, 10);
+        let order: Vec<&str> = plan.iter().map(|k| k.wfm_url.as_str()).collect();
+        assert_eq!(order, vec!["dear", "middling", "cheap"]);
+    }
+
+    /// Among equally valuable items the one left longest goes first.
+    #[test]
+    fn equal_value_is_broken_by_staleness_oldest_first() {
+        let newer = candidate("newer", Some(50.0));
+        let older = candidate("older", Some(50.0));
+        let kn = HashMap::from([
+            (newer.0.id(), known(Some(50.0), 900_000)),
+            (older.0.id(), known(Some(50.0), 1)),
+        ]);
+        let plan = plan_backfill(vec![newer, older], &kn, 10_000_000, 10);
+        assert_eq!(plan[0].wfm_url, "older");
+    }
+
+    /// An item with no price at all cannot be ranked by value, so it waits
+    /// behind the ones that can. It is still queued, which is what completes
+    /// the dataset: refreshed items go fresh and leave the queue, so the
+    /// unknowns are reached rather than starved.
+    #[test]
+    fn items_with_no_known_value_queue_after_the_ranked_ones() {
+        let valued = candidate("valued", Some(5.0));
+        let unknown = candidate("unknown", None);
+        let kn = HashMap::from([(valued.0.id(), known(Some(5.0), 0))]);
+        let plan = plan_backfill(vec![unknown, valued], &kn, 10_000_000, 10);
+        let order: Vec<&str> = plan.iter().map(|k| k.wfm_url.as_str()).collect();
+        assert_eq!(order, vec!["valued", "unknown"]);
+    }
+
+    /// A price fetched minutes ago is not worth a request.
+    #[test]
+    fn fresh_items_are_left_alone() {
+        let c = candidate("fresh", Some(5.0));
+        let kn = HashMap::from([(c.0.id(), known(Some(5.0), 1_000))]);
+        assert!(plan_backfill(vec![c], &kn, 1_000 + 60, 10).is_empty());
+    }
+
+    /// The batch is capped so a tick cannot turn into a flood.
+    #[test]
+    fn the_batch_is_capped() {
+        let candidates: Vec<(PriceKey, Option<f64>)> = (0..50)
+            .map(|i| candidate(&format!("item_{i}"), Some(i as f64)))
+            .collect();
+        assert_eq!(
+            plan_backfill(candidates, &HashMap::new(), 1_000, 5).len(),
+            5
+        );
     }
 
     fn known(price: Option<f64>, fetched_at: i64) -> CachedPrice {

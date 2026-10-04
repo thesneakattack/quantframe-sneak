@@ -32,6 +32,7 @@ mod config;
 mod handlers;
 mod http_server;
 mod macros;
+mod market_backfill;
 mod market_prices;
 mod utils;
 mod wf_inventory;
@@ -144,6 +145,10 @@ async fn setup_manages(app: tauri::AppHandle, use_temp_db: bool) -> Result<(), E
 
     app.manage(Mutex::new(LogParserState::new(&settings.log_settings)));
     app.manage(Mutex::new(WFInventoryState::new(&settings)));
+
+    // Keeps inventory prices complete and current in the background, well
+    // away from anything the user is waiting on.
+    market_backfill::spawn();
     Ok(())
 }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
